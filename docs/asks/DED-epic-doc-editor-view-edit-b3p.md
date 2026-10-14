@@ -111,3 +111,113 @@ ___
 also, i think there are plugins for showing an entire functional web browser in claude mods tui. go ahead and /delegate opus /research-doc the web browser in claude code tui with claude code mods idea and see what exists out there.
 ```
 ````
+````text
+entry_id: A002
+kind: FOLLOW-UP
+recorded_at: 2026-10-14T23:46:38Z
+speaker: human
+supersedes:
+body_sha256: accf2ecb9f785c2603ac9c42fc4ce23df742df5b5f6547bc6d48efb1f9bb44fb
+
+```text
+the google ai summaries were:
+#1
+prompt #1: "best doc apps for documentation confluence notion others. best UI/UX and most interactive and innovative"
+
+output #1:
+"""
+The landscape of documentation software has evolved significantly beyond static text pages. For teams seeking the best UI/UX and most interactive, innovative documentation apps, the top platforms are defined by fluid block-based mechanics, modularity, AI-native generation, and application-like data structures. [1] (https://zapier.com/blog/best-notion-alternatives/), [2] (https://www.youtube.com/watch?v=1w-1ZmFuAN4&t=151), [3] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+The definitive list of interactive and visually superior alternatives to Confluence and Notion ranks as follows:
+
+1. Coda — Best for App-Like Interactivity
+
+Coda bridges the gap between a document and a custom application. If you love Notion but want real interactivity, Coda is the gold standard. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives), [2] (https://www.youtube.com/watch?v=1w-1ZmFuAN4&t=151)
+• Why it’s innovative: Instead of flat text, a Coda doc handles data with robust logic. You can drag-and-drop live functional elements like clickable buttons, interactive sliders, variables, and automated triggers directly into the body text. [1] (https://www.youtube.com/watch?v=1w-1ZmFuAN4&t=151)
+• UI/UX & Modality: Extremely smooth canvas-style UX. It features a deeply programmable formula engine that works anywhere on the page—not just restricted to data columns. [1] (https://storyflow.so/blog/best-knowledge-management-tools-2026), [2] (https://www.youtube.com/watch?v=1w-1ZmFuAN4&t=151)
+• Best For: Product and Operations teams building complex Product Requirement Documents (PRDs), feedback trackers, and workflow hubs. [1] (https://www.reddit.com/r/ProductManagement/comments/1fia15d/recommendations_on_documentation_tools/), [2] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+
+2. Gamma — Best for Visual Design & Presentation Formats
+
+Gamma departs from traditional vertical text editors by treating documents like highly polished web-pages and presentation decks. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• Why it’s innovative: It uses an AI-first approach where typing text generates fully stylized, visually anchored components. It breaks documents down into flexible visual "cards" rather than standard rigid multi-page sheets. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• UI/UX & Modality: Impeccable, modern design aesthetic right out of the box with zero template tweaking required. The fluid block editor feels highly reactive and snappy. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• Best For: Product Managers and executives who need documents to look completely presentation-ready and shareable to external stakeholders with one click. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+
+3. Craft — Best for Pure Aesthetic UI/UX
+
+Craft places visual beauty, typographic excellence, and raw execution speed at its absolute center. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• Why it’s innovative: While it utilizes block structures similarly to Notion, its handling of inline nested pages, card-based subfolders, and rich media styling feels generationally ahead. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• UI/UX & Modality: Widely recognized as having the finest native user experience across Apple and desktop ecosystems. Transitions, micro-animations, and palette options are flawlessly fluid. [1] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+• Best For: Creative teams or PMs who value visual hierarchy, lightning-fast offline execution, and distraction-free writing environments. [1] (https://www.youtube.com/watch?v=Uv6FJVb1muE&vl=en&t=20), [2] (https://gamma.app/he/explore/content/guides/notion-alternatives)
+
+4. GitBook — Best for Technical & Developer Portals
+
+For DevOps and engineering-led organizations, GitBook combines rich text documentation with actual software version control mechanics. [1] (https://medium.com/@writetoritika/popular-project-management-tools-for-devops-471073a9f5a9), [2] (https://www.youtube.com/watch?v=c37QomTKoG0)
+• Why it’s innovative: It blends a visually stunning "What You See Is What You Get" (WYSIWYG) block editor with developer workflows like branch branching, merging, and git commits.
+• UI/UX & Modality: Highly interactive for technical readers, featuring seamless, natively styled OpenAPI/Swagger interactive playgrounds, automated code snippets, and live preview rendering.
+• Best For: DevOps, technical writers, and API managers who require markdown synchronization with Git repositories. [1] (https://www.gitbook.com/blog/best-software-documentation-tools), [2] (https://www.gitbook.com/blog/best-technical-documentation-tools), [3] (https://medium.com/@writetoritika/popular-project-management-tools-for-devops-471073a9f5a9)
+
+Direct Comparison Matrix
+
+
+Platform    Core Superpower    Interactive Highlights    Learning Curve
+Coda    Building custom mini-apps    Functional buttons, dynamic automations, formulas    Steep
+Gamma    Instant presentation-style docs    AI layout transformation, interactive embedding    Very Low
+Craft    Stunningly beautiful typography    Inline multi-nested pages, sub-cards    Low
+GitBook    Merging text with code platforms    Version branching, inline runnable API blocks    Moderate
+
+To help me narrow down the best suggestion for your workspace, please let me know:
+• Is this primarily for internal technical/dev documentation or cross-functional product specs?
+• Who is the main audience reading these docs (e.g., engineers, client-facing stakeholders, internal business teams)?
+• Do you require a tool with built-in task and project management capabilities?
+
+"""
+___
+#2
+prompt #2: "what about more popular and less niche or new ones"
+
+output #2:
+"""
+If you want a tool that combines a beautiful, modern UI/UX with innovative interactivity, but you need a mainstream platform that is widely adopted, stable, and easy to roll out across an entire company, the clear market leaders are broken down below.
+While Notion remains the default champion of this category, several massive, popular platforms have overhauled their entire user experience to compete directly with its block-based interactivity.
+
+1. Notion — The Interactive Benchmark
+
+Notion is the definitive pioneer of the modern, block-based doc workspace. It has shifted from a trendy startup tool into a massive enterprise staple.
+• UI/UX: Minimalist, clean, and highly customizable. It pioneered the "/" command interface to instantly summon structural elements.
+• Interactivity & Innovation: Its "Connected Workspace" architecture treats every single line of text as an object. It features Notion AI, which dynamically acts on your text, and highly interactive database relations where updating a project timeline automatically populates across multiple team wikis.
+
+2. ClickUp 3.0 Docs — Best for Task-Integrated Documentation
+
+ClickUp is a major, mainstream player in work management, and its heavily overhauled ClickUp Docs feature is engineered specifically to challenge Notion and Confluence.
+• UI/UX: Highly feature-rich and fast. ClickUp 3.0 introduced a much cleaner, responsive visual layout designed to eliminate lagging issues in older versions.
+• Interactivity & Innovation: Unmatched integration with actionable work. You can highlight any text within a doc and turn it into a trackable task instantly. It features ClickUp Brain (an AI context layer that connects your docs to your tasks) and deeply interactive real-time co-authoring widgets with distinct user cursors.
+
+3. Miro / Mural — Best for Visual & Infinite Canvas Thinking
+
+If standard vertical page layouts feel restrictive, Miro and Mural have emerged as highly popular, mainstream tools for documentation.
+• UI/UX: An infinite, zoomable digital whiteboard. It completely shifts away from traditional margin-restricted paper sheets.
+• Interactivity & Innovation: Exceptionally interactive. Teams document systems using Smart Diagrams, interactive sticky notes, live polling, timers, and mind-maps. You can "reveal" paths through a document as a user scrolls, making technical architectures or product roadmaps incredibly engaging.
+
+4. Microsoft Loop & Google Vids / Docs (Smart Canvas)
+
+The two dominant office suites have launched massive, highly popular UI/UX overhauls to replicate Notion's modularity.
+• Microsoft Loop: Microsoft's direct answer to Notion. It allows you to turn any piece of a document (a table, a list, a progress tracker) into an interactive Loop Component that can be copied and pasted live into Microsoft Teams, Outlook, or Word. It syncs in real-time wherever it lives.
+• Google Docs (Smart Canvas): Google introduces innovation via @-mentions (Smart Chips). Typing "@" allows you to inject interactive building blocks like project roadmaps, voting chips, dropdown menus, and calendar event notes into a standard cloud document.
+
+The Mainstream Comparison Matrix
+
+
+Platform    Popularity / Market Fit    Primary UX Focus    Standout Interactive Innovation
+Notion    Massive (Universal Standard)    Clean block-modularity    Relational databases and global AI context
+ClickUp Docs    High (Teams / Tech / PM)    High-speed productivity    Blends text directly into actual project management tasks
+Miro    High (Design / Tech / Agile)    Infinite spatial canvas    Multi-user visual workshop collaboration
+Microsoft Loop    High (Enterprise / Corporate)    Cross-app fluid components    Dynamic components that update live inside emails & chats
+
+If you're leaning toward one of these major ecosystems, let me know:
+• Are you already heavily embedded in Microsoft 365 or Google Workspace?
+• Is your goal to have docs that double as a project tracking system, or do you just want a clean, searchable company wiki?
+
+"""
+```
+````
