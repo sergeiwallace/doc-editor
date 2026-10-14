@@ -233,3 +233,15 @@ body_sha256: e8969a0ef801cca5e901bdffed26b9e639affcef5768f7b9688ecaea3e4841af
 and have a repo for doc viewer and a repo for beads-view. and the shorthand alias / beads task / cc session alias will be `bv` / `BV`. the doc viewer will be doc-editor. or actually, should i just make the beads mod repo be called beads-ui? maybe i should because if im creating a tui via claude code mods, i could also have this repo have shared components for a claude desktop / web app MCP UI app and also a local / hostable (with templates / quick starts) web app and mobile app etc. or should i have some of those be separate? probably the mobile app should be separate but the web / mcp ui app / claude code mods tui app could share frontend components / code / modules, etc, right? what do you recommend? a separate repo for each or some of them or a single repo for beads claude code mods tui, desktop / web mcp ui app, and web app (local but also hostable with infra-as-config templates etc) . im leaning towards that unless you have a reason not to do that. and then later we can do a separate repo for beads-mobile which can either be a shared app for both ios and androids or separate apps for beads-ui-ios and beads-ui-android. and i think we can have the base one be beads-ui for the three other surfaces. and for desktop app, we can maybe do that one later. if it can re-use compoennts enough from web app, then we can have it be same repo. otherwise we can have it be beads-ui-mac and beads-ui-win and beads-ui-linux etc. or beads-ui-desktop if those should be combined under one stack. whatever  makes sense. add all these as separate /beads-task(s) under an overarching beads-ui epic /beads-task. we can have sub-epic /beads-task(S) for the ios / android / mac / linux / windows etc. so create an individual epic /beads-task for aech of those but don't create a cc task for android or windows, windows. just a /beads-task.
 ```
 ````
+````text
+entry_id: A004
+kind: FOLLOW-UP
+recorded_at: 2026-10-14T23:46:39Z
+speaker: human
+supersedes:
+body_sha256: 5c486f1250099ef8776d5328b44ec0cdccbb7e99c789bc7b1290c53d173c6fd1
+
+```text
+also, create the doc-editor / ded repo etc and also launch that agent as well. also, go ahead and publish these repos as open source repos on mmy personal github account. and you can use copier-template to crate those repos or if you didn't then configure it as a copier repo and update it as appropriate and also add a root README.md for each with basic info as appropriate and also update the github repo description metadata and any other github metadata for hte repo and anythign else as appropriate and publish / push to seed those open source repos. create a child /beads-task and cc task and set to in progess under their respective epics for the beads-ui open source repo creation / publish and also for the doc-editor as well and then do those after you launch the fable agents
+```
+````
