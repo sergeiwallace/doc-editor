@@ -5,3 +5,6 @@
 .beads-credential-key
 .beads/proxieddb/
 *.gate.lock*
+
+# Per-machine Dolt server state (runtime)
+.beads/.dolt-server-state.json
