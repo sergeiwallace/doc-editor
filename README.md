@@ -25,8 +25,9 @@ nothing of that kind may be committed to it. Copy `.env.example` to `.env` for l
 
 ## Repository setup
 
-The scaffold comes from a [Copier](https://copier.readthedocs.io/) template; `.copier-answers.yml`
-records the answers, and `copier update` pulls later template changes. Git hooks install with
+The scaffold comes from a [Copier](https://copier.readthedocs.io/) template that is private, so
+`copier update` works only for the maintainer; `.copier-answers.yml` records the answers it was
+generated with. Contributors need neither. Git hooks install with
 `bash .githooks/install.sh` (needs `pre-commit`).
 
 ## License
