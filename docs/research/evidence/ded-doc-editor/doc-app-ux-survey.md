@@ -538,8 +538,9 @@ two or four cells per indent level the same cap keeps nested lists readable [INF
 
 ### Table A: per-app pattern inventory
 
-"Doc" means the vendor's own page states it (cited in Findings); a blank cell means not checked,
-not absent.
+"Doc" means a vendor page fetched this run states the pattern. Cells that a finding rests on are
+cited in Findings; the rest come from the pages counted in Method and carry no tier tag of their
+own. A blank cell means not checked, not absent.
 
 | App | Viewing patterns | Editing patterns | Keyboard model | Fetched? |
 |---|---|---|---|---|
