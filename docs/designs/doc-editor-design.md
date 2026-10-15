@@ -92,16 +92,17 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
   - [D-14: Pictures in the terminal](#d-14)
   - [D-15: Web app and MCP App timing](#d-15)
   - [D-16: Visibility of the private Copier template](#d-16)
+  - [D-17: Where inline comments on a Markdown file live](#d-17)
 - [Open Questions](#open-questions)
 - [Approval Log](#approval-log)
 
 ## Executive Summary
 
-doc-editor is a Claude Code plugin whose mod opens a pane beside the transcript and renders a Markdown file as a navigable document: an outline that jumps to headings, folding, one section at a time, find, links followed in place, callouts and tables fitted to the pane. Editing goes through Claude first: the reader points at a block, types the change, Claude edits the file, and the pane shows margin markers and a diff with keep, discard and refine. Small edits (a heading, a list item, a checkbox) happen in the pane. HTML and PDF render as text in the terminal, through converters the mod runs as separate processes, because pictures do not draw inside tmux and the mod runtime cannot load pdf.js. The two consequential choices: the renderer draws only the rows in view through the engine's own `Markdown` element, which removes the engine's 100,000-character ceiling for any document length (D-2), and the MVP is a reader with Claude-mediated editing, because a mod has no multi-line text field today (D-1, D-4). A later `Client` caret editor, a web app and an MCP App share one dependency-free TypeScript core (D-9, D-15). Deferred: inline comments, transclusion, backlinks, collaboration, and every picture route outside kitty or Ghostty.
+doc-editor is a Claude Code plugin whose mod opens a pane beside the transcript and renders a Markdown file as a navigable document. The pane gives an outline that jumps to headings, folding, one section at a time, find, links followed in place, and callouts and tables fitted to the pane. Editing goes through Claude first: the reader points at a block, types the change, Claude edits the file, and the pane shows margin markers and a diff with keep, discard and refine. Small edits (a heading, a list item, a checkbox) happen in the pane. Editing applies to Markdown source in Phases 1 and 2; HTML, PDF and converted formats are view-only until a round-trip decision in Phase 4. HTML and PDF render as text in the terminal, through converters the mod runs as separate processes, because pictures do not draw inside tmux and the mod runtime cannot load pdf.js. The two consequential choices: the renderer draws only the rows in view through the engine's own `Markdown` element, which lifts the engine's 100,000-character ceiling for any document up to the 4 MiB the mod can read (D-2), and the MVP is a reader with Claude-mediated editing, because a mod has no multi-line text field today (D-1, D-4). A later `Client` caret editor, a web app and an MCP App share one dependency-free TypeScript core (D-9, D-15). Deferred: inline comments, transclusion, backlinks, collaboration, and every picture route outside kitty or Ghostty.
 
 ## Problem Statement
 
-Claude Code shows a document only as the raw text a `Read` tool call returns, or as the Markdown of Claude's own replies. A person working beside the agent on a design doc, a README, an HTML page or a PDF has to leave the terminal, open the file somewhere else, read it, and come back. There is no way to point at a paragraph and ask Claude to change it, to follow a link inside the repo, to see a table of contents, or to read a PDF's text without a separate program. Claude Code mods, generally available since 2026-10-01, let a plugin draw a pane beside the transcript, take keyboard and pointer input, read files and run commands, so a document viewer and editor can now live inside the session. The owner asked for exactly that, drawing on the best doc apps for its interaction design, built in phases from an MVP, and published as open source.
+Claude Code shows a document only as the raw text a `Read` tool call returns, or as the Markdown of Claude's own replies. A person working beside the agent on a design doc, a README, an HTML page or a PDF has to leave the terminal to read it. There is no way to point at a paragraph and ask Claude to change it. There is no way to follow a link inside the repo, to see a table of contents, or to read a PDF's text without a separate program. Claude Code mods, generally available since 2026-10-01, let a plugin draw a pane beside the transcript, take keyboard and pointer input, read files and run commands, so a document viewer and editor can now live inside the session. The owner asked for exactly that, drawing on the best doc apps for its interaction design, built in phases from an MVP, and published as open source.
 
 ## Design Overview
 
@@ -120,7 +121,7 @@ Jobs, in the order the research ranked them: open the file Claude just read or w
 | Id | Requirement | Phase |
 |---|---|---|
 | FR-1 | Open a Markdown file in a pane from a `/doc <path>` command, from a link the mod adds under a `Read`, `Write` or `Edit` row, from a `show` tool Claude calls, and from a path with `:line` or `#heading` | 1 |
-| FR-2 | Render headings, paragraphs, lists, task lists, code blocks with highlighting, tables fitted to the pane or as cards, GitHub and Obsidian callouts as bordered boxes, block quotes and links, for a file of any length, with the rows in view drawn and the rest windowed | 1 |
+| FR-2 | Render headings, paragraphs, lists, task lists, code blocks with highlighting, tables fitted to the pane or as cards, GitHub and Obsidian callouts as bordered boxes, block quotes and links, for a file up to the 4 MiB the mod can read, with the rows in view drawn and the rest windowed | 1 |
 | FR-3 | Navigate: outline of headings with jump, previous and next heading, fold and unfold one heading and all headings, drill in to one section with its heading path shown, find in page with next and previous match, follow a link to a file or heading in place with Back, and a header row with path, heading path, mode and read time | 1 |
 | FR-4 | Point at a block and ask Claude to change it: the request carries the file, the line range, the block's first words and the instruction; the pane shows the turn's state under the block and redraws when the file changes | 1 |
 | FR-5 | Review Claude's edits: a margin marker per changed block grouped by turn, next and previous change, a unified diff of the turn in a `Code` element, and keep, discard or refine actions after the edit lands | 1 |
@@ -133,13 +134,15 @@ Jobs, in the order the research ranked them: open the file Claude just read or w
 | FR-12 | The same document core serves a web app and an MCP App that open in Claude web and Claude Desktop | 3 |
 | FR-13 | Inline comments, backlinks, transclusion, filing a block as a Beads issue, authorship colour for Claude's text | 4 |
 
+Editing (FR-4, FR-5, FR-6 and FR-10) applies to Markdown source only in Phases 1 and 2. HTML, PDF and the formats of FR-11 are view-only, because every converter is one-way and an edit to the converted text has no place to go back to. Editing a converted format needs a round-trip decision per format and is deferred to Phase 4 with that reason. This narrows the ask's "view and edit" for non-Markdown formats, and the narrowing is stated here for review.
+
 ### Non-functional requirements
 
 | Id | Requirement |
 |---|---|
 | NFR-1 | Every redraw stays under 100,000 characters per tree and 10,000 per element; a windowed slice of the pane is at most `bodyRows` times `bodyColumns` characters plus the header and footer |
 | NFR-2 | Every feature works with the keyboard alone on the main screen; mouse and `Client` features are additions in fullscreen rendering |
-| NFR-3 | Works inside tmux and over a remote link: no `Image`, no `Svg`, no shared memory; pictures are `Raster` blocks where offered |
+| NFR-3 | Works inside tmux and over a remote link with no `Image`, no `Svg` and no shared memory; pictures draw as alt text, and as `Image` only where the terminal supports it (D-14) |
 | NFR-4 | The mod makes no network request and calls no model of its own; the only model calls are the turns the user starts |
 | NFR-5 | The mod never writes a file except through the safe-write path, and never writes a file it did not read in this session |
 | NFR-6 | Every external binary is feature-detected at call time and its absence degrades to text or a clear message, never an error row |
@@ -240,7 +243,7 @@ This is claude-mdview's hover-to-edit (the pencil, the one-line field, the statu
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-The diff is a `Code` element with `format: 'diff'`, grouped by Claude turn as the built-in `/diff` mod groups its picker. GitBook's diff navigator gives the next and previous change keys. Discard writes the previous text back through the safe-write path; it is a new edit, not a tracked-change store.
+The diff is a `Code` element with `format: 'diff'`, grouped by Claude turn as the built-in `/diff` mod groups its picker. GitBook's diff navigator gives the next and previous change keys. Discard writes the previous text back through the safe-write path as a new edit; the mod keeps no tracked-change store.
 
 ### Key map
 
@@ -293,11 +296,11 @@ flowchart LR
 
 ### Packages and the shared core
 
-The plugin lives under `plugins/doc-editor` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, `hooks/register.ts` and a `core/` folder of plain TypeScript the hooks module imports by relative path. The core is dependency-free: no DOM, no Node, no timers, no `eval`, no WebAssembly, erasable TypeScript syntax only, plain JSON in and out, and no `$` parameter anywhere. Every call to the mods API stays in `hooks/register.ts`. A root `.claude-plugin/marketplace.json` lists the plugin so the repository is a marketplace. In Phase 3, `packages/web` and `packages/mcp-app` import the core by path or a workspace alias; the plugin needs no build step because its own code is source, and only a vendored parser is bundled once and committed in chunks under 1 MB (D-3, D-9, D-10).
+The plugin lives under `plugins/doc-editor` with `.claude-plugin/plugin.json`, `hooks/hooks.json`, `hooks/register.ts` and a `core/` folder of plain TypeScript. The hooks module imports the core by relative path. The core is dependency-free: no DOM, no Node, no timers, no `eval`, no WebAssembly, erasable TypeScript syntax only, plain JSON in and out, and no `$` parameter anywhere. Every call to the mods API stays in `hooks/register.ts`. A root `.claude-plugin/marketplace.json` lists the plugin so the repository is a marketplace. In Phase 3, `packages/web` and `packages/mcp-app` import the core by path or a workspace alias; the plugin needs no build step because its own code is source, and only a vendored parser is bundled once and committed in chunks under 1 MB (D-3, D-9, D-10).
 
 ### The windowed renderer
 
-The core cuts a Markdown file into blocks at headings, paragraphs, lists, fences, tables and block quotes, each with its source range. The hooks module keeps a view state (file, offset in blocks, focused block, fold set, drill-in section, search) and answers the pane's `ui.scroll` event itself: it rewrites the offset and returns without calling `next`, so the engine's window never moves, as Anthropic's `/diff` mod does. Each render draws the header, the blocks that fit `bodyRows`, and the hint row. Each block is a keyed `Markdown` element of at most 9,000 characters; a block longer than that is split at paragraph boundaries. Code blocks draw as `Code`, callouts as a bordered `Box` with a label, and tables are fitted to `bodyColumns` or drawn as one card per row. `$.ui.scroll` to a block's key is the jump for the outline, find and links. Images draw as their alt text in the MVP.
+The core cuts a Markdown file into blocks at headings, paragraphs, lists, fences, tables and block quotes, each with its source range. The hooks module keeps a view state: file, offset in blocks, focused block, fold set, drill-in section and search. It answers the pane's `ui.scroll` event itself, rewriting the offset and returning without calling `next`, so the engine's window never moves, as Anthropic's `/diff` mod does. The file is read once through `$.fs.read`, which caps a document at 4 MiB; a larger file is refused with its size named, and a converter-backed format is read by the converter in page ranges. Each render draws the header, the blocks that fit `bodyRows`, and the hint row. Each block is a keyed `Markdown` element of at most 9,000 characters; a block longer than that is split at paragraph boundaries. Code blocks draw as `Code`, callouts as a bordered `Box` with a label, and tables are fitted to `bodyColumns` or drawn as one card per row. `$.ui.scroll` to a block's key is the jump for the outline, find and links. Images draw as their alt text in the MVP.
 
 ### The edit pipeline
 
@@ -305,11 +308,11 @@ A Claude-mediated edit: the user presses `c` on a block, types an instruction in
 
 A pane edit: `e` on a heading, list item or table cell opens an `Input` with the block's source line; Enter writes the new line through the safe-write path. A checkbox toggle flips `[ ]` and `[x]` the same way.
 
-The safe-write path: the mod compares the file's `mtimeMs` with the one it last read; on a mismatch it asks with `$.ui.ask` (reload, overwrite, cancel). It then runs the plugin's own `bin/save.mjs` through `$.process.run(['node', ...])` with the content on stdin, which writes a temporary file beside the target and renames it over the target. `$.fs.write` is used only when `node` is absent, with the non-atomic risk stated in the status row.
+The safe-write path: the mod compares the file's `mtimeMs` with the one it last read; on a mismatch it asks with `$.ui.ask` (reload, overwrite, cancel). It then runs the plugin's own `bin/save.mjs` through `$.process.run(['node', ...])` with the content on stdin and the expected `mtimeMs` and size as arguments. The helper writes a temporary file beside the target, re-reads the target's `mtimeMs` and size immediately before the rename, and renames only if they still match; otherwise it removes the temporary file and exits non-zero with the observed values, so an edit that landed between the mod's check and the rename is never overwritten. `$.fs.write` is used only when `node` is absent, with the non-atomic risk stated in the status row.
 
 ### Format converters
 
-Every converter is a separate process found at call time with `$.process.run(['sh', '-c', 'command -v ...'])` once per session, never assumed. HTML inside Markdown converts in-process through the core's small HTML-to-Markdown subset. A full HTML file converts through `lynx -dump -nolist` or `w3m -dump` when present, else through the in-process subset, else it shows as source in `Code`. A live page opens through `$.browser.open` when terminal-browser is installed. A PDF converts through `pdftotext -layout -f <first> -l <last>` one page range at a time; where `Image` draws (kitty or Ghostty outside tmux) `pdftoppm -png -r 72` renders the page and the mod shows it; elsewhere the text grid stands. pandoc, when present, converts DOCX, ODT, RTF, AsciiDoc, reStructuredText, Org and LaTeX to GFM. Notebooks, CSV and EPUB convert in-process (nbformat JSON to blocks; PapaParse-style parsing; fflate unzip plus the HTML subset per chapter). Converted text is cached in `$.state` per file and `mtimeMs`.
+Every converter is a separate process. Its presence is probed once per session by running the binary itself with `--version` through `$.process.run` as an argument vector with no shell; a spawn failure means absent. Nothing is assumed from a path list. HTML inside Markdown converts in-process through the core's small HTML-to-Markdown subset. A full HTML file converts through `lynx -dump -nolist` or `w3m -dump` when present, else through the in-process subset, else it shows as source in `Code`. A live page opens through `$.browser.open` when terminal-browser is installed. A PDF converts through `pdftotext -layout -f <first> -l <last>` one page range at a time; where `Image` draws (kitty or Ghostty outside tmux) `pdftoppm -png -r 72` renders the page and the mod shows it; elsewhere the text grid stands. pandoc, when present, converts DOCX, ODT, RTF, AsciiDoc, reStructuredText, Org and LaTeX to GFM. Notebooks, CSV and EPUB convert in-process (nbformat JSON to blocks; PapaParse-style parsing; fflate unzip plus the HTML subset per chapter). The EPUB unzip refuses an entry whose declared size exceeds 32 MiB, an archive whose total exceeds 128 MiB, or an entry path that is absolute or contains `..`. Converted text is cached in `$.store` per file and `mtimeMs`.
 
 ## Data Model
 
@@ -329,11 +332,15 @@ Change       { turn: string; blockIds: string[]; before: string; after: string; 
 EditRequest  { path: string; start: number; end: number; heading: string; firstWords: string; instruction: string }
 Converter    { name: "lynx"|"w3m"|"pdftotext"|"pdftoppm"|"pandoc"|"node"; present: boolean; checkedAt: number }
 
-# $.state keys (one key per item; $.store get-then-set is not atomic)
-doc-editor.view.<sha256(path)>        ViewState
-doc-editor.changes.<sha256(path)>     Change[] (this session only)
-doc-editor.converted.<sha256(path)>   { mtimeMs: number; markdown: string }
-doc-editor.converters                 Converter[]
+# Two stores, by lifetime. `$.state` is reactive session state: a write redraws the sites that read
+# it, it survives a reload of the mod and is reset by /clear, /resume and /branch. `$.store` is the
+# machine-wide key-value store every session shares: 4 MiB of JSON in total, get-then-set not atomic,
+# so one key per item and no read-modify-write across keys.
+$.state   view:      ViewState               (this session's pane)
+$.state   changes:   Change[]                (this session's Claude edits)
+$.state   converters: Converter[]            (probed once per session)
+$.store   doc-editor.converted.<sha256(path)>   { mtimeMs: number; markdown: string }   (cache, one key per file)
+$.store   doc-editor.recent                      string[]                                (last 20 paths)
 
 # plugins/doc-editor/.claude-plugin/plugin.json
 { "name": "doc-editor", "version": "0.1.0", "description": "...", "author": {...}, "license": "MIT" }
@@ -387,6 +394,7 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
   - **T-0.3 Repository hygiene**
     - [ ] `When the repository is read, CONTRIBUTING.md, SECURITY.md and CODE_OF_CONDUCT.md shall exist and the README shall say the Copier template is private, or link it if D-16 made it public.`
     - [ ] `When a plugin is loaded with --plugin-dir, git status shall report no untracked file under plugins/doc-editor.`
+    - [ ] `If any of CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md is missing, or the README neither states the template is private nor links a public template, then the hygiene test shall fail naming the file or sentence.`
 - **Exit gate:** T-0.1's evidence file committed with every unknown answered or marked unanswerable with the reason; `claude plugin validate` green at the root and the plugin; `claude plugin test` green; D-3 and D-5 re-run on the spike's answers and their records updated.
 
 ### Phase 1: MVP reader with Claude-mediated editing
@@ -406,7 +414,8 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
   - **T-1.2 Window and budget**
     - [ ] `When a 20,000-line Markdown file is open, every render shall emit a tree under 100,000 serialized characters and no Markdown element over 9,000 characters.`
     - [ ] `When the pane receives ui.scroll, the system shall rewrite its own offset, return without calling next, and redraw the rows in view.`
-    - [ ] `If a block exceeds 9,000 characters, then the system shall split it at paragraph boundaries into keyed elements that render in order.`
+    - [ ] `If a block exceeds 9,000 characters and contains paragraph boundaries, then the system shall split it at those boundaries into keyed elements that render in order.`
+    - [ ] `If a single fence, table or other indivisible block exceeds 9,000 characters, then the system shall draw it as consecutive Code slices of at most 9,000 characters with a continuation marker on each, in order.`
   - **T-1.3 Navigate**
     - [ ] `When the user presses o, the system shall show the outline; when the user presses Enter on an entry, the system shall scroll the pane so that heading is the focused block.`
     - [ ] `When the user presses z on a heading, the system shall hide its section's blocks until z is pressed again; when the user presses a, the system shall fold or unfold every heading.`
@@ -416,13 +425,16 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
     - [ ] `If a link points outside the repository or to a missing file, then the system shall show the reason in the status row and not navigate.`
   - **T-1.4 Ask Claude to change a block**
     - [ ] `When the user presses c on a block and submits an instruction, the system shall call $.prompt.submit with asUser true and a text that names the path, the line range, the heading, the block's first words and the instruction, and shall draw a waiting status under the block.`
-    - [ ] `When the file changes after the request, the system shall re-parse, mark the changed blocks with the turn, redraw with margin markers, keep the focused block in view, and draw the keep, discard, refine and view-diff actions.`
+    - [ ] `When the file changes after the request, the system shall re-parse and mark every changed block with the turn id.`
+    - [ ] `When changed blocks are marked, the system shall redraw with a margin marker on each and keep the focused block in view.`
+    - [ ] `When a turn's edit has landed, the system shall draw the keep, discard, refine and view-diff actions under the changed block.`
     - [ ] `If the session is busy when the request is made, then the system shall queue the request and say so in the status row; it shall not block the hook.`
   - **T-1.5 Review changes**
     - [ ] `When the user presses v, the system shall draw the turn's unified diff in a Code element with format diff, grouped by turn.`
     - [ ] `When the user presses n or p, the system shall focus the next or previous changed block.`
     - [ ] `When the user presses x on a changed block, the system shall write the block's previous text back through the safe-write path and clear its marker.`
     - [ ] `When the user presses r, the system shall open the ask field prefilled with the previous instruction.`
+    - [ ] `If the file's current text at a changed block no longer matches the text recorded after the turn, then x shall refuse the discard and say the block changed again.`
   - **T-1.6 Edit in the pane**
     - [ ] `When the user presses e on a heading, list item or table cell, the system shall open a single-line field with that line's source; Enter shall save it through the safe-write path.`
     - [ ] `When the user presses Enter on a task-list checkbox, the system shall toggle [ ] and [x] on that line and save it.`
@@ -430,11 +442,13 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
   - **T-1.7 Reload and write safety**
     - [ ] `When the file's mtimeMs changes, the system shall re-read it within 1.5 s or on the next Write or Edit tool call, redraw, and keep the focused block in view.`
     - [ ] `When a save is requested and the file's mtimeMs differs from the last read, the system shall ask through $.ui.ask (reload, overwrite, cancel) before writing.`
-    - [ ] `When node is present, every save shall write a temporary file beside the target and rename it over the target.`
+    - [ ] `When node is present, every save shall pass the expected mtimeMs and size to the helper, which shall write a temporary file beside the target, re-check both immediately before the rename, and rename only on a match.`
+    - [ ] `If the helper's re-check finds a different mtimeMs or size, then it shall remove the temporary file, exit non-zero naming both values, and the target shall be unchanged.`
     - [ ] `If node is absent, then the system shall write with $.fs.write and state the non-atomic risk in the status row once per session.`
     - [ ] `If the save helper exits non-zero, then the system shall leave the target unchanged and show the helper's last stderr line.`
   - **T-1.8 Safety floor**
     - [ ] `While the plugin is loaded, claude plugin validate shall list no tool.check hook, no tool.call handler that returns a result, no model call and no network call.`
+    - [ ] `If a change adds a tool.check hook, a tool.call handler that returns a result, a model call or a network call, then the gate test over the validate output shall fail naming the hook or call.`
 - **Exit gate:** `claude plugin test` green on every Phase 1 test; `claude plugin validate` green; the pane observed live on this host inside tmux with a 1,000-line doc (open, outline jump, fold, find, link and back, one Claude-mediated edit with markers and diff, one checkbox toggle), with the session's `/plugin` line and screenshots quoted in the PR; fresh-context diff review against these ACs.
 
 ### Phase 2: HTML and PDF as text, and the in-pane editor
@@ -461,6 +475,7 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
     - [ ] `If the session is not in fullscreen or no click has focused the Client, then the system shall say the in-pane editor needs fullscreen and offer e and c instead.`
   - **T-2.4 Key map upgrade (only if T-0.1 showed Tab, capitals and slash reach a Client)**
     - [ ] `When the pane hosts the key Client, /, n, N, g, G, { and } shall act as in less and Claude Code's transcript mode, and the hint row shall list them.`
+    - [ ] `If the key Client is not focused or does not receive a key the map expects, then the pane shall keep the lowercase map active and the hint row shall show it, with no key lost.`
 - **Exit gate:** tests green; the HTML and PDF routes observed live on this host with `pdftotext` present; the `Client` editor observed live in fullscreen on a kitty or Ghostty terminal; fresh-context diff review against these ACs.
 
 ### Phase 3: Web app and MCP App
@@ -476,6 +491,7 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
   - [ ] `If the MCP server receives a save from the view for a file that changed since it was read, then it shall refuse and return the conflict to the view.`
   - [ ] `When pandoc is present and the mod or server opens a DOCX, ODT, RTF, AsciiDoc, reStructuredText, Org or LaTeX file, the system shall convert it to GFM and render it; when pandoc is absent it shall say so.`
   - [ ] `When the mod opens an .ipynb, .csv or .epub file, the system shall convert it in-process and render it.`
+  - [ ] `If an EPUB entry declares a size over 32 MiB, the archive's total declared size exceeds 128 MiB, or an entry path is absolute or contains .., then the system shall refuse the file and name the offending entry.`
 - **Exit gate:** tests green; the MCP App observed in Claude Desktop; the web app observed in a browser; fresh-context diff review.
 
 ### Phase 4: Enhancements
@@ -500,7 +516,7 @@ FR-13, each behind its own decision once the MVP has been used: a storage decisi
 |---|------|--------|------------|
 | 1 | The mods API is weeks old and changing; the reference lags the binary and the types file lags both | A pinned behaviour stops working after an update | Pin to 2.1.296 features, read the types the host writes, list 2.1.299+ props as enhancements; Phase 0 records the version each test ran on |
 | 2 | Three vendor facts conflict (task lists, over-budget trees, terminal `Link`) | A renderer built on the wrong reading blanks the pane | T-0.1 settles each on this host before Phase 1; the renderer budgets to the stricter reading either way |
-| 3 | The 1 MB module cap is reported, not documented | A vendored parser silently fails to load | Commit vendor chunks under 1 MB and test each loads under `claude plugin test`; keep the hand-rolled splitter as the fallback (D-3) |
+| 3 | The 1 MB module cap is reported by mod authors and absent from Anthropic's pages | A vendored parser silently fails to load | Commit vendor chunks under 1 MB and test each loads under `claude plugin test`; keep the hand-rolled splitter as the fallback (D-3) |
 | 4 | A mod runs unsandboxed with the user's permissions, and converters run external binaries on untrusted documents | A crafted PDF or HTML file runs code as the user | Converters run with no shell, argument vectors only, a timeout, and on the user's explicit open; no converter output is executed; NFR-4 and NFR-9 keep the mod from calling models, the network or approving tool calls |
 | 5 | `$.fs.write` is not atomic and an outside editor can race the mod | A half-written or clobbered file | D-12: write-then-rename helper, `mtimeMs` check, `$.ui.ask` on conflict; discard is a new edit, never a hidden store |
 | 6 | Clicks and the `Client` work only in fullscreen, and tmux needs mouse mode | Keyboard-only sessions lose features | NFR-2: every MVP feature works with keys alone; the `Client` editor is Phase 2 and offers `e` and `c` as fallbacks |
@@ -536,6 +552,7 @@ FR-13, each behind its own decision once the MVP has been used: a storage decisi
 | D-14 | Pictures in the terminal | (a) alt text in the MVP, `Image` where it draws in Phase 2, no `Raster` thumbnails, (b) `Raster` half-block thumbnails everywhere, (c) `Image` only | (a) | | | `Image` fails in tmux and `Raster` thumbnails cannot show document pictures legibly; alt text costs nothing (crit. 5) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
 | D-15 | Web app and MCP App timing | (a) after the mod MVP, as Phase 3, the MCP App as the web app's second entry point, (b) in parallel with the mod, (c) never | (a) | | | The mod is the ask's first surface; the MCP App and web app share UI and need the core to settle first (crit. 3) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
 | D-16 | Visibility of the private Copier template | (a) make `sergeiwallace/project-template` public, (b) keep it private and say so in the README, (c) remove the `copier update` instruction | (b) | | | Flipping a repository's visibility is an outward-facing act (Authority test Gate A), so the choice is Sergei's; (b) is the recommendation because it costs nothing and is reversible | `⏳ PENDING (human)` |
+| D-17 | Where inline comments on a Markdown file live (Phase 4) | (a) in the text (CriticMarkup or HTML comments), (b) a sidecar annotation file with text-quote anchors (W3C Web Annotation shape), (c) a Beads issue per comment quoting the block | pending the comments spike | | | Three options exist, so this is a decision; the spike (DED-b3p.2.1) supplies the evidence on how each survives edits, renders on GitHub and reaches Claude | `⏳ PENDING (evidence)` |
 
 ### Decision Details
 
@@ -594,7 +611,7 @@ Criterion 5 resolves it: Claude-mediated editing is structural for a product tha
 ##### (a) Engine `Markdown` per block, windowed by answering `ui.scroll`
 
 **Pros:**
-- Any document length fits; each redraw is at most the visible rows.
+- Any document up to the 4 MiB read cap fits; each redraw is at most the visible rows.
 - Reuses the engine's renderer, so headings, tables, fences and links look like Claude's replies.
 - `$.ui.scroll` to a keyed block gives jump-to-heading, find and links for free.
 
@@ -708,7 +725,7 @@ Criterion 1 resolves it: the document model is what every surface and every edit
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-4; decision-topic=doc-editor-editing-model; governs=component:doc-editor/plugins/doc-editor/hooks/edit; normalized-proposition=edits-go-through-claude-via-prompt-submit-with-single-line-pane-edits-and-a-client-editor-in-phase-two; applicability=repo:doc-editor; outcome-id=editing-model; relation=different-question; related-decision-id=DED-b3p/D-1; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the edit pipeline crosses the boundary between the pane and Claude's own tools, and the request format (`Edit lines <start>-<end> of <path>`) is the contract both sides depend on. Mitigations for (a)'s cons: the review loop (margin markers, diff, keep, discard, refine) is in the MVP so a turn is never wasted silently, and Phase 2's `Client` editor is scoped with davekiss/md as the proven shape and `e` and `c` as fallbacks. Confidence: high.
+Criterion 2 resolves it: the edit pipeline crosses the boundary between the pane and Claude's own tools, and the request format (`Edit lines <start>-<end> of <path>`) is the contract both sides depend on. Mitigations for (a)'s cons: the review loop (margin markers, diff, keep, discard, refine) is in the MVP so a turn is never wasted silently, and Phase 2's `Client` editor is scoped with davekiss/md as the proven shape and `e` and `c` as fallbacks. Door type: two-way for the pane's keys and fields, one-way for the request format once users and Claude depend on it; blast radius: the pane and the prompt, inside one plugin. Confidence: high.
 
 ---
 
@@ -789,7 +806,7 @@ Criterion 1 resolves it: a key map is a two-way door with low decay, so the simp
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-6; decision-topic=doc-editor-html-route; governs=component:doc-editor/plugins/doc-editor/core/convert; normalized-proposition=html-renders-as-markdown-text-through-an-in-process-subset-or-a-text-browser-and-live-pages-go-to-terminal-browser-when-installed; applicability=repo:doc-editor; outcome-id=html-route; relation=different-question; related-decision-id=DED-b3p/D-14; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the route must work on the sessions the fleet runs, which are tmux and remote. Mitigations for (a)'s cons: the header says which converter drew the page; T-2.1 tests every fallback; the Desktop Code tab's Browser pane and terminal-browser cover faithful layout where they exist. Confidence: high.
+Criterion 2 resolves it: the route must work on the sessions the fleet runs, which are tmux and remote. Mitigations for (a)'s cons: the header says which converter drew the page; T-2.1 tests every fallback; the Desktop Code tab's Browser pane and terminal-browser cover faithful layout where they exist. Door type: two-way, behind the `Converter` interface; blast radius: one converter module. Confidence: high.
 
 ---
 
@@ -826,7 +843,7 @@ Criterion 2 resolves it: the route must work on the sessions the fleet runs, whi
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-7; decision-topic=doc-editor-pdf-route; governs=component:doc-editor/plugins/doc-editor/core/pdf-pages; normalized-proposition=pdf-renders-as-text-through-pdftotext-page-ranges-with-pdftoppm-pictures-where-image-draws; applicability=repo:doc-editor; outcome-id=pdf-route; relation=different-question; related-decision-id=DED-b3p/D-14; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criteria 3 and 4 resolve it: the route is long-lived but each option is a two-way door behind the `Converter` interface, and the weighted pass favours zero vendoring over a faithful grid. Mitigations for (a)'s cons: feature detection with a one-row message when poppler is absent (T-2.2), and the sidecar recorded as the fallback with its vendor cost named. Confidence: high.
+Criteria 3 and 4 resolve it: the route is long-lived but each option is a two-way door behind the `Converter` interface, and the weighted pass favours zero vendoring over a faithful grid. Mitigations for (a)'s cons: feature detection with a one-row message when poppler is absent (T-2.2); the sidecar recorded as the fallback with its vendor cost named; layout loss bounded by `-layout` now and by `-bbox-layout` word positions later for a text grid of the kind ide-mod draws, with each figure shown as a placeholder naming its page. Door type: two-way, behind the `Converter` interface; blast radius: one converter module. Confidence: high.
 
 ---
 
@@ -850,7 +867,7 @@ Criteria 3 and 4 resolve it: the route is long-lived but each option is a two-wa
 - One converter for Office and PDF.
 
 **Cons:**
-- A Python runtime and package install the user must manage; MIT, but 190,000-star adoption is for the agent use case, not terminal rendering.
+- A Python runtime and package install the user must manage; its 190,000-star adoption comes from the agent use case, and terminal rendering through it is unmeasured.
 
 ##### (c) None
 
@@ -863,7 +880,7 @@ Criteria 3 and 4 resolve it: the route is long-lived but each option is a two-wa
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-8; decision-topic=doc-editor-other-formats; governs=component:doc-editor/plugins/doc-editor/core/convert; normalized-proposition=office-and-markup-formats-convert-through-a-feature-detected-pandoc-and-notebooks-csv-and-epub-convert-in-process; applicability=repo:doc-editor; outcome-id=other-formats; relation=different-question; related-decision-id=DED-b3p/D-7; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 3 resolves it: these formats are long-lived but low-frequency, so one well-maintained binary behind the `Converter` interface beats a per-format vendor tree. Mitigation for (a)'s cons: NFR-6 and NFR-7 (feature detection, binary-only use after a licence review). Confidence: high.
+Criterion 3 resolves it: these formats are long-lived but low-frequency, so one well-maintained binary behind the `Converter` interface beats a per-format vendor tree. Mitigation for (a)'s cons: NFR-6 and NFR-7 (feature detection, binary-only use after a licence review). Door type: two-way, behind the `Converter` interface; blast radius: Phase 3 converters only. Confidence: high.
 
 ---
 
@@ -972,7 +989,7 @@ Criterion 1 resolves it: install paths and package names decay into one-way door
 ##### (c) `claude plugin validate` only
 
 **Cons:**
-- Validates shape and capability requests, not behaviour.
+- Validates shape and capability requests only; behaviour stays untested.
 
 ##### Recommendation
 
@@ -980,7 +997,7 @@ Criterion 1 resolves it: install paths and package names decay into one-way door
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-11; decision-topic=doc-editor-test-gate; governs=gate:doc-editor/pre-commit; normalized-proposition=the-plugin-is-gated-by-claude-plugin-validate-and-claude-plugin-test-and-the-web-packages-by-vitest; applicability=repo:doc-editor; outcome-id=test-gate; relation=different-question; related-decision-id=DED-b3p/D-9; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigation for (a)'s con: the gate skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green, as the fleet's mods design does. Confidence: high.
+Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigations for (a)'s cons: one `npm test` script runs both runners in order, so the gate stays one command for a contributor and for the pre-push hook; the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green, as the fleet's mods design does. Door type: two-way; blast radius: the repository's gate, shared by every phase. Confidence: high.
 
 ---
 
@@ -1051,7 +1068,7 @@ Criterion 1 resolves it: a lost update is a one-way door for the user's text. Mi
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-13; decision-topic=doc-editor-transcript-integration; governs=component:doc-editor/plugins/doc-editor/hooks/rows; normalized-proposition=the-mod-adds-an-open-link-under-tool-rows-and-a-command-and-a-tool-and-never-redraws-reply-rows; applicability=repo:doc-editor; outcome-id=transcript-integration; relation=different-question; related-decision-id=DED-b3p/D-1; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the transcript rows are shared with every other mod the user runs. Mitigation for (a)'s con: `prompt.autocomplete` completes paths after `/doc`, and `g` in the pane goes to a typed path. Confidence: high.
+Criterion 2 resolves it: the transcript rows are shared with every other mod the user runs. Mitigation for (a)'s con: `prompt.autocomplete` completes paths after `/doc`, and `g` in the pane goes to a typed path. Door type: two-way; blast radius: the transcript rows every other mod also draws on, which is why the conservative option ships. Confidence: high.
 
 ---
 
@@ -1088,7 +1105,7 @@ Criterion 2 resolves it: the transcript rows are shared with every other mod the
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-14; decision-topic=doc-editor-terminal-pictures; governs=component:doc-editor/plugins/doc-editor/hooks/pane; normalized-proposition=pictures-draw-as-alt-text-in-the-mvp-and-as-image-where-the-terminal-supports-it-with-no-raster-thumbnails; applicability=repo:doc-editor; outcome-id=terminal-pictures; relation=different-question; related-decision-id=DED-b3p/D-7; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 5 resolves it: thumbnails are a speculative feature with no reader who can use them at that resolution. Mitigation for (a)'s con: the alt text names the image path so Claude or the user can open it elsewhere, and Phase 4 revisits if Claude Code gains tmux passthrough. Confidence: high.
+Criterion 5 resolves it: thumbnails are a speculative feature with no reader who can use them at that resolution. Mitigation for (a)'s con: the alt text names the image path so Claude or the user can open it elsewhere, and Phase 4 revisits if Claude Code gains tmux passthrough. Door type: two-way; blast radius: the pane's image blocks only. Confidence: high.
 
 ---
 
@@ -1122,7 +1139,7 @@ Criterion 5 resolves it: thumbnails are a speculative feature with no reader who
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-15; decision-topic=doc-editor-web-and-mcp-app-timing; governs=plan:doc-editor/phase-3; normalized-proposition=the-web-app-and-the-mcp-app-follow-the-mod-mvp-as-phase-three-and-share-one-codebase; applicability=repo:doc-editor; outcome-id=surfaces-timing; relation=different-question; related-decision-id=DED-b3p/D-9; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its consumers is cheaper than coordinating them. Mitigation for (a)'s con: the Desktop Code tab's Browser pane already serves Desktop readers for HTML and PDF today. Confidence: high.
+Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its consumers is cheaper than coordinating them. Mitigations for (a)'s con: the Desktop Code tab's Browser pane already serves Desktop readers for HTML and PDF today, and Claude web readers get the hosted-server route the research doc's section 5.4 names when Phase 3 starts. Door type: two-way on timing, one-way once the core's public shape is consumed by three surfaces; blast radius: the whole repository. Confidence: high.
 
 ---
 
@@ -1162,7 +1179,47 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 <!-- decision-record: chosen-option=PENDING; ai-family=N/A; ai-model=N/A; ai-effort=N/A; ai-profile=N/A -->
 <!-- decision-lineage: decision-id=DED-b3p/D-16; decision-topic=copier-template-visibility; governs=repo:sergeiwallace/project-template; normalized-proposition=the-private-copier-template-behind-the-public-repos-stays-private-and-the-readme-says-so-or-is-made-public-after-a-scrub; applicability=repo:doc-editor,beads-ui; outcome-id=template-visibility; relation=different-question; related-decision-id=; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-(b) is recommended because it is a two-way door that costs one README sentence; (a) is available later after a scrub pass of the template. Phase 0's T-0.3 carries either outcome.
+(b) is recommended because it is a two-way door that costs one README sentence; (a) is available later after a scrub pass of the template. Phase 0's T-0.3 carries either outcome. Blast radius: two public repositories' contributor instructions. Confidence in the recommendation: high; the act itself is the owner's.
+
+---
+
+<a id="d-17"></a>
+
+#### D-17: Where inline comments on a Markdown file live — `⏳ PENDING (evidence)`
+
+**Context.** Every collaborative doc app stores comments outside the text, and plain Markdown has no comment store. A Phase 4 feature (FR-13) needs one. The question has three concrete options, so it is a decision; the evidence to choose is being gathered by the comments spike (DED-b3p.2.1), whose evidence doc lands under `docs/research/evidence/ded-doc-editor/`. The criteria: a comment must survive edits to the surrounding text, render harmlessly on GitHub, round-trip through other editors, reach Claude as context, and draw as a margin marker in the pane.
+
+##### (a) In the text: CriticMarkup or HTML comments
+
+**Pros:**
+- Moves with the text; nothing to re-anchor; one file in git.
+
+**Cons:**
+- Pollutes the source; GitHub shows CriticMarkup raw and hides HTML comments; some tools strip them.
+
+##### (b) A sidecar annotation file with text-quote anchors
+
+**Pros:**
+- The source stays clean; the W3C Web Annotation model is a standard; GitHub renders the doc unchanged.
+
+**Cons:**
+- Anchors break when the quoted text changes and need a re-anchoring algorithm; a second file to keep in sync.
+
+##### (c) A Beads issue per comment quoting the block
+
+**Pros:**
+- Enters the fleet's work queue and is visible to the agent; no new store.
+
+**Cons:**
+- Position is lost beyond path and heading; not usable outside this fleet.
+
+##### Recommendation
+
+> **Decision:** `PENDING` — awaiting the comments spike's evidence; the coordinator resolves it when the spike lands, or records why it stays open.
+<!-- decision-record: chosen-option=PENDING; ai-family=N/A; ai-model=N/A; ai-effort=N/A; ai-profile=N/A -->
+<!-- decision-lineage: decision-id=DED-b3p/D-17; decision-topic=doc-editor-comment-storage; governs=component:doc-editor/plugins/doc-editor/core/comments; normalized-proposition=inline-comments-on-a-markdown-file-live-in-text-in-a-sidecar-annotation-file-or-in-a-tracker-issue; applicability=repo:doc-editor; outcome-id=comment-storage; relation=different-question; related-decision-id=DED-b3p/D-4; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
+
+The evidence needed: how each option behaves when the anchored text is edited or deleted, how GitHub and the engine's `Markdown` element render it, what davekiss/md does to anchor notes to quoted text, and what Hypothesis does to re-anchor. Until it lands this stays pending and blocks nothing before Phase 4.
 
 ---
 
@@ -1183,6 +1240,7 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 > 14. D-14: <approval or feedback>
 > 15. D-15: <approval or feedback>
 > 16. D-16: <approval or feedback>
+> 17. D-17: <approval or feedback>
 > - <enter feedback here>
 
 ## Open Questions
@@ -1191,9 +1249,10 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 2. Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
 3. What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
 4. Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
-5. Where should inline comments on a Markdown file live: a sidecar file, HTML comments in the source, or Beads issues? Every collaborative app stores comments outside the text and plain Markdown has no comment store. Not decidable until the MVP has been used; Phase 4.
+5. **[RESOLVED]** Where should inline comments on a Markdown file live? Three options exist, so this is a decision, recorded as D-17 (pending the comments spike's evidence).
+   - **Resolution:** moved to D-17; the question itself was not an open question because it has concrete options.
 6. Will Claude Code wrap kitty graphics for tmux passthrough? If it does, `Image` opens to every tmux session and D-14 is revisited. Upstream.
-7. Does the beads-ui design fix a package layout compatible with D-9 and D-10? Its research existed only in a local worktree at read time; compare before Phase 3 fixes package names.
+7. Does the beads-ui design fix a package layout compatible with D-9 and D-10? beads-ui's research doc landed on its main on 2026-10-15 (its PR #5) and proposes `packages/core`, a `packages/bd-node` adapter, `packages/web-ui` of React components and one package per surface, on pnpm workspaces with Turborepo or Nx. Two points diverge from this design: it places the core in `packages/core` from the start where D-9 keeps it inside the plugin until Phase 3, and it chooses pnpm where D-10 chooses npm workspaces because Claude Code's plugin install skips `pnpm-lock.yaml` and workspace links. Both repos should reconcile these two points before either fixes package names; the second is a fact about the plugin installer that beads-ui's design should check.
 
 > **Feedback Round 1:** Your thoughts on the open questions:
 > 1. <!-- Response to question 1 -->
