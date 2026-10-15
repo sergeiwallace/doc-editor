@@ -30,7 +30,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
 | A001 | ORIGINAL-ASK, 2026-10-14T23:46:37Z. "rendering markdown and other docs and doc-like file types and also making them interactive and being able to view them or render markdown / html / pdf etc in the claude mod doc viewer" is the product: requirements FR-1 to FR-9, D-1, D-2, D-6, D-7, D-8. "making them interactive" and the epic's "view and edit" are D-4 and Phase 1 to Phase 2; the evidence that a mod has no multi-line text field makes editing Claude-mediated first, which this doc states as a narrowing with evidence in D-4. "plugins for showing an entire functional web browser" is D-6 (hand live pages to terminal-browser). "existing open source popular claude code mod plugins" are reused as patterns in D-2, D-4, D-13. "pull inspiration ... from popular doc apps like confluence, notion, google docs, word" is the interaction design in the Mockups section and D-5. "we'll do it in phases so start with an MVP" is Implementation Phases. "the /doc --kind design will also contain all the PRD specs and acceptance criteria and details and diagrams and mockups and decisions and open questions and tasks" is this doc's structure. "they should use /decision-framework for any design decisions" is recorded on every decision. "open source ... public repo ... no secrets" governs D-10 and D-11. The beads-ui half of the message is out of scope. |
 | A002 | FOLLOW-UP, 2026-10-14T23:46:38Z. The two Google AI summaries were treated as seeds; the research doc's section 1 surveyed every app they name from vendor pages. The canvas, slide and formula patterns they praise do not transfer to a cell grid and are excluded with reasons in the Mockups section. |
 | A003 | FOLLOW-UP, 2026-10-14T23:46:39Z. "the doc viewer will be doc-editor" names this repo. The shared-components question raised for beads-ui is answered for doc-editor by D-9 and D-15: logic, types and design tokens are shared across the mod, the web app and the MCP App; UI components are shared between the web app and the MCP App only. |
-| A004 | FOLLOW-UP, 2026-10-14T23:46:39Z. Repo creation, Copier configuration, README and GitHub metadata were done by the launching session (PR #1). D-10 keeps that scaffold and adds the plugin and package layout. The Copier template's visibility is escalated as D-16 because it is an outward-facing act. |
+| A004 | FOLLOW-UP, 2026-10-14T23:46:39Z. Repo creation, Copier configuration, README and GitHub metadata were done by the launching session (PR #1). D-10 keeps that scaffold and adds the plugin and package layout. The Copier template's visibility is D-16: keeping it private and saying so in the README was resolved and applied by the launching session (PR #7); making it public stays an outward-facing act for Sergei. |
 
 **Status:** DRAFT (awaiting Sergei's review; the run's natural end)
 
@@ -144,11 +144,11 @@ Editing (FR-4, FR-5, FR-6 and FR-10) applies to Markdown source only in Phases 1
 | NFR-2 | Every feature works with the keyboard alone on the main screen; mouse and `Client` features are additions in fullscreen rendering |
 | NFR-3 | Works inside tmux and over a remote link with no `Image`, no `Svg` and no shared memory; pictures draw as alt text, and as `Image` only where the terminal supports it (D-14) |
 | NFR-4 | The mod makes no network request and calls no model of its own; the only model calls are the turns the user starts |
-| NFR-5 | The mod never writes a file except through the safe-write path, and never writes a file it did not read in this session |
+| NFR-5 | The mod never writes a file except through the safe-write path, and never writes a document it did not read in this session; the one new file it may create is the comment sidecar derived from a document it has read (D-17) |
 | NFR-6 | Every external binary is feature-detected at call time and its absence degrades to text or a clear message, never an error row |
 | NFR-7 | No GPL or AGPL code is vendored; such tools are called as separate binaries only |
 | NFR-8 | The repository holds no secret, and every committed file is public |
-| NFR-9 | Hooks that gate nothing fail open; the mod registers no `tool.check` hook and answers no `tool.call` with a result |
+| NFR-9 | Hooks that gate nothing fail open; the mod registers no `tool.check` hook and answers no `tool.call` for a tool it did not register itself; its own registered tools (`show` and the comment tools) answer their calls normally |
 
 ### Out of scope
 
@@ -382,6 +382,7 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
 - **Tasks + acceptance criteria:**
   - **T-0.1 Spike the unknowns**, recorded verbatim in the evidence file:
     - [ ] `When a gallery-style pane draws a task list, strikethrough, a tree of 110,000 characters and a terminal Link with a non-https href on this host's Claude Code, the evidence file shall record what each drew, quoted from the screen.`
+    - [ ] `When the same pane draws an HTML comment, a CriticMarkup comment and a %% comment inside a Markdown element, the evidence file shall record whether each is hidden, shown as text or breaks the block.`
     - [ ] `When a focused Client receives Tab, a capital letter and a slash, the evidence file shall record which of the three reached onKey.`
     - [ ] `When text is selected inside the pane in fullscreen, the evidence file shall record what $.ui.selection() returned.`
     - [ ] `When claude plugin test imports a copied micromark with mdast-util-from-markdown (default export condition), @codemirror/state, prosemirror-model and yjs, the test shall record for each whether it loaded and parsed a sample.`
@@ -496,7 +497,7 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
 
 ### Phase 4: Enhancements
 
-FR-13, each behind its own decision once the MVP has been used: a storage decision for inline comments (Open Question 5), backlinks from a repository scan, transclusion only if a syntax is adopted, filing a block as a Beads issue through beads-ui, authorship colour for Claude's text from turn records, and picture routes beyond kitty and Ghostty if `Image` gains tmux passthrough upstream.
+FR-13, each started once the MVP has been used: inline comments per D-17 (first slice: pending comments in `$.state` sent to Claude in one batch; second slice: the MRSF-shaped sidecar with re-anchoring and the three comment tools), backlinks from a repository scan, transclusion only if a syntax is adopted, filing a block as a Beads issue through beads-ui, authorship colour for Claude's text from turn records, and picture routes beyond kitty and Ghostty if `Image` gains tmux passthrough upstream.
 
 ## Implementation Audit
 
@@ -551,8 +552,8 @@ FR-13, each behind its own decision once the MVP has been used: a storage decisi
 | D-13 | Transcript integration | (a) `/doc` command, a `show` tool, and an open link under `Read`, `Write` and `Edit` rows; never redraw whole replies, (b) redraw reply rows to link paths, (c) command only | (a) | | | A mod that redraws a row without passing it on blocks later mods; a link under tool rows is what both Markdown mods do (crit. 2) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
 | D-14 | Pictures in the terminal | (a) alt text in the MVP, `Image` where it draws in Phase 2, no `Raster` thumbnails, (b) `Raster` half-block thumbnails everywhere, (c) `Image` only | (a) | | | `Image` fails in tmux and `Raster` thumbnails cannot show document pictures legibly; alt text costs nothing (crit. 5) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
 | D-15 | Web app and MCP App timing | (a) after the mod MVP, as Phase 3, the MCP App as the web app's second entry point, (b) in parallel with the mod, (c) never | (a) | | | The mod is the ask's first surface; the MCP App and web app share UI and need the core to settle first (crit. 3) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
-| D-16 | Visibility of the private Copier template | (a) make `sergeiwallace/project-template` public, (b) keep it private and say so in the README, (c) remove the `copier update` instruction | (b) | | | Flipping a repository's visibility is an outward-facing act (Authority test Gate A), so the choice is Sergei's; (b) is the recommendation because it costs nothing and is reversible | `⏳ PENDING (human)` |
-| D-17 | Where inline comments on a Markdown file live (Phase 4) | (a) in the text (CriticMarkup or HTML comments), (b) a sidecar annotation file with text-quote anchors (W3C Web Annotation shape), (c) a Beads issue per comment quoting the block | pending the comments spike | | | Three options exist, so this is a decision; the spike (DED-b3p.2.1) supplies the evidence on how each survives edits, renders on GitHub and reaches Claude | `⏳ PENDING (evidence)` |
+| D-16 | Visibility of the private Copier template | (a) make `sergeiwallace/project-template` public, (b) keep it private and say so in the README, (c) remove the `copier update` instruction | (b) | | | Only (a) is an outward-facing act (Authority test Gate A); (b) is reversible and within the launching session's authority, so aih-3 took it and applied it in PR #7 (merge 53ea548); Sergei may still choose (a) later | `✅ Resolved by aih-3 (Opus 5.5)` |
+| D-17 | Where inline comments on a Markdown file live (Phase 4) | (a) in the text (CriticMarkup or HTML comments), (b) a repository sidecar with text-quote anchors (MRSF shape, JSON), (c) a Beads issue per comment quoting the block | (b), with (a) HTML comments as the fallback and (c) as a conversion a comment can become | | | GitHub hides only HTML comments and shows CriticMarkup raw; a sidecar keeps the source clean and re-anchors by quote as Hypothesis does; MRSF's orphan rule keeps every comment; Beads loses position (crit. 2, 5) | `✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb)` |
 
 ### Decision Details
 
@@ -1145,9 +1146,9 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 
 <a id="d-16"></a>
 
-#### D-16: Visibility of the private Copier template — `⏳ PENDING (human)`
+#### D-16: Visibility of the private Copier template — ✅ Resolved by aih-3 (Opus 5.5): (b)
 
-**Context.** This repo's README tells contributors to run `copier update` from `sergeiwallace/project-template`, which GitHub reports as private, so an outside contributor cannot. The gate that fired: the Authority test's Gate A, because making a repository public or changing its visibility is an outward-facing act the agent never performs, whatever the content decision. The investigation before escalating: the shared-core leg read both repos' `.copier-answers.yml` and the template's `copier.yml` through the GitHub API and confirmed the private flag.
+**Context.** This repo's README told contributors to run `copier update` from `sergeiwallace/project-template`, which GitHub reports as private, so an outside contributor could not. The coordinator first escalated the whole decision under the Authority test's Gate A. The launching session (aih-3) re-ran the test and narrowed it: only option (a), making the template public, is an outward-facing act; option (b) is reversible and within its authority. The investigation behind it: the shared-core leg read both repos' `.copier-answers.yml` and the template's `copier.yml` through the GitHub API and confirmed the private flag.
 
 ##### (a) Make `sergeiwallace/project-template` public
 
@@ -1175,19 +1176,19 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 
 ##### Recommendation
 
-> **Decision:** `PENDING` — recommendation (b) Keep it private and say so in the README; the choice is Sergei's because (a) is an outward-facing act.
-<!-- decision-record: chosen-option=PENDING; ai-family=N/A; ai-model=N/A; ai-effort=N/A; ai-profile=N/A -->
+> **Decision:** ✅ Resolved by aih-3 (Opus 5.5) — (b) Keep the template private and say so in the README
+<!-- decision-record: chosen-option=(b); ai-family=claude; ai-model=claude-opus-5-5; ai-effort=high; ai-profile=interactive -->
 <!-- decision-lineage: decision-id=DED-b3p/D-16; decision-topic=copier-template-visibility; governs=repo:sergeiwallace/project-template; normalized-proposition=the-private-copier-template-behind-the-public-repos-stays-private-and-the-readme-says-so-or-is-made-public-after-a-scrub; applicability=repo:doc-editor,beads-ui; outcome-id=template-visibility; relation=different-question; related-decision-id=; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-(b) is recommended because it is a two-way door that costs one README sentence; (a) is available later after a scrub pass of the template. Phase 0's T-0.3 carries either outcome. Blast radius: two public repositories' contributor instructions. Confidence in the recommendation: high; the act itself is the owner's.
+Criterion 1 resolves it: (b) is a two-way door that costs one README sentence, while (a) is a one-way publication that needs a scrub pass first. Implemented by aih-3 on 2026-10-15: both READMEs now say the Copier template is private and that `copier update` is maintainer-only (doc-editor PR #7, merge 53ea548; beads-ui PR #6). Sergei may still choose (a) later; that remains an outward-facing act for him. Blast radius: two public repositories' contributor instructions. Confidence: high. Phase 0's T-0.3 now checks the README sentence that PR #7 added.
 
 ---
 
 <a id="d-17"></a>
 
-#### D-17: Where inline comments on a Markdown file live — `⏳ PENDING (evidence)`
+#### D-17: Where inline comments on a Markdown file live — ✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb): (b)
 
-**Context.** Every collaborative doc app stores comments outside the text, and plain Markdown has no comment store. A Phase 4 feature (FR-13) needs one. The question has three concrete options, so it is a decision; the evidence to choose is being gathered by the comments spike (DED-b3p.2.1), whose evidence doc lands under `docs/research/evidence/ded-doc-editor/`. The criteria: a comment must survive edits to the surrounding text, render harmlessly on GitHub, round-trip through other editors, reach Claude as context, and draw as a margin marker in the pane.
+**Context.** Every collaborative doc app stores comments outside the text, and plain Markdown has no comment store. A Phase 4 feature (FR-13) needs one. The criteria: a comment must survive edits to the surrounding text, render harmlessly on GitHub, round-trip through other editors, reach Claude as context, and draw as a margin marker in the pane. The evidence is the comments spike, `docs/research/evidence/ded-doc-editor/comment-storage-for-markdown.md` (463 lines, 66 footnotes, 151 ledger rows, landed by PR #8). Its measurements: ten samples rendered through GitHub's Markdown API show that HTML comments are hidden (a `--` inside included) while CriticMarkup, `%%` and `:::` show as literal text; Claude reads HTML comments on every `Read` and Claude Code strips them only from auto-injected instruction files; of 19 agent-facing Markdown review tools created in 2026, 6 keep comments in a sidecar and 9 in the text; the MRSF v1.0 draft (31 stars, exploratory on adoption) specifies a sidecar with quote, line and commit anchors and an orphan rule, and Hypothesis's `matchQuote` is a dependency-light, DOM-free re-anchoring algorithm under BSD-2; `$.store` is per machine, 4 MiB, and deleted after 30 idle days, so it cannot be the store of record.
 
 ##### (a) In the text: CriticMarkup or HTML comments
 
@@ -1215,11 +1216,11 @@ Criterion 3 resolves it: the core will be touched repeatedly, and sequencing its
 
 ##### Recommendation
 
-> **Decision:** `PENDING` — awaiting the comments spike's evidence; the coordinator resolves it when the spike lands, or records why it stays open.
-<!-- decision-record: chosen-option=PENDING; ai-family=N/A; ai-model=N/A; ai-effort=N/A; ai-profile=N/A -->
-<!-- decision-lineage: decision-id=DED-b3p/D-17; decision-topic=doc-editor-comment-storage; governs=component:doc-editor/plugins/doc-editor/core/comments; normalized-proposition=inline-comments-on-a-markdown-file-live-in-text-in-a-sidecar-annotation-file-or-in-a-tracker-issue; applicability=repo:doc-editor; outcome-id=comment-storage; relation=different-question; related-decision-id=DED-b3p/D-4; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
+> **Decision:** ✅ Resolved by Fable coordinator (DED-doc-doc-editor-prd-ecdb) — (b) A repository sidecar beside the document, in MRSF's shape serialised as JSON, re-anchored by quoted text; HTML comments (a) as the documented fallback; a Beads issue (c) as something a comment can become
+<!-- decision-record: chosen-option=(b); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
+<!-- decision-lineage: decision-id=DED-b3p/D-17; decision-topic=doc-editor-comment-storage; governs=component:doc-editor/plugins/doc-editor/core/comments; normalized-proposition=inline-comments-live-in-a-repository-sidecar-in-mrsf-shape-re-anchored-by-quoted-text-with-html-comments-as-fallback; applicability=repo:doc-editor; outcome-id=comment-storage; relation=different-question; related-decision-id=DED-b3p/D-4; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-The evidence needed: how each option behaves when the anchored text is edited or deleted, how GitHub and the engine's `Markdown` element render it, what davekiss/md does to anchor notes to quoted text, and what Hypothesis does to re-anchor. Until it lands this stays pending and blocks nothing before Phase 4.
+Criteria 2 and 5 resolve it: the store is a contract the mod, the web app and the MCP App all read, and a comment that must outlive a session is a definite Phase 4 need. The sidecar follows MRSF v1.0's discovery rule (`<doc>.review.json` beside the document, or a `sidecar_root` from a root `.mrsf.yaml`), its comment fields (`id`, `author`, `timestamp`, `text`, `resolved`, `reply_to`, `line`, `end_line`, `selected_text`, `anchored_text`, `commit`) and its rule that an implementation never silently discards an orphan; W3C-style prefix and suffix context go in `x_prefix` and `x_suffix` extension fields. MRSF the format is exploratory by the fleet's Route A test; the anchor pattern passes Route B through the W3C Web Annotation model and Hypothesis. Mitigations for (b)'s cons: a sidecar edited outside the mod goes stale, so the core re-anchors on every open with a port of Hypothesis's `matchQuote` scoring (exact match, then fuzzy with prefix, suffix and a line hint, then orphan) under its BSD-2 licence; a rename breaks the pairing, so the mod offers to move the sidecar when it sees a document path with no sidecar and a sidecar with no document in the same directory; every committed comment is public in a public repository, so the save path warns before writing a comment that matches a secret pattern. Phase 4's first slice needs no storage at all: pending comments in `$.state`, a margin marker, and one key that sends them to Claude in a batch, each quote fenced as untrusted text, using the same comment shape the sidecar later serialises. Three registered tools let Claude list, add and resolve comments. Filing a comment as a Beads issue passes the path and heading as `--spec-id` and the anchor as `--metadata`, then resolves the comment. HTML comment carriers, if a repository refuses a second file, use a reserved prefix, sit only between blocks, never inside a `doc:region` marked `append_only` or `immutable`, and are removed from blocks before drawing. CriticMarkup, `%%`, `git notes`, `$.store` and pull-request comments are rejected as the store of record for the reasons the evidence doc gives. Door type: two-way with a migration path (the comment shape is shared across stores); blast radius: the Phase 4 comments module and the sidecar files in a user's repository. Confidence: high on the store, medium on MRSF's field set outliving its draft status.
 
 ---
 
@@ -1249,8 +1250,8 @@ The evidence needed: how each option behaves when the anchored text is edited or
 2. Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
 3. What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
 4. Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
-5. **[RESOLVED]** Where should inline comments on a Markdown file live? Three options exist, so this is a decision, recorded as D-17 (pending the comments spike's evidence).
-   - **Resolution:** moved to D-17; the question itself was not an open question because it has concrete options.
+5. **[RESOLVED]** Where should inline comments on a Markdown file live? Three options exist, so this is a decision, recorded as D-17.
+   - **Resolution:** D-17 chose a repository sidecar in MRSF's shape with quote re-anchoring, on the comments spike's evidence (`docs/research/evidence/ded-doc-editor/comment-storage-for-markdown.md`). What stays open is whether the owner wants persistent comments at all, which only use of the MVP shows; the Phase 4 build waits on that.
 6. Will Claude Code wrap kitty graphics for tmux passthrough? If it does, `Image` opens to every tmux session and D-14 is revisited. Upstream.
 7. Does the beads-ui design fix a package layout compatible with D-9 and D-10? beads-ui's research doc landed on its main on 2026-10-15 (its PR #5) and proposes `packages/core`, a `packages/bd-node` adapter, `packages/web-ui` of React components and one package per surface, on pnpm workspaces with Turborepo or Nx. Two points diverge from this design: it places the core in `packages/core` from the start where D-9 keeps it inside the plugin until Phase 3, and it chooses pnpm where D-10 chooses npm workspaces because Claude Code's plugin install skips `pnpm-lock.yaml` and workspace links. Both repos should reconcile these two points before either fixes package names; the second is a fact about the plugin installer that beads-ui's design should check.
 
