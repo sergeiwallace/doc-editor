@@ -1,0 +1,123 @@
+---
+# Pre-commit framework config (SW-796 — adopted Option 1c Round 1, 2026-04-23).
+# Runs on every `git commit` (pre-commit stage) and `git push` (pre-push stage).
+#
+# Install: `pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push`
+# (Auto-run by copier `_tasks` on copy + update.)
+#
+# Update hook pins: `pre-commit autoupdate` (quarterly — see D-02 in
+# sergei/docs/plans/pre-commit-linting-expansion.md).
+#
+# Skip a specific hook for one commit: `SKIP=hook-id git commit`
+# (the test gate's own SKIP_TESTS=1 bypass is FORBIDDEN by fleet rules outside
+# repo bootstrap — see hooks/test-gate.sh's header comment for that caveat;
+# it is not a general pre-commit-framework env var, AIH-469).
+
+default_stages: [pre-commit]
+
+# Beads (bd) manages everything under .beads/ — machine-generated Dolt config +
+# JSONL exports + audit log. They must NOT be processed by the file-formatting
+# hooks (check-json/check-yaml/end-of-file-fixer/trailing-whitespace): bd's output
+# doesn't satisfy them, and the pre-push stash/auto-fix/restore dance conflicts on
+# the churning store files (SW-841 #73). Global-exclude the whole dir. Committed
+# .beads/issues.jsonl is still version-controlled; it's just not linted.
+exclude: ^\.beads/
+
+repos:
+  # ── File-level sanity checks (D-03 Option 3c: maximal bundle) ────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+        exclude: \.jinja$
+      - id: check-json
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        # uv.lock is an expected, deterministic large generated artifact (AIH-v6kf9
+        # T-2.2 requires tracking it fleet-wide) -- exempt it rather than raising the
+        # ceiling for every other file type.
+        args: [--maxkb=500]
+        exclude: (^|/)uv\.lock$
+      - id: detect-private-key
+        exclude: ^(tests?/fixtures/|docs/examples?/)
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ── Markdown lint ────────────────────────────────────────────────────────
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.0
+    hooks:
+      - id: markdownlint-cli2
+        args: [--fix]
+        exclude: ^(\.claude/|\.githooks/|node_modules/|docs/research/)
+
+
+
+  # ── Shell: shellcheck (warning+ only — suppress info/style noise) ───────
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  # ── Local: hook-reference + test gates ───────────────────────────────────
+  # test-gate and validate-claude-settings are Tier-B shared hooks (AIH-393):
+  # the body lives once in ai-harness/hooks/, ai-harness's install.sh publishes
+  # a real executable wrapper to ~/.claude/bin/ (added to PATH), and every
+  # consumer repo's config just names the entrypoint — zero per-repo vendored
+  # body, zero copier-propagation cost when the body changes. Unlike
+  # ai-harness's OWN config (which points at its local .claude/bin/<name>
+  # copy, since it houses the canonical body), a consumer repo has no local
+  # copy to point at — PATH resolution via `language: system` IS the
+  # distribution mechanism here, not a shortcut around it. A workstation that
+  # never ran ai-harness's install.sh fails loudly (`Executable <name> not
+  # found`), never silently passes — see ai-harness's
+  # docs/designs/aih-393-shared-hook-distribution-model.md.
+  - repo: local
+    hooks:
+      # Fail if any .claude/settings.json hook command points at a script that
+      # no longer exists (e.g. a copier _exclude removed it but the
+      # _skip_if_exists settings.json still references it). Cheap; runs every
+      # commit so it also catches script deletions that don't touch settings.json.
+      - id: validate-claude-settings
+        name: validate .claude/settings.json hook script refs exist
+        entry: validate-claude-settings
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      # docs-index-check REMOVED (CORE-55). The generated docs/README.md index had
+      # no reader -- nothing in the fleet consumed it -- yet the gate blocked every
+      # docs commit until it was regenerated. It also could not be regenerated
+      # correctly from a linked worktree (AIH-396), so the only in-worktree remedy
+      # was its own forbidden SKIP=docs-index-check bypass. Removed deliberately,
+      # gate-first: docs/README.md content is untouched by this change.
+      - id: test-gate
+        name: test gate (mise-aware, tech-stack auto-detect)
+        entry: test-gate
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+      # D-10 Layer 2 (bypass-proof dual-ID backstop, AIH-387): reject a commit
+      # whose staged .beads/issues.jsonl has an entry missing external_ref, or
+      # a duplicate (id-prefix, external_ref) pair. Replaces roadmap-guard
+      # (below, retired SW-1025): that hook grepped docs/roadmap/master-roadmap.md
+      # for duplicate PREFIX-N entries, and has silently checked nothing in every
+      # repo since T-12 moved every roadmap to docs/roadmap/archive/ (Beads is
+      # now the sole task system of record, SW-841). This is a strictly
+      # stronger replacement for the same underlying invariant — commit-time,
+      # not push-time, and it reads the live store's dual-ID data instead of a
+      # retired roadmap. The checker (scripts/bd_precommit_validate.py) lives
+      # in ai-harness, resolved via PATH (ai-harness install.sh symlinks
+      # ai-harness/.claude/bin/bd-precommit-validate into ~/.claude/bin/,
+      # same pattern as bd-new/bdx) rather than vendored per repo.
+      # Bypass: SKIP=bd-precommit-validate git commit
+      - id: bd-precommit-validate
+        name: bd dual-ID invariant (staged .beads/issues.jsonl)
+        entry: bd-precommit-validate
+        language: system
+        pass_filenames: false
+        always_run: true
