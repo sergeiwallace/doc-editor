@@ -27,7 +27,7 @@ repeat what they settled:
 
 ## Method
 
-Read dates: 2026-10-14 23:55Z to 2026-10-15 00:40Z (UTC, measured with `date -u`). Host:
+Read dates: 2026-10-15 00:06Z to 00:41Z (UTC, measured with `date -u`). Host:
 sem-kg-ec2, Claude Code 2.1.296 per the brief (not re-measured). Nothing was installed, built,
 tested or launched. No mod and no browser ran.
 
@@ -67,7 +67,7 @@ text, and the NO SOURCE tier where nothing was found.
 
 ## Findings
 
-### 1. The hooks module is a sandboxed JavaScript realm with no DOM, no eval and no WebAssembly
+### 1. The hooks module is a sandboxed JavaScript runtime with no DOM, no eval and no WebAssembly
 
 The types file declares the full global set of a hooks module. It reads: "The globals of a hooks
 module's environment: these and no others (no DOM, no Node). No code generation either: `eval` and
@@ -222,7 +222,7 @@ output inside tmux." It continues: "By default, Claude Code clamps to 256 colors
 set". [VERIFIABLE][^20] claude-lens says its block pictures "look much better with it" and adds:
 "Half-block and quadrant thumbnails share a palette of 1024 color pairs per frame, so many at once
 lose some color." [VERIFIABLE][^14] That bears on the open `Raster` palette question in the browser
-survey (Open Question 3), and is a reported number, not a vendor one. [INFERENCE]
+survey (Open Question 3), and the number comes from a mod author, with no vendor figure. [INFERENCE]
 
 `Svg` draws in the Desktop app only, up to 131,072 characters, and "In the terminal, a pane that
 returns only an `Svg` opens empty." [VERIFIABLE][^12]
@@ -539,7 +539,7 @@ MIT, 1,602 stars. [VERIFIABLE][^39]
   `Readability` object from a DOM document object", and "Since Node.js does not come with its own
   DOM implementation, we rely on external libraries like" jsdom. [VERIFIABLE][^42] linkedom, a
   lighter DOM built on htmlparser2, unpacks to 909,684 bytes. [VERIFIABLE][^38] Whether Readability
-  runs over linkedom inside the hooks realm is untested. [NO SOURCE]
+  runs over linkedom inside the hooks runtime is untested. [NO SOURCE]
 - HTML to Markdown: turndown's npm package depends on `@mixmark-io/domino`, a DOM implementation.
   [VERIFIABLE][^38][^43] node-html-markdown is "a _fast_ HTML to markdown converter, compatible with
   both node and the browser", depends only on `node-html-parser`, and unpacks to 112,630 bytes.
@@ -553,7 +553,7 @@ MIT, 1,602 stars. [VERIFIABLE][^39]
 
 #### 12.3 PDF
 
-- pdf.js in the hooks realm is blocked by size. ide-mod's vendored copy has `pdf.mjs` at 976,824
+- pdf.js in the hooks runtime is blocked by size. ide-mod's vendored copy has `pdf.mjs` at 976,824
   bytes and `pdf.worker.mjs` at 2,139,222 bytes (measured in the source tarball), so the worker
   alone exceeds the 1 MB cap. ide-mod runs it in `node` instead. [VERIFIABLE][^28] pdf.js is "a
   Portable Document Format (PDF) viewer that is built with HTML5", Apache-2.0, 54,003 stars, release
@@ -594,7 +594,7 @@ MIT, 1,602 stars. [VERIFIABLE][^39]
   windowed path. [INFERENCE]
 - AsciiDoc: asciidoctor.js "runs on Node.js ≥ 24 and in the browser"; its npm package unpacks to
   3,406,988 bytes. [VERIFIABLE][^38][^53] It is a candidate for a `node` helper, not for the hooks
-  realm, unless a chunked bundle stays under 1 MB per file. [INFERENCE]
+  runtime, unless a chunked bundle stays under 1 MB per file. [INFERENCE]
 - reStructuredText and LaTeX: no pure-JavaScript reader was evaluated; pandoc reads both.
   [VERIFIABLE][^49] Org: uniorg parses Org in JavaScript but is GPL-3.0, which an MIT repository
   cannot vendor. [VERIFIABLE][^39]
@@ -647,7 +647,7 @@ and its last push is over a year old. [INFERENCE]
 - Lexical: `@lexical/headless` "allows you to interact with Lexical in a headless environment",
   "one that does not rely on DOM, e.g. for Node.js environment." [VERIFIABLE][^66] Its npm package
   depends on `happy-dom`, a DOM emulation, and the core unpacks to 3,225,842 bytes.
-  [VERIFIABLE][^38] Those two facts sit badly with a no-DOM, 1 MB-per-file realm. [INFERENCE]
+  [VERIFIABLE][^38] Both facts conflict with a runtime that has no DOM and a 1 MB file cap. [INFERENCE]
 - Yjs: Y.Text is "A shared type that represents Text & RichText", and "The Text-Delta is equivalent
   to Quills' Delta format." [VERIFIABLE][^64] Its npm package depends only on `lib0`.
   [VERIFIABLE][^38]
@@ -656,7 +656,7 @@ and its last push is over a year old. [INFERENCE]
   unpacks to 47,529,812 bytes. [VERIFIABLE][^38]
 
 davekiss/md shows that a line array and a 200-step undo stack suffice for a working Markdown editor
-in a mod, with no editor core at all (§6). An editor core earns its place only for structured rich
+in a mod, with no editor core at all (§6). An editor core is worth adding only for structured rich
 text or for merging Claude's file edits with unsaved local edits, where a CRDT such as Yjs applies.
 [INFERENCE]
 
@@ -669,7 +669,7 @@ those sections' tags.
 
 | API surface | Contract, as the source states it | Bound | Source | What it means for doc-editor |
 |---|---|---|---|---|
-| Hooks-realm globals | "no DOM, no Node", no `eval`, no `new Function`, no `WebAssembly` | Fixed set incl. `TextDecoder`, `URL`, `crypto` | [^1][^2] | Parsers must be pure JS; no pdf.js worker, Automerge or happy-dom in-process |
+| Hooks-runtime globals | "no DOM, no Node", no `eval`, no `new Function`, no `WebAssembly` | Fixed set incl. `TextDecoder`, `URL`, `crypto` | [^1][^2] | Parsers must be pure JS; no pdf.js worker, Automerge or happy-dom in-process |
 | Imports | Relative files inside the plugin; one bare import, `claude-code`; no dynamic `import()` | Module file over 1 MB not read (reported) | [^3][^5] | Vendor third-party code as committed chunks under 1 MB each |
 | Passing `$` | Not to a function imported from another file (create page); allowed for function declarations from 2.1.299 | n/a | [^3][^4] | Keep vendored code `$`-free on this host |
 | `Markdown` | "its own renderer, links, tables, fences"; `text`, `key`, `dimColor`, `onLinkPress`, `pressableLinks` | `text` at most 10,000 characters; 256 pressable links | [^1][^9] | Split documents into blocks under 10,000; links answerable by click in fullscreen |
@@ -767,7 +767,7 @@ unpacked sizes [^38], which include extra builds, so they overstate a bundled fi
 | ProseMirror model and transform | Schema-checked rich documents; replayable steps | Model carries DOM helpers; repo moved | [^38][^63] | Overkill for Markdown source editing |
 | Lexical headless | Headless editor API | Package depends on happy-dom; 3.2 MB core | [^38][^66] | Poor fit |
 | Yjs `Y.Text` | CRDT text with Quill deltas | 2.3 MB unpacked; bundle under 1 MB per file needed | [^38][^64] | Later, for merging Claude's edits with unsaved ones |
-| Automerge | CRDT documents | Rust compiled to WebAssembly; no WebAssembly in the realm | [^1][^65] | Ruled out in-process |
+| Automerge | CRDT documents | Rust compiled to WebAssembly; no WebAssembly in the runtime | [^1][^65] | Ruled out in-process |
 
 ## Gaps, blindspots and emergent findings
 
@@ -909,7 +909,7 @@ imported function. A design built against 2.1.296 has to read the types the host
 
 ## Sources
 
-[^1]: Anthropic. (2026). [claude-code: mods/types/claude-code.d.ts](https://raw.githubusercontent.com/anthropics/claude-code/main/mods/types/claude-code.d.ts). GitHub. Verified accessible (HTTP 200) 2026-10-15; 517,451 bytes; header "Written by Claude Code 2.1.277." (Hooks-realm globals, element props and bounds, `Client` contract, scroll, fs, process, prompt and row-site types.)
+[^1]: Anthropic. (2026). [claude-code: mods/types/claude-code.d.ts](https://raw.githubusercontent.com/anthropics/claude-code/main/mods/types/claude-code.d.ts). GitHub. Verified accessible (HTTP 200) 2026-10-15; 517,451 bytes; header "Written by Claude Code 2.1.277." (Hooks-runtime globals, element props and bounds, `Client` contract, scroll, fs, process, prompt and row-site types.)
 [^2]: Anthropic. (2026). [Use the mods API](https://code.claude.com/docs/en/plugins/mods/api.md). Claude Code Documentation. Verified accessible (HTTP 200) 2026-10-15. (No Node APIs in the module, commands, tools, `$.prompt.submit`, files and processes.)
 [^3]: Anthropic. (2026). [Create a mod](https://code.claude.com/docs/en/plugins/mods/create.md). Claude Code Documentation. Verified accessible (HTTP 200) 2026-10-15. (Static-analysis rules: relative imports, the `claude-code` bare import, no dynamic import, `$` passing.)
 [^4]: Anthropic. (2026). [Claude Code changelog](https://code.claude.com/docs/en/changelog.md). Claude Code Documentation. Verified accessible (HTTP 200) 2026-10-15; 1,096,437 bytes; newest entry 2.1.300, October 14, 2026. (Entries 2.1.149 to 2.1.300 quoted by version.)
@@ -977,3 +977,223 @@ imported function. A design built against 2.1.296 has to read the types the host
 [^66]: Meta. (2026). [@lexical/headless](https://lexical.dev/docs/packages/lexical-headless). Lexical documentation. Verified accessible (WebFetch) 2026-10-15.
 [^67]: Anthropic. (2026). [Test a mod](https://code.claude.com/docs/en/plugins/mods/test.md). Claude Code Documentation. Verified accessible (HTTP 200) 2026-10-15.
 [^68]: mpolatcan. (2026, September 15). [Comment on #91870](https://github.com/anthropics/claude-code/issues/91870#issuecomment-5685168776). GitHub. Verified accessible (GitHub API 200) 2026-10-15. (`ui.scroll` refused at load on 2.1.271; superseded.)
+
+## Provenance ledger
+
+URLs are the footnote URLs. "Live" is the fetch result this run (2026-10-15 UTC).
+"API value" marks a GitHub or npm API field, quoted as field and value. Quotes drop Markdown
+emphasis marks and link targets from the source text.
+
+| # | Claim | Source | Verbatim quote | Verdict | Live? |
+|---|---|---|---|---|---|
+| 1-2 | Hooks runtime has no eval, no WebAssembly; it has no DOM or Node | [^1] | "No code generation either: `eval` and `new Function` over a string throw, and there is no `WebAssembly`"; "these and no others (no DOM, no Node)" | SUPPORTED | Yes, HTTP 200 |
+| 3 | Web APIs available in the module | [^2] | "Standard JavaScript and web APIs such as `URL`, `TextEncoder`, `AbortController`, and `crypto.subtle` are available." | SUPPORTED | Yes, HTTP 200 |
+| 4 | `TextDecoder` is a declared global | [^1] | "var TextDecoder: { prototype: TextDecoder; new (label?: string): TextDecoder }" | SUPPORTED | Yes, HTTP 200 |
+| 5 | Only bare import is `claude-code` | [^3] | "The one bare import allowed is `claude-code`, for types and a few helpers." | SUPPORTED | Yes, HTTP 200 |
+| 6 | No dynamic import | [^3] | "a dynamic import(); a hooks module imports its own files with an import declaration" | SUPPORTED | Yes, HTTP 200 |
+| 7 | `$` to an imported function fails validation | [^3] | "a function you import from another of your files fails validation" | SUPPORTED | Yes, HTTP 200 |
+| 8 | 2.1.299 allows `$` to imported declarations | [^4] | "Fixed mods loaded from source files being refused when a hook hands `$` to a function declaration imported from another file of the mod" | SUPPORTED | Yes, HTTP 200 |
+| 9 | Module file over 1 MB not read | [^5] | "A module file over 1 MB is not read." | PLAUSIBLE (practitioner report, corroborated by rows 10 and 11) | Yes, GitHub API 200 |
+| 10 | figures splits its bundle under 1 MiB | [^6] | "A hooks module imports no file over 1 MiB and cannot import modules at run time, so the build splits the bundle into chunks" | SUPPORTED | Yes, tarball 200 |
+| 11 | ELK is 1.6 MB, over the cap | [^7] | "a hooks module may not import a file over 1 MiB and has no `eval`, while the ELK layout engine the SVG needs weighs 1.6 MB" | SUPPORTED | Yes, GitHub API 200 |
+| 12 | Nested-scope limit per file | [^9] | "nested inside one another in one file of a hooks module" | SUPPORTED | Yes, HTTP 200 |
+| 13 | Only third-party code is built (figures) | [^6] | "Claude Code loads `hooks/` as TypeScript source, so only third-party code is built." | SUPPORTED | Yes, tarball 200 |
+| 14 | MathJax runs through `liteAdaptor` | [^6] | "import { liteAdaptor } from '@mathjax/src/js/adaptors/liteAdaptor.js'" | SUPPORTED | Yes, tarball 200 |
+| 15 | Vendored Mermaid ASCII renderer is 84 KB | [^7] | "the ASCII renderer alone (84 KB), imported by the mod." | SUPPORTED | Yes, GitHub API 200 |
+| 16 | mermaid-inline uses a `node` process | [^8] | "They run as a separate `node` process because Claude Code runs the hooks module itself with no Node.js APIs or WebAssembly" | SUPPORTED | Yes, tarball 200 |
+| 17 | Built-in `/diff` imports sibling files | [^10] | "import Views from './views'" | SUPPORTED | Yes, HTTP 200 |
+| 18 | Tests import sibling helpers | [^67] | "A test file can import your mod's own files and sibling `.ts` helpers" | SUPPORTED | Yes, HTTP 200 |
+| 19 | `Markdown` takes `text`, needs `key` for links | [^11] | "`Markdown` takes its content in a `text` prop, not in `children`, and needs a `key` when you pass `onLinkPress`." | SUPPORTED | Yes, HTTP 200 |
+| 20 | `Markdown` props | [^9] | "`text`, `key`, `dimColor`, `onLinkPress`, `pressableLinks`" | SUPPORTED | Yes, HTTP 200 |
+| 21 | `Markdown` renders links, tables, fences | [^1] | "its own renderer, links, tables, fences." | SUPPORTED | Yes, HTTP 200 |
+| 22-23 | `Markdown` text cap; only `https:`, `http:`, `file:` links clickable | [^1] | "At most 10000 characters, tab and newline its only control characters"; "a link whose scheme is not `https:`, `http:` or `file:` draws as text, never clickable." | SUPPORTED | Yes, HTTP 200 |
+| 24-25 | Link presses need fullscreen; `pressableLinks` bound | [^1] | "A press is a plain single click where the surface reports clicks (the fullscreen terminal)"; "At most 256 entries of at most 2048 characters" | SUPPORTED | Yes, HTTP 200 |
+| 26 | Headings, code, quotes as drawn | [^12] | "A heading draws in bold without its `#` marks." | SUPPORTED | Yes, HTTP 200 |
+| 27-28 | Task lists render (2.1.149); strikethrough fixed (2.1.186) | [^4] | "Markdown output now renders GFM task list checkboxes"; "Fixed `~~strikethrough~~` showing literal tildes in assistant messages" | SUPPORTED (conflicts with row 30) | Yes, HTTP 200 |
+| 29 | Tables cut at 200 rows (2.1.208) | [^4] | "tables over 200 rows show the first 200" | SUPPORTED | Yes, HTTP 200 |
+| 30 | GFM extras raw in the terminal | [^7] | "The terminal shows them as raw text." | CONTRADICTED for task lists and strikethrough by rows 27 and 28; PLAUSIBLE for alerts and Mermaid | Yes, GitHub API 200 |
+| 31 | Footnotes, math, raw HTML left native | [^7] | "Footnotes, emoji shortcodes, `#123` / `@user` autolinks, `$math$`, raw HTML" | SUPPORTED | Yes, GitHub API 200 |
+| 32 | Math and Mermaid show as written | [^13] | "Math, mermaid and heading sizes show as written." | SUPPORTED | Yes, tarball 200 |
+| 33 | Image links drawn as labels | [^14] | "labelled the way Claude Code draws the link: `revenue by month (chart.png)`" | SUPPORTED | Yes, tarball 200 |
+| 34 | `Code` props | [^9] | "`source`, `language`, `path`, `startLine`, `format`, `wrap`" | SUPPORTED | Yes, HTTP 200 |
+| 35 | `Code` text cap | [^1] | "At most 10000 characters; tab and newline are the only control characters it may hold." | SUPPORTED | Yes, HTTP 200 |
+| 36 | `Code` colours are the engine's | [^1] | "the colour on screen is the engine's, never the plugin's." | SUPPORTED | Yes, HTTP 200 |
+| 37 | `Code` draws diffs | [^12] | "With `format: 'diff'`, `source` is one or more unified diff hunks" | SUPPORTED | Yes, HTTP 200 |
+| 38 | `Text` is Ink's style props | [^1] | "the color and style props of Ink's Text a tree may set." | SUPPORTED | Yes, HTTP 200 |
+| 39 | `Text` typography (2.1.299) | [^4] | "Added `size`, `weight`, `mono` and `tabular` to a mod's `Text`" | SUPPORTED | Yes, HTTP 200 |
+| 40 | `Text` `dir` (2.1.300) | [^4] | "Added a `dir` prop on a mod's `Text` for right-to-left text" | SUPPORTED | Yes, HTTP 200 |
+| 41 | Hover reveal without a hook | [^1] | "To reveal on hover, draw the Box `display: \"none\"` with `hover: { display: \"flex\" }`" | SUPPORTED | Yes, HTTP 200 |
+| 42 | mdview reveals its edit mark on hover | [^13] | "display=\"none\" hover={{ display: 'flex' }}" | SUPPORTED | Yes, tarball 200 |
+| 43 | `Link` is OSC 8 | [^1] | "an OSC 8 span on the terminal (else its text then the URL in dim)" | SUPPORTED | Yes, HTTP 200 |
+| 44 | `Link` rules do not apply in the terminal | [^11] | "In the terminal, these requirements don't apply." | CONTRADICTED by row 45 | Yes, HTTP 200 |
+| 45 | A bad `href` refuses the tree | [^1] | "anything else refuses the tree the Link is in." | SUPPORTED (conflicts with row 44) | Yes, HTTP 200 |
+| 46 | Long `href` blocks the tree | [^9] | "A longer `href` keeps the whole tree from drawing." | SUPPORTED | Yes, HTTP 200 |
+| 47 | First 100,000 characters drawn | [^9] | "The first 100,000 characters are drawn" | SUPPORTED (conflicts with row 49) | Yes, HTTP 200 |
+| 48 | Tree bounds | [^1] | "20,000 nodes, 32 deep, 100,000 characters serialized" | SUPPORTED | Yes, HTTP 200 |
+| 49 | Over-budget tree refused whole | [^15] | "A text over 10,000 characters (or a tree over 100,000) gets the whole tree refused and the engine draws its own." | PLAUSIBLE (practitioner report; conflicts with row 47) | Yes, GitHub API 200 |
+| 50 | Invalid tree falls back to the engine | [^11] | "Claude Code draws its own version of the site." | SUPPORTED | Yes, HTTP 200 |
+| 51 | mdview element cap | [^13] | "const TEXT_MAX = 9_000 // a Markdown or Code element takes at most 10,000 characters" | SUPPORTED | Yes, tarball 200 |
+| 52 | mdview splits long files | [^13] | "One markdown element holds at most 10,000 characters and a pane about 100,000, so long files come in parts." | SUPPORTED | Yes, tarball 200 |
+| 53 | file-preview caps | [^16] | "Each block of plain text in the pane is capped at 10,000 characters and a markdown file at 60,000" | SUPPORTED | Yes, tarball 200 |
+| 54 | davekiss/md slices blocks | [^21] | "b.text.slice(0, 9900)" | SUPPORTED | Yes, tarball 200 |
+| 55 | `Image` fails in tmux | [^12] | "a session running inside tmux or screen, in any terminal, kitty and Ghostty included." | SUPPORTED | Yes, HTTP 200 |
+| 56-57 | Truecolor in tmux is opt-in; 256-colour clamp under tmux | [^20] | "to allow 24-bit truecolor output inside tmux."; "By default, Claude Code clamps to 256 colors when `$TMUX` is set" | SUPPORTED | Yes, HTTP 200 |
+| 58 | Block-picture palette | [^14] | "Half-block and quadrant thumbnails share a palette of 1024 color pairs per frame" | PLAUSIBLE (mod author) | Yes, tarball 200 |
+| 59 | `Svg` alone opens empty in the terminal | [^12] | "In the terminal, a pane that returns only an `Svg` opens empty." | SUPPORTED | Yes, HTTP 200 |
+| 60-61 | `Input` is one line; `Input` takes all printable keys | [^1] | "every surface's one-line text field"; "while it has focus every printable key reaches it alone and Esc returns them" | SUPPORTED | Yes, HTTP 200 |
+| 62 | `Input` submits on Enter | [^12] | "An `Input` is a one-line text field that runs `onSubmit` when the user presses Enter" | SUPPORTED | Yes, HTTP 200 |
+| 63 | Multi-line `Input` requested | [^17] | "A multi-line field would let an answer like a log stay in the pane, instead of going through the prompt box." | SUPPORTED | Yes, GitHub API 200 |
+| 64 | Desktop paste loses line breaks | [^17] | "On desktop, a multi-line paste arrives with its line breaks turned into spaces." | PLAUSIBLE (report) | Yes, GitHub API 200 |
+| 65 | `Select` props | [^9] | "`key`, `label`, `options`, `value`, `onSelect`, `autoFocus`" | SUPPORTED | Yes, HTTP 200 |
+| 66 | `Button` hotkey | [^11] | "give it a `hotkey` of one digit or one lowercase letter" | SUPPORTED | Yes, HTTP 200 |
+| 67 | `Button` action | [^9] | "`action` names one of Claude Code's own" | SUPPORTED | Yes, HTTP 200 |
+| 68 | The mod never reads keys | [^11] | "Your mod never reads the keyboard itself." | SUPPORTED | Yes, HTTP 200 |
+| 69 | Tab and arrows reserved | [^11] | "A mod can't bind Tab or the arrow keys to anything else" | SUPPORTED | Yes, HTTP 200 |
+| 70 | Focus only over an empty prompt | [^11] | "Claude Code grants `focus: true` only while the prompt is empty and nothing else has keyboard focus." | SUPPORTED | Yes, HTTP 200 |
+| 71 | iTerm2 drops ctrl+x chords | [^15] | "the only ways to hand a pane the keys are a click or `ui.open({ focus })`." | PLAUSIBLE (report) | Yes, GitHub API 200 |
+| 72 | Hotkeys are letters or digits | [^16] | "A pane button's hotkey must be one letter or digit, so search cannot be `/`." | SUPPORTED | Yes, tarball 200 |
+| 73 | Unasked pane width rule | [^11] | "After the user has opened that pane once themselves, 110 columns is enough." | SUPPORTED | Yes, HTTP 200 |
+| 74 | Docked pane height | [^9] | "`e.props.scroll.bodyRows` is the number of rows the pane has for your tree" | SUPPORTED | Yes, HTTP 200 |
+| 75 | Tall trees scroll whole | [^9] | "A tree taller than the pane scrolls as a whole." | SUPPORTED | Yes, HTTP 200 |
+| 76 | Dragged dock ignores `columns` | [^15] | "`ui.open({ columns })` is ignored once the person has dragged the dock" | PLAUSIBLE (report) | Yes, GitHub API 200 |
+| 77-78 | `ui.scroll` offset is rewritable; a hook can keep the window | [^1] | "`offset` is the hook's to rewrite; nothing moved yet."; "A hook kept the window (no `next`)" | SUPPORTED | Yes, HTTP 200 |
+| 79 | Hooks can scroll their own lists | [^1] | "A hook pinning a list over rows it scrolls itself" | SUPPORTED | Yes, HTTP 200 |
+| 80 | `$.ui.scroll` targets elements | [^1] | "never a row number, always a thing drawn somewhere." | SUPPORTED | Yes, HTTP 200 |
+| 81-82 | `/diff` answers `ui.scroll`; `/diff` keeps the engine window still | [^10] | "(the plugin answers the pane's `ui.scroll` itself)"; "and keeps the engine's window still." | SUPPORTED | Yes, HTTP 200 |
+| 83 | `/diff` hook registration | [^10] | "on('ui.scroll', { requestId: Names.PANE_ID }" | SUPPORTED | Yes, HTTP 200 |
+| 84 | Early `ui.scroll` refusal (superseded) | [^68] | "`ui.scroll` is declared in 2.1.271, but the engine refuses a hook on it at load" | SUPPORTED as a 2.1.271 report; superseded by row 83 | Yes, GitHub API 200 |
+| 85 | Self-started scrolls bypass the hook | [^16] | "a scroll this mod starts may not reach its own ui.scroll hook" | PLAUSIBLE (code comment) | Yes, tarball 200 |
+| 86 | Fullscreen adds the mouse | [^18] | "keeps memory usage flat in long conversations, and adds mouse support." | SUPPORTED | Yes, HTTP 200 |
+| 87 | Selection copies on release | [^18] | "Selected text copies to your clipboard automatically on mouse release." | SUPPORTED | Yes, HTTP 200 |
+| 88 | Clicks need fullscreen (mdview) | [^13] | "On the main screen, use `/md`." | SUPPORTED | Yes, tarball 200 |
+| 89 | Clicks need fullscreen (file-preview) | [^16] | "A plain click only reaches the mod in Claude Code's fullscreen terminal layout." | SUPPORTED | Yes, tarball 200 |
+| 90 | `$.ui.selection()` (2.1.288) | [^4] | "returns the text you last selected in fullscreen mode" | SUPPORTED | Yes, HTTP 200 |
+| 91 | `selection` in the reference | [^9] | "`ask`, `copy`, `selection`, `blit`" | SUPPORTED | Yes, HTTP 200 |
+| 92 | Pane selection was requested | [^19] | "A `ui.selection` event, at least for selections inside the mod's own pane." | SUPPORTED | Yes, GitHub API 200 |
+| 93 | `Client` time per call | [^1] | "Runs on the drawing thread, a second per call at most" | SUPPORTED | Yes, HTTP 200 |
+| 94 | `Client` element table | [^1] | "less `Client` (none nests), `Raster` and `Image`." | SUPPORTED | Yes, HTTP 200 |
+| 95 | `Client` keys need a click | [^1] | "reached while a click has given it the focus; Escape returns that." | SUPPORTED | Yes, HTTP 200 |
+| 96 | `Client` key names | [^1] | "`backspace`, `delete`, `pageup`, `home`, ...) or the character typed." | SUPPORTED | Yes, HTTP 200 |
+| 97 | `Client` post bound | [^1] | "At most 20,000 values, 32 deep, 100,000 characters, or the post is not sent." | SUPPORTED | Yes, HTTP 200 |
+| 98 | `Client` props bound | [^1] | "Bounded as a tree's text is; not a channel for closures." | SUPPORTED | Yes, HTTP 200 |
+| 99 | davekiss/md types in the pane | [^21] | "In the text, type to edit. Click to place the caret and drag to select." | SUPPORTED | Yes, tarball 200 |
+| 100 | Undo key choice | [^21] | "Undo (ctrl+z suspends Claude Code)" | SUPPORTED | Yes, tarball 200 |
+| 101 | Editor surface draws caret and selection | [^21] | "It draws the caret and the selection the hooks module" | SUPPORTED | Yes, tarball 200 |
+| 102 | Undo stack of 200 | [^21] | "if (undoStack.length > 200) undoStack.shift()" | SUPPORTED | Yes, tarball 200 |
+| 103 | Every edit writes the file | [^21] | "await $.fs.write(doc.path, lines.join('\n') + '\n')" | SUPPORTED | Yes, tarball 200 |
+| 104 | Editor mounted as a `Client` | [^21] | "<Client key=\"editor\" module=\"./editor.tsx\"" | SUPPORTED | Yes, tarball 200 |
+| 105 | Notes anchor to quoted text | [^21] | "Notes are anchored to the text they quote." | SUPPORTED | Yes, tarball 200 |
+| 106 | `$.fs.read` 4 MiB | [^1] | "Rejects when missing, or over 4 MiB" | SUPPORTED | Yes, HTTP 200 |
+| 107 | `$.fs.write` not atomic | [^9] | "`write` isn't atomic: it replaces the file's content in place" | SUPPORTED | Yes, HTTP 200 |
+| 108-110 | `$.process.run` takes argv, no shell; one-shot output | [^1] | "Runs a command on the host by its argument vector (no shell)"; "One shot: the whole output is read" | SUPPORTED | Yes, HTTP 200 |
+| 109 | `$.process.run` timeout | [^9] | "30 seconds by default, 10 minutes at most" | SUPPORTED | Yes, HTTP 200 |
+| 111 | Git hooks off | [^1] | "Git runs with repo hooks off." | SUPPORTED | Yes, HTTP 200 |
+| 112 | Text stdout, cut at a limit | [^1] | "as text, cut at the output limit." | SUPPORTED | Yes, HTTP 200 |
+| 113 | Text stdin | [^1] | "Text written to the child's standard input, then closed." | SUPPORTED | Yes, HTTP 200 |
+| 114 | `$.store` size | [^9] | "4 MiB of JSON in total" | SUPPORTED | Yes, HTTP 200 |
+| 115 | `$.store` races | [^11] | "A `get` followed by a `set` isn't atomic." | SUPPORTED | Yes, HTTP 200 |
+| 116 | Plugin data directory | [^22] | "Installed dependencies such as `node_modules`, generated code, and caches" | SUPPORTED | Yes, HTTP 200 |
+| 117 | npm packages installed with the plugin | [^8] | "Claude Code downloads the npm packages pinned in `package-lock.json`" | UNVERIFIABLE from Anthropic docs read | Yes, tarball 200 |
+| 118 | Tool row rewrite leaves the result | [^1] | "The stored result is untouched." | SUPPORTED | Yes, HTTP 200 |
+| 119 | Reads fold into a group | [^1] | "A run of tool calls the transcript folds into one count line" | SUPPORTED | Yes, HTTP 200 |
+| 120 | lens draws under the read group | [^14] | "Under the \"Read 1 file\" row" | SUPPORTED | Yes, tarball 200 |
+| 121 | converter swaps what Claude reads | [^23] | "the mod converts it and hands over the Markdown in its place." | SUPPORTED | Yes, GitHub API 200 |
+| 122 | Streamed replies cannot be restyled | [^24] | "A mod can't change the streamed text" | SUPPORTED | Yes, tarball 200 |
+| 123 | Redrawn replies lose the bullet | [^16] | "Replies that mention an existing file are redrawn by the mod and lose their leading bullet." | SUPPORTED | Yes, tarball 200 |
+| 124 | Long reply blocks left native | [^7] | "A single reply block over 10,000 characters" | SUPPORTED | Yes, GitHub API 200 |
+| 125 | Row redraw collisions | [^14] | "keeps every mod listed after it from drawing on that row." | SUPPORTED | Yes, tarball 200 |
+| 126 | `immediate` commands | [^2] | "To let the command run while Claude is working, add `immediate: true` to the registration." | SUPPORTED | Yes, HTTP 200 |
+| 127 | Name rule | [^9] | "Letters, digits, `_`, and `-`, up to 64 characters" | SUPPORTED | Yes, HTTP 200 |
+| 128-129 | `asUser`; submit waits for idle | [^2] | "To send it as the user's own words, without that sentence, add `asUser: true`."; "The call waits until the session is idle and then starts a new turn." | SUPPORTED | Yes, HTTP 200 |
+| 130 | `$.prompt.fill` modes | [^1] | "`replace` (the default) over it, `append` after it, `insert` at the cursor." | SUPPORTED | Yes, HTTP 200 |
+| 131-132 | `$.ui.ask` options; `$.ui.ask` rejects | [^1] | "@param options 2-4 option labels"; "Rejects when dismissed, and in a `-p` run (no one to ask)." | SUPPORTED | Yes, HTTP 200 |
+| 133 | Wait inside `$.ui.ask` | [^25] | "Keep the wait inside a mods API call such as `$.ui.ask`" | SUPPORTED | Yes, HTTP 200 |
+| 134 | `$.ui.notify` (2.1.295) | [^4] | "Added `$.ui.notify` for mods" | SUPPORTED | Yes, HTTP 200 |
+| 135 | Autocomplete does not block | [^9] | "Claude Code doesn't wait for the hook: its own autocomplete rows show first." | SUPPORTED | Yes, HTTP 200 |
+| 136 | Tool naming | [^2] | "under a longer name made of `mcp__`, your plugin's name, two underscores, and the name you registered." | SUPPORTED | Yes, HTTP 200 |
+| 137 | mdview registers `show` | [^13] | "Open a local file in the mdview side pane for the person to read" | SUPPORTED | Yes, tarball 200 |
+| 138 | mdview point-to-edit | [^13] | "$.prompt.submit({ text, asUser: true })" | SUPPORTED | Yes, tarball 200 |
+| 139 | mdview polls every 1.5 s | [^13] | "$.clock.every(1_500" | SUPPORTED | Yes, tarball 200 |
+| 140 | Redraw throttle | [^9] | "Throttled to 10 a second, or 30 in the terminal for the visible pane" | SUPPORTED | Yes, HTTP 200 |
+| 141 | Blit rate | [^1] | "up to 120 a second taken, some sixty shown" | SUPPORTED | Yes, HTTP 200 |
+| 142 | Hook time limit | [^9] | "10 seconds, or 50 milliseconds for a `prompt.edit` hook" | SUPPORTED | Yes, HTTP 200 |
+| 143 | Redraw stall fix (2.1.290) | [^4] | "Fixed plugin hooks stalling each redraw when a mod draws a long multi-line text holding non-Latin characters" | SUPPORTED | Yes, HTTP 200 |
+| 144 | Inline pane loop fix (2.1.290) | [^4] | "Fixed a mod's inline pane being redrawn without end" | SUPPORTED | Yes, HTTP 200 |
+| 145 | markdown-pane cut | [^26] | "Files longer than 90,000 characters are cut, with a note." | SUPPORTED | Yes, GitHub API 200 |
+| 146 | md-preview renderer ladder | [^27] | "GitHub's own renderer through `gh api /markdown`" | SUPPORTED | Yes, tarball 200 |
+| 147 | md-preview fails in tmux | [^27] | "It does not work through tmux." | SUPPORTED | Yes, tarball 200 |
+| 148 | md-preview image parts | [^27] | "const PART_ROWS = 250 // an Image is at most 255 rows" | SUPPORTED | Yes, tarball 200 |
+| 149 | md-preview privacy | [^27] | "the file's text goes to GitHub's API under your own `gh` login" | SUPPORTED | Yes, tarball 200 |
+| 150 | file-preview Mermaid route | [^16] | "Drawn as box-drawing text by" | SUPPORTED | Yes, tarball 200 |
+| 151 | ide-mod disables pdf.js eval | [^28] | "isEvalSupported: false" | SUPPORTED | Yes, tarball 200 |
+| 152 | ide-mod stubs DOM classes | [^28] | "['DOMMatrix', StubMatrix], ['ImageData', class {}], ['Path2D', class {}]" | SUPPORTED | Yes, tarball 200 |
+| 153 | ide-mod picks a helper script | [^28] | "const script = isPdf(args[1] ?? '') ? 'pdf-view.mjs' : 'rhwp-view.mjs'" | SUPPORTED | Yes, tarball 200 |
+| 154 | pdf.js worker over the cap | [^28] | `pdf.worker.mjs` 2,139,222 bytes; `pdf.mjs` 976,824 bytes (measured with `ls -la`) | SUPPORTED (measured) | Yes, tarball 200 |
+| 155 | lens Linux converters | [^14] | "PDF: `pdftoppm` (poppler-utils) or `mutool` (mupdf-tools)" | SUPPORTED | Yes, tarball 200 |
+| 156 | html-preview owns its scroll | [^29] | "on('ui.scroll', { component: 'Pane', requestId: PANE }" | SUPPORTED | Yes, tarball 200 |
+| 157 | glance draws under tool groups | [^30] | "component: 'ToolGroup'" | SUPPORTED | Yes, tarball 200 |
+| 158 | mermaid-inline pictures outside tmux | [^8] | "Ghostty, cmux or kitty, not inside tmux" | SUPPORTED | Yes, tarball 200 |
+| 159 | figures ships MathJax | [^6] | "MathJax and its font ship inside the plugin, so math needs no TeX or Node.js install." | SUPPORTED | Yes, WebFetch |
+| 160 | terminal-browser stars | [^31] | API value: stargazers_count 3871 | SUPPORTED | Yes, GitHub API 200 |
+| 161 | docs-viewer formats | [^32] | "plus `.html` and `.txt` files." | SUPPORTED | Yes, GitHub API 200 |
+| 162 | Topic size | [^33] | API value: total_count 112 | SUPPORTED | Yes, GitHub API 200 |
+| 163 | Catalogue scan version | [^34] | "scanned against Claude Code 2.1.296" | SUPPORTED | Yes, HTTP 200 |
+| 164 | Directory entries | [^35] | "Every mermaid block Claude writes, drawn as color box art in the transcript. Zero tokens." | SUPPORTED | Yes, WebFetch |
+| 165 | No EPUB, DOCX or notebook viewer mod | [^33][^34][^35] | Absence over the three enumerated lists (grep of descriptions) | SUPPORTED as a bounded absence | Yes |
+| 166 | micromark is smallest | [^36] | "The smallest CommonMark compliant markdown parser." | SUPPORTED | Yes, GitHub API 200 |
+| 167 | micromark size | [^36] | "smallest CM parser at ±14kb" | SUPPORTED | Yes, GitHub API 200 |
+| 168 | markdown-it safe | [^37] | "Safe by default." | SUPPORTED | Yes, GitHub API 200 |
+| 169 | Package sizes and dependencies | [^38] | API values: markdown-it unpackedSize 1968876; turndown dependencies @mixmark-io/domino; @lexical/headless dependencies include happy-dom; @automerge/automerge unpackedSize 47529812 | SUPPORTED | Yes, HTTP 200 |
+| 170 | Library stars and licences | [^39] | API values, e.g. pandoc license GPL-2.0, mupdf AGPL-3.0, uniorg GPL-3.0, marked "Other" | SUPPORTED | Yes, GitHub API 200 |
+| 171 | parse5 | [^40] | "HTML parsing/serialization toolset for Node.js." | SUPPORTED | Yes, GitHub API 200 |
+| 172 | htmlparser2 | [^41] | "provides a callback interface that allows consumption of documents with minimal allocations." | SUPPORTED | Yes, GitHub API 200 |
+| 173 | Readability needs a DOM | [^42] | "you must create a new `Readability` object from a DOM document object" | SUPPORTED | Yes, GitHub API 200 |
+| 174 | Readability in Node uses jsdom | [^42] | "Since Node.js does not come with its own DOM implementation" | SUPPORTED | Yes, GitHub API 200 |
+| 175 | Readability and untrusted input | [^42] | "with untrusted input" | SUPPORTED | Yes, GitHub API 200 |
+| 176 | turndown accepts DOM nodes | [^43] | "Turndown also accepts DOM nodes as input" | SUPPORTED | Yes, GitHub API 200 |
+| 177 | node-html-markdown runs anywhere | [^44] | "compatible with both node and the browser." | SUPPORTED | Yes, GitHub API 200 |
+| 178 | pdf.js is an HTML5 viewer | [^45] | "is a Portable Document Format (PDF) viewer that is built with HTML5." | SUPPORTED | Yes, GitHub API 200 |
+| 179-180 | `pdftotext -layout`; `pdftotext -bbox-layout` | [^46] | "Maintain (as best as possible) the original physical layout of the text."; "Generate an XHTML file containing bounding box information for each block, line, and word in the file." | SUPPORTED | Yes, HTTP 200 |
+| 181 | `pdftoppm -png` | [^47] | "Generates a PNG file instead a PPM file." | SUPPORTED | Yes, HTTP 200 |
+| 182 | `mutool draw` formats | [^48] | "The supported output text formats are" | SUPPORTED | Yes, HTTP 200 |
+| 183 | pandoc ANSI writer | [^49] | "for terminal viewing" | SUPPORTED | Yes, HTTP 200 |
+| 184 | mammoth Markdown deprecated | [^50] | "Markdown support is deprecated." | SUPPORTED | Yes, GitHub API 200 |
+| 185 | epub.js is browser-only | [^51] | "Epub.js is a JavaScript library for rendering ePub documents in the browser" | SUPPORTED | Yes, GitHub API 200 |
+| 186 | EPUB is HTML inside | [^51] | "An unzipped EPUB3 is a collection of HTML5 files, CSS, images and other media" | SUPPORTED | Yes, GitHub API 200 |
+| 187 | Notebook JSON schema | [^52] | "The official Jupyter Notebook format is defined with this JSON schema" | SUPPORTED | Yes, HTTP 200 |
+| 188 | asciidoctor.js targets | [^53] | "It runs on Node.js ≥ 24 and in the browser." | SUPPORTED | Yes, GitHub API 200 |
+| 189 | Desktop previews HTML and PDF | [^54] | "The Browser pane can also open static HTML files, PDFs, images, and videos from your project." | SUPPORTED | Yes, HTTP 200 |
+| 190-192 | glow pager; frogmouth navigation | [^55][^57] | "Markdown files can be read with Glow's high-performance pager."; "There is a familiar browser-like navigation stack, history, bookmarks, and table of contents." | SUPPORTED | Yes, GitHub API 200 |
+| 191 | mdcat unmaintained | [^56] | "This repository is no longer maintained." | SUPPORTED | Yes, GitHub API 200 |
+| 193 | Rich renders Markdown | [^58] | "Rich can render Markdown to the console." | SUPPORTED | Yes, HTTP 200 |
+| 194 | bat highlights only | [^59] | "clone with syntax highlighting and Git integration." | SUPPORTED | Yes, GitHub API 200 |
+| 195 | termpdf.py needs kitty | [^60] | "A graphical pdf and epub viewer, written in python, that works inside" | SUPPORTED | Yes, GitHub API 200 |
+| 196 | lynx dump | [^61] | "dumps the formatted output of the default document or one specified on the command line to standard out." | SUPPORTED | Yes, HTTP 200 |
+| 197 | CodeMirror changes are values | [^62] | "Document changes are themselves values" | SUPPORTED | Yes, WebFetch |
+| 198 | CodeMirror moved | [^62] | "This repository has moved to https://code.haverbeke.berlin/codemirror/state" | SUPPORTED | Yes, GitHub API 200 |
+| 199 | ProseMirror view is the browser part | [^63] | "shows a given editor state as an editable element in the browser" | SUPPORTED | Yes, WebFetch |
+| 200 | ProseMirror moved | [^63] | "This repository has moved to https://code.haverbeke.berlin/prosemirror/prosemirror-model" | SUPPORTED | Yes, GitHub API 200 |
+| 201 | Yjs Y.Text | [^64] | "The Text-Delta is equivalent to Quills' Delta format." | SUPPORTED | Yes, WebFetch |
+| 202 | Automerge is WebAssembly | [^65] | "the core Rust library which is compiled to WebAssembly and exposed in JavaScript" | SUPPORTED | Yes, GitHub API 200 |
+| 203 | Automerge initialisation page | [^65] | No text: HTTP 404 on two URLs | UNVERIFIABLE (page missing; README used) | No, HTTP 404 |
+| 204 | Lexical headless claim | [^66] | "one that does not rely on DOM, e.g. for Node.js environment." | SUPPORTED (conflicts with its npm dependency on happy-dom, row 169) | Yes, WebFetch |
+| 205 | Trust the generated types | [^9] | "When the two disagree, trust" | SUPPORTED | Yes, HTTP 200 |
+| 206 | Types file version | [^1] | "Written by Claude Code 2.1.277." | SUPPORTED | Yes, HTTP 200 |
+
+## Appendix: Research Prompt
+
+**Registry ID:** none (delegated researcher leaf on sem-kg-ec2; no ai-core DB on this host)
+**Model:** `us.anthropic.claude-opus-5-5[1m]` (Claude Code Agent tool, researcher persona, effort high)
+**Date:** 2026-10-14
+
+```text
+Leg DED-research-leg-tnah (parent DED-research-doc-editor-uhke, epic DED-epic-doc-editor-view-edit-b3p).
+Objective: how Markdown, HTML, PDF and other doc formats can be rendered, navigated and edited in a
+Claude Code mod; the API's permits and limits; every open-source doc or browser mod (code read); the
+terminal rendering route per format. Questions: API contract, existing mods, routes per format,
+editing and DOM-free cores, terminal prior art, performance. Tables (a) to (d). Rules: extend the
+seed docs; primary sources; cite only URLs fetched this run; tier tags, footnotes, ledger; no
+installs, builds, tests or launches; write only this file; commit, push, open a PR, do not merge.
+(The brief also carried the founding-ask carrier, the CoVe grounding block, the scope notes, the
+destructive-operation floor and the commit trailer block.)
+```
