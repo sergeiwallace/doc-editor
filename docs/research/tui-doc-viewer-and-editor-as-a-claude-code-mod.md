@@ -79,6 +79,40 @@ Sergei asked on 2026-10-14 for a Claude Code mod that renders Markdown, HTML, PD
 
 (to be written when the evidence legs return)
 
+## 5. What the mod can share with a web app and an MCP App
+
+The mod shares logic, data types and design tokens with a web app and an MCP App. It shares no UI components with them. The web app and the MCP App share UI components with each other, because both run in a browser DOM. These three statements rest on the loader rules Anthropic documents and the evidence leg quoted (measured [VERIFIABLE][^3]).
+
+### 5.1 The loader's rules for shared code
+
+A hooks module may import files inside its own plugin by relative path. The one bare import is `claude-code`. A dynamic `import()` fails (documented [VERIFIABLE][^3]). The module runs with "no Node.js APIs, no timer globals such as `setTimeout`, and no network or file access of its own", and the types file adds "no DOM, no Node" for the module "and every file it imports from the plugin". `eval` and `new Function` throw, and "there is no `WebAssembly`" (documented [VERIFIABLE][^3]).
+
+JSX in a mod compiles to the engine's own `h` calls, so a React component library cannot run there (documented and inferred [VERIFIABLE][^3]). Passing `$` to an imported function is refused by the create page, while the 2.1.299 changelog says that refusal was fixed for source-loaded mods. A core that never takes `$` is valid under both readings (documented [VERIFIABLE][^3]).
+
+An installed plugin is a copy of its own directory. "Files outside the plugin directory aren't copied", `workspace:*` dependencies get no install, and `pnpm-lock.yaml` is skipped (documented [VERIFIABLE][^3]). A symlink to elsewhere in the same marketplace is dereferenced into the cache on a git install; whether the static analysis accepts an import through a symlink for an in-place load is unmeasured (documented and inferred [VERIFIABLE][^3]).
+
+The brief named a 1 MB module-file cap. The evidence leg found no such cap in any Anthropic page, the types file or the changelog. The documented bounds are 2,000 nested scopes, a 10,000-character `Markdown` text, 100,000 drawn characters per tree and 4 MiB per `$.fs` file (measured [VERIFIABLE][^3]). The earlier fleet survey reported the 1 MB figure from a practitioner's design-issue comment, so it is reported, not documented [INFERENCE].
+
+### 5.2 How published mods reach shared code today
+
+Three mods show three routes. terminal-browser keeps its plugin outside its pnpm workspace and hand-duplicates its bridge types, under the comment "we cannot use libraries inside the claude code sandbox, hence this gross code". baselane-sh/mods runs a copy build that stamps a shared engine into every plugin and commits the output. ide-mod runs pdf.js in a Node sidecar called with `$.process.run` (measured [VERIFIABLE][^3]). Anthropic's own built-in `diff` mod imports about twenty local modules by relative path, so a mod may span many files inside its plugin (measured [VERIFIABLE][^3]).
+
+### 5.3 Document models and cores
+
+Three Markdown parsers fit a mod once copied in with DOM-free build conditions: micromark (15.9 kB gzipped), mdast-util-from-markdown (16.6 kB) and marked (14 kB), all MIT with tens of millions of weekly downloads (measured [VERIFIABLE][^3]). One micromark dependency maps the `browser` export condition to a file that calls `document.createElement` at import time, so the copy must use the default condition (measured [VERIFIABLE][^3]).
+
+Among editor cores, CodeMirror 6 state is "strictly functional" and 16.7 kB gzipped, the strongest candidate for a shared plain-text editing state. ProseMirror's model, state and transform packages are separate from its view (27.1 kB together), but whether `prosemirror-model` loads with no `document` is unmeasured. Lexical's core calls a bare `setTimeout`, BlockNote's server path needs `jsdom`, and Automerge and Loro are WebAssembly, so none of those can run in the mod (measured [VERIFIABLE][^3]). Yjs could load; its only `setTimeout` calls sit in an optional class (measured [VERIFIABLE][^3]). ProseMirror and CodeMirror moved off GitHub in April 2026; their npm downloads stand in for activity (measured [VERIFIABLE][^3]).
+
+### 5.4 MCP Apps and the Desktop Code tab
+
+An MCP App is HTML in a sandboxed iframe speaking JSON-RPC over `postMessage`, with the network closed by default. Claude web and Claude Desktop are hosts; Claude Code is not, and Claude Code 2.1.281 hides MCP Apps UI resources from its resource lists (documented [VERIFIABLE][^3]). Anthropic's design guidelines list "Document editing" among full-screen uses and warn against long static content inline, so a doc-editor MCP App opens full screen with an inline card as a launcher (documented and inferred [VERIFIABLE][^3]). The official `server-pdf` example is a working template: a model-visible `display_pdf` tool, app-only tools for reading chunks and saving, chunked streaming, and `updateModelContext` for the visible page (documented [VERIFIABLE][^3]). The SDK's `convert-web-app` skill and excalidraw-mcp show a web app and an MCP App built from one codebase with `vite-plugin-singlefile`; two independent sources, so the pattern passes Route B (measured [VERIFIABLE][^3]).
+
+The Desktop Code tab's Browser pane already opens "static HTML files, PDFs, images, and videos". On Desktop a doc-editor mod adds value for Markdown structure and nothing for HTML, PDF or video viewing (documented and inferred [VERIFIABLE][^3]).
+
+### 5.5 Repository layout and hygiene
+
+The sibling beads-ui README plans "one core package for data access, state, layout and theme, and one package per surface" and already states that surfaces "share logic and design tokens rather than UI components". Both repos were scaffolded from the same private Copier template at the same version (measured [VERIFIABLE][^3]). GitHub scores doc-editor's community profile at 57%: no code of conduct, contributing guide, issue template or `SECURITY.md`. The `.gitignore` does not cover `.claude-plugin/types/` or the `tsconfig.json` Claude Code writes on load. Three Python scripts from the template sit in a TypeScript repo (measured [VERIFIABLE][^3]).
+
 ## Comparison
 
 (to be written when the evidence legs return)
