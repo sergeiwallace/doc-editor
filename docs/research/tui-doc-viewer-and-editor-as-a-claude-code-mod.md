@@ -79,6 +79,54 @@ Sergei asked on 2026-10-14 for a Claude Code mod that renders Markdown, HTML, PD
 
 (to be written when the evidence legs return)
 
+## 1. What the doc apps do, and what survives a character grid
+
+Most of what makes Notion, Confluence, Google Docs and Word good to read survives a pane of about 100 by 40 cells. The editing surface does not. This section rests on the doc-app evidence leg, which read 11 Anthropic pages, the vendor help pages of 20 apps and 25 terminal projects (measured [VERIFIABLE][^1]).
+
+### 1.1 The mod surface filters every pattern
+
+A mod "never reads the keyboard itself" in a pane. While the pane has focus Tab, the arrows, Enter, the page keys and Esc have fixed meanings. A `Button` hotkey is "one digit or one lowercase letter", and "A mod can't bind Tab or the arrow keys to anything else" (documented [VERIFIABLE][^1]). So the keys every terminal pager uses for capitals and symbols (`G`, `N`, `/`, `?`, `{`, `}`) cannot be pane hotkeys. A `Client` element receives raw keys through `onKey`, but "Escape never arrives: it returns the focus" (documented [VERIFIABLE][^1]). A pager-style key map therefore needs a `Client`; a pane built from `Markdown` and `Button` elements is limited to lowercase letters and digits [INFERENCE].
+
+`Input` is a field whose `onSubmit` "Runs on Enter with the text", so a field holds one line. A multi-line `Input` is an open request on Anthropic's design issue. No element offers a multi-line rich-text editor (documented [VERIFIABLE][^1]). A block editor in the Notion sense would have to be written from scratch inside a `Client`, a large build with no prior art [INFERENCE].
+
+One `Markdown` element takes "At most 10000 characters" and one tree draws "The first 100,000 characters". The claude-mdview mod hits the same wall and splits long files into parts (documented [VERIFIABLE][^1]). `$.ui.scroll` targets "never a row number, always a thing", so an outline entry that jumps to a keyed heading element is a native operation (documented [VERIFIABLE][^1]). Clicks reach a mod only in fullscreen rendering, and `onLinkPress` lets the mod answer a link press (documented [VERIFIABLE][^1]). `Code` draws source "with Claude Code's own syntax colors, or a diff", so a diff of Claude's edits needs no renderer of its own (documented [VERIFIABLE][^1]).
+
+### 1.2 Patterns that transfer
+
+Every major app ships an outline of headings that jumps to the heading: Google Docs' outline, Notion's side table of contents, Confluence's macro, Obsidian's draggable outline and VS Code's go-to-header shortcut (documented [VERIFIABLE][^1]). Confluence shows breadcrumbs and a read time at 265 words per minute; the claude-code-file-preview mod already draws "A breadcrumb and stats header" (documented [VERIFIABLE][^1]). Craft treats a block with nested content as a page to drill into, and Org mode's sparse trees show one subtree with the headline structure above it (documented [VERIFIABLE][^1]). In a 40-row pane, one section at a time with its heading path above it is the cheapest way to read a long design doc [INFERENCE].
+
+Collapsing is universal: Notion toggle headings, Confluence's expand macro, Word's Outline view, Obsidian folds, vim-markdown's `zR` and `zM`, Org mode's `TAB` cycling (documented [VERIFIABLE][^1]). Tab is reserved in a pane, so the cycle needs another key unless a `Client` receives Tab, which is unmeasured [NO SOURCE]. A one-key read-and-edit toggle (Obsidian `Ctrl+E`, Confluence `E`) transfers directly, and the mode belongs in the pane header, since Nielsen Norman Group names mode slips as a failure of status visibility (documented [VERIFIABLE][^1]).
+
+Find in page is universal, with `f` or `/` and `n` and `N` in md-tui and Claude Code's own transcript mode; claude-mdview uses `f` and Enter for the next match (documented [VERIFIABLE][^1]). In a mod the prompt is already a command palette: `/` commands and `prompt.autocomplete` rows can carry open-file, jump-to-heading and find without a second palette [INFERENCE]. Callouts transfer as a bordered `Box` with a coloured label; GitHub alerts and Obsidian callouts share the blockquote syntax (documented [VERIFIABLE][^1]). Tables are the hardest common block at 100 columns; claude-code-file-preview fits columns, wraps cells and shows "one card per row" when too wide (documented [VERIFIABLE][^1]).
+
+### 1.3 Review patterns
+
+Google Docs' suggesting mode and Word's four markup views are the review models. Ink & Switch's Upwelling study (2023) found that "Common user interfaces for reviewing changes suffer from readability and usability problems" and that Docs and Word cannot group edits into anything like a commit (documented [VERIFIABLE][^1]). GitBook's change requests give "the floating diff navigator" to jump between changed blocks, and GitHub renders prose diffs in source and rendered views (documented [VERIFIABLE][^1]). For a terminal pane this argues for Word's Simple Markup, a margin marker per changed block, with the full diff one key away and Claude's edits grouped by turn [INFERENCE].
+
+Agent-mediated editing is already the norm in these apps: GitBook's agent takes a block tagged in a comment, Confluence's Rovo agents work from a comment, and Word's Copilot result offers "keep it, discard it, or continue refining it". The claude-mdview mod does the same in a Claude Code pane: hover a block, press the pencil, type the change, and "Claude gets the file, the lines and how they begin" (documented [VERIFIABLE][^1]). Claude Desktop's diff view batches line comments and sends them to Claude at once, and GitHub states the reason to batch (documented [VERIFIABLE][^1]).
+
+### 1.4 Patterns that do not transfer
+
+Miro's and Mural's infinite canvas, Gamma's fixed 16:9 slides, Coda's formulas and buttons (Coda is "now Superhuman Docs"), Craft's cover images and every presence cursor contribute nothing that fits a cell grid in tmux without pictures (documented and inferred [VERIFIABLE][^1]). Notion's synced blocks, Confluence excerpts and Loop components need a transclusion syntax plain Markdown lacks. Inline comments need a storage decision first, because every collaborative app stores comments outside the text [INFERENCE].
+
+### 1.5 The ranked MVP patterns
+
+The evidence leg's ranking, by value to a developer reading a design doc beside Claude divided by build cost, puts these first: open the rendered file from a path in the transcript or a tool row; an outline that jumps to a heading; point at a block and ask Claude to change it; a diff of Claude's edit with next and previous change; live reload with a stable viewport; collapsible headings with fold-all and unfold-all; find in page; links followed in place with Back; a header row with path, heading path, mode and read time; margin markers on changed blocks; keep, discard or refine after an edit; callouts and tables drawn for a narrow pane; the read-and-edit toggle; checklist toggles; and a key hint row (measured [VERIFIABLE][^1]). The full transfer table of 53 patterns is in the evidence doc.
+
+The highest-ranked exemplars came from developer tools (GitBook, GitHub, VS Code, lazygit) and from three Claude Code mods, not from the SaaS apps the ask named. The evidence leg added them deliberately and says the ranking would differ on the named apps alone (measured [VERIFIABLE][^1]).
+
+## 2. Rendering routes per format inside a mod
+
+(to be written when the render leg returns)
+
+## 3. Existing mods for documents and browsers
+
+(to be written when the render leg returns)
+
+## 4. Editing inside a mod
+
+(to be written when the render leg returns)
+
 ## 5. What the mod can share with a web app and an MCP App
 
 The mod shares logic, data types and design tokens with a web app and an MCP App. It shares no UI components with them. The web app and the MCP App share UI components with each other, because both run in a browser DOM. These three statements rest on the loader rules Anthropic documents and the evidence leg quoted (measured [VERIFIABLE][^3]).
