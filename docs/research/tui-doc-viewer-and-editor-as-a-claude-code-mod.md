@@ -2,7 +2,7 @@
 title: "A document viewer and editor inside the Claude Code TUI as a mod: doc-app UX, rendering routes and a shared core"
 category: research
 tags: [research, claude-code, mods, tui, markdown, html, pdf, doc-editor, ux, mcp-apps]
-status: draft
+status: complete
 source: "claude-fable-5-1-orchestrated-2026-10-15"
 template_version: "research-1.2.0"
 delegation_provenance:
@@ -33,7 +33,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
 | A003 | FOLLOW-UP, 2026-10-14T23:46:39Z. Names this repo ("the doc viewer will be doc-editor") and asks, for the sibling beads-ui, whether the mods TUI app, an MCP UI app and a web app "could share frontend components / code / modules". §4 answers that question for doc-editor. The beads-ui repo decisions themselves are out of scope. |
 | A004 | FOLLOW-UP, 2026-10-14T23:46:39Z. Asks that the doc-editor repo be created, published as open source, configured as a Copier project with a README and GitHub metadata, and that the research and design agent be launched. The repo work was done by the launching session (PR #1 on this repo); this doc is the launched agent's research stage. |
 
-**Status:** draft (research stage of the doc-editor epic; the companion design doc follows)
+**Status:** complete (the three evidence legs are folded in; the companion design doc carries the decisions)
 
 **Created:** 2026-10-15
 
@@ -49,6 +49,27 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
 - [Context](#context)
 - [Temporal Scope](#temporal-scope)
 - [Executive Summary](#executive-summary)
+- [1. What the doc apps do, and what survives a character grid](#1-what-the-doc-apps-do-and-what-survives-a-character-grid)
+  - [1.1 The mod surface filters every pattern](#11-the-mod-surface-filters-every-pattern)
+  - [1.2 Patterns that transfer](#12-patterns-that-transfer)
+  - [1.3 Review patterns](#13-review-patterns)
+  - [1.4 Patterns that do not transfer](#14-patterns-that-do-not-transfer)
+  - [1.5 The ranked MVP patterns](#15-the-ranked-mvp-patterns)
+- [2. Rendering routes per format inside a mod](#2-rendering-routes-per-format-inside-a-mod)
+  - [2.1 The runtime and its bounds](#21-the-runtime-and-its-bounds)
+  - [2.2 The Markdown element and the tree budget](#22-the-markdown-element-and-the-tree-budget)
+  - [2.3 Windowing: the /diff pattern](#23-windowing-the-diff-pattern)
+  - [2.4 Pictures, colour and tmux](#24-pictures-colour-and-tmux)
+  - [2.5 Routes by format](#25-routes-by-format)
+- [3. Existing mods for documents and browsers](#3-existing-mods-for-documents-and-browsers)
+- [4. Editing inside a mod](#4-editing-inside-a-mod)
+- [5. What the mod can share with a web app and an MCP App](#5-what-the-mod-can-share-with-a-web-app-and-an-mcp-app)
+  - [5.1 The loader's rules for shared code](#51-the-loaders-rules-for-shared-code)
+  - [5.2 How published mods reach shared code today](#52-how-published-mods-reach-shared-code-today)
+  - [5.3 Document models and cores](#53-document-models-and-cores)
+  - [5.4 MCP Apps and the Desktop Code tab](#54-mcp-apps-and-the-desktop-code-tab)
+  - [5.5 Repository layout and hygiene](#55-repository-layout-and-hygiene)
+- [Gaps, blindspots and emergent findings](#gaps-blindspots-and-emergent-findings)
 - [Comparison](#comparison)
 - [Recommendation](#recommendation)
 - [Open Questions](#open-questions)
@@ -73,11 +94,17 @@ Sergei asked on 2026-10-14 for a Claude Code mod that renders Markdown, HTML, PD
 
 ## Temporal Scope
 
-(to be written when the evidence legs return)
+Primary focus: Anthropic's mods documentation, the public types file and the changelog as of 2026-10-15 (newest entry 2.1.300 of 2026-10-14; this host runs 2.1.296), the doc mods created in October 2026, and the vendor help pages of the doc apps as read on 2026-10-15. Every adoption figure is a dated reading. Terminal renderers and editor cores that predate 2024 are cited for how they work, with their last-activity dates. The three evidence legs read their sources between 2026-10-14 23:55Z and 2026-10-15 00:45Z; none ran a mod, a browser or a test, because another session held this host's test slot and the brief forbade installs.
+
+Each claim carries an evidence word. `measured` means an evidence leg read it directly from a source, a source file, an API or a command on this host. `documented` means a vendor or project page states it. `inferred` means reasoning from those, with the reasoning given. The research template's tier tags sit beside them. Footnotes [^1], [^2] and [^3] are the three evidence docs in this repository; each carries its own footnotes to the primary sources and a provenance ledger whose quotes were checked against the fetched text.
 
 ## Executive Summary
 
-(to be written when the evidence legs return)
+1. A document viewer inside the Claude Code TUI is buildable today, in tmux and over a remote link, as long as it draws text. The engine's own `Markdown` element renders blocks of at most 10,000 characters, a tree draws at most 100,000, and Anthropic's built-in `/diff` mod shows how a pane windows a document of any length by answering `ui.scroll` itself (documented and measured [VERIFIABLE][^2]).
+2. The editor half of the ask has no native surface. `Input` is a one-line field and no element offers rich text, so editing is Claude-mediated first (point at a block, say the change, review the diff), with single-line fields and checkbox toggles in the pane, and a `Client` caret editor as a later phase that davekiss/md proves possible (documented and measured [VERIFIABLE][^1][^2]).
+3. Most of what makes Notion, Confluence, Google Docs and Word good to read survives a 100 by 40 cell pane: an outline that jumps to headings, folding, drill-in to one section, find, callouts, a breadcrumb header, margin markers for changed blocks. Canvas, slide, formula and presence patterns do not. The highest-value exemplars are developer tools (GitBook, GitHub, VS Code, lazygit) and three Claude Code mods; the SaaS apps the ask named supplied the reading patterns and ranked lower on editing (measured [VERIFIABLE][^1]).
+4. HTML and PDF render as text in tmux. `Image` fails there, colour clamps to 256 unless `CLAUDE_CODE_TMUX_TRUECOLOR` is set, and pdf.js cannot load in-process because its worker is twice the reported 1 MB module cap. The routes are `pdftotext`, `lynx -dump` or an HTML-to-Markdown converter, with `$.browser.open` handed to terminal-browser where that plugin is installed. On the Desktop Code tab the Browser pane already opens HTML and PDF, so a mod adds nothing there for viewing (documented and measured [VERIFIABLE][^2][^3]).
+5. The mod can share logic, data types and design tokens with a web app and an MCP App, but no UI components: a hooks module allows only relative imports plus `claude-code`, has no DOM, no Node, no timers and no WebAssembly, and an installed plugin is a copy of its own directory. The web app and the MCP App share UI from one codebase with a single-file Vite build. A dependency-free TypeScript core that never takes `$` is the shareable layer (documented and measured [VERIFIABLE][^3]).
 
 ## 1. What the doc apps do, and what survives a character grid
 
@@ -117,15 +144,86 @@ The highest-ranked exemplars came from developer tools (GitBook, GitHub, VS Code
 
 ## 2. Rendering routes per format inside a mod
 
-(to be written when the render leg returns)
+A mod can view documents today, inside tmux and over a remote link, as long as it draws text. This section rests on the render evidence leg, which read 14 Anthropic pages, the public types file, Anthropic's built-in `/diff` mod source, all 256 comments on Anthropic's mods design issue, the source of 11 doc mods and the metadata of 35 libraries (measured [VERIFIABLE][^2]).
+
+### 2.1 The runtime and its bounds
+
+The hooks module's globals are "these and no others (no DOM, no Node)". `eval` and `new Function` throw, and "there is no `WebAssembly` (deliberately; a module that needs compiled code runs it in a process of its own through `$.process.run`)" (documented [VERIFIABLE][^2]). No `DecompressionStream` is declared, so a ZIP container (DOCX, ODT, EPUB) needs a pure-JavaScript inflate such as fflate [INFERENCE].
+
+A module file over 1 MB is not read. Anthropic's pages state no such limit. Three independent mod authors report it: a practitioner on the design issue, the figures mod ("the build splits the bundle into chunks") and claude-gfm-render ("a hooks module may not import a file over 1 MiB") (measured [VERIFIABLE][^2]). The shared-core leg searched the same pages and found no cap (measured [VERIFIABLE][^3]). So the cap is reported, not documented, and a design should respect it. Third-party code therefore runs in-process only after a developer-time bundle whose output is committed in files under 1 MB, which refines the fleet mods design's no-build-step rule for a mod's own code (documented and inferred [VERIFIABLE][^2][^6]).
+
+`$.fs.read` rejects a file over 4 MiB. `$.fs.write` "isn't atomic". `$.process.run` runs an argument vector with no shell, 30 seconds by default and 10 minutes at most, and returns stdout "as text, cut at the output limit", a limit with no published number (documented [VERIFIABLE][^2]). A converter that outputs binary therefore writes a file, and an atomic save needs a helper process [INFERENCE].
+
+### 2.2 The `Markdown` element and the tree budget
+
+`Markdown` draws "a block of markdown every surface draws as it draws an assistant reply's text: its own renderer, links, tables, fences". Its `text` is "At most 10000 characters". With `onLinkPress`, a press "is a plain single click where the surface reports clicks (the fullscreen terminal)" (documented [VERIFIABLE][^2]). One tree draws "The first 100,000 characters" per the reference, while the claude-mdview author reports that an over-budget tree "gets the whole tree refused and the engine draws its own". The safe reading is the stricter one (documented and inferred [VERIFIABLE][^2]). Every Markdown mod read budgets below the caps: 9,000 characters per element and 60,000 per page (measured [VERIFIABLE][^2]).
+
+What the element renders is partly unsettled. The changelog says task-list checkboxes and strikethrough render since mid-2026; claude-gfm-render reports task lists drawn raw on 2.1.286. Footnotes, math, Mermaid, GitHub alerts and images are drawn by no source read (measured [VERIFIABLE][^2]). One live gallery-style pane settles the conflict [INFERENCE].
+
+### 2.3 Windowing: the `/diff` pattern
+
+A mod can own the scrolling of its pane. The `ui.scroll` event fires before the window moves, and "`offset` is the hook's to rewrite; nothing moved yet". Anthropic's built-in `/diff` mod "answers the pane's `ui.scroll` itself", moves its hunks under a pinned header and keeps the engine's window still (measured [VERIFIABLE][^2]). A doc viewer can draw only the rows in view and keep its own offset, which keeps any document length inside the tree budget [INFERENCE]. The render leg's arithmetic: a 1,000-line file at 60 characters per line is 60,000 characters in six elements and fits; at 100 characters per line it fails; a windowed slice of 50 rows by 110 cells is at most 5,500 characters per redraw, independent of length [INFERENCE].
+
+### 2.4 Pictures, colour and tmux
+
+`Image` fails inside tmux and screen in every terminal. Inside tmux Claude Code also "clamps to 256 colors when `$TMUX` is set" unless `CLAUDE_CODE_TMUX_TRUECOLOR` is set; claude-lens reports that half-block thumbnails share "a palette of 1024 color pairs per frame" (documented [VERIFIABLE][^2]). `Svg` draws on Desktop only. In the fleet's tmux sessions, HTML and PDF render as text plus block pictures; real pictures need kitty or Ghostty outside tmux (documented and inferred [VERIFIABLE][^2][^4]).
+
+### 2.5 Routes by format
+
+The render leg's route matrix, condensed:
+
+| Format | In-process route (pure JavaScript) | External binary through `$.process.run` | Fallback without pictures |
+|---|---|---|---|
+| Markdown | Engine `Markdown`; micromark, markdown-it or marked for block structure | pandoc | Native |
+| GFM extras (alerts, footnotes, task lists) | Own rewrite to boxes and glyphs, as claude-gfm-render does | pandoc | Text glyphs |
+| Mermaid, math | beautiful-mermaid's ASCII renderer (84 KB); MathJax to SVG (figures) | mermaid-ascii, resvg | Box art; TeX source |
+| HTML | node-html-markdown, or parse5 or htmlparser2 plus own conversion; Readability needs a DOM | `lynx -dump`, w3m, Chawan; terminal-browser's `$.browser.open` for a live page | Markdown text |
+| PDF | None: pdf.js's worker is 2,139,222 bytes, twice the reported module cap | `pdftotext -layout`, `pdftoppm -png`, `mutool draw`; pdf.js in a `node` helper (ide-mod) | Text grid |
+| DOCX, ODT, RTF | mammoth (DOCX only, 1.67 MB unpacked) | pandoc; markitdown | Markdown text |
+| EPUB | fflate unzip, then the HTML route per chapter | pandoc; `mutool draw` | Markdown text |
+| Jupyter | JSON cells to Markdown and `Code` blocks | pandoc | Text outputs |
+| CSV, TSV | PapaParse | pandoc | Aligned `Text` grid |
+| AsciiDoc, rST, Org, LaTeX | asciidoctor.js too large for one file; uniorg is GPL-3.0 | pandoc | Markdown text |
+| SVG, images | Source only; no decoder in-process | `rsvg-convert`, resvg, ImageMagick, `sips` | Half, quadrant or sextant blocks |
+
+(measured [VERIFIABLE][^2]). On this host only `pdftotext`, `pdftoppm`, `node` and `python3` were found on `PATH` among the binaries named (measured [VERIFIABLE][^2]). pandoc is GPL-2.0 and MuPDF is AGPL-3.0; calling them as binaries and vendoring code into an MIT repository are different cases (measured and inferred [VERIFIABLE][^2]).
+
+On the Desktop Code tab the rendering half of the ask is already met with no mod: its Browser pane opens static HTML, PDFs, images and video (documented [VERIFIABLE][^2][^3]).
 
 ## 3. Existing mods for documents and browsers
 
-(to be written when the render leg returns)
+The ai-harness browser survey listed eight doc mods on 2026-10-14 (documented [VERIFIABLE][^4]). The render leg read their source and found seven more (measured [VERIFIABLE][^2]). The ones that matter for the design:
+
+| Mod | What to take from it | Licence, stars, last push (2026-10-15) |
+|---|---|---|
+| claude-mdview (xuanji86) | Engine `Markdown` at 9,000 per element and 60,000 per page; links followed in place with Back; contents, find, parts; hover-to-edit through `$.prompt.submit`; path links under `Read`, `Write` and `Edit` rows; live reload | MIT, 6, 2026-10-03 |
+| claude-code-file-preview (abonckus) | Own block renderer over `Box`, `Text`, `Code`, `Markdown`; tables fitted or as cards; GitHub callouts as boxes; Mermaid as box text; fuzzy search; breadcrumb and stats header | MIT, 0, 2026-10-05 |
+| davekiss/md | A working `Client` editor: caret, selection, drag, typed keys, a 200-step undo stack, file writes, re-read on `mtimeMs` change, nine tools Claude calls, anchored comments | MIT, 0, 2026-10-13 |
+| ide-mod (jkf87) | PDF through pdf.js in a `node` helper laying glyph positions into a character grid; `pdftoppm` pictures; its own `ui.scroll` hook | MIT, 7, 2026-10-13 |
+| claude-gfm-render (briangtn) | Alerts, task lists, strikethrough and Mermaid as Unicode art in-process; vendored 84 KB renderer | MIT, 19, 2026-10-05 |
+| figures (natsukium) | MathJax in-process through its lite adaptor; a chunked vendor bundle under 1 MB per file | Apache-2.0, 7, 2026-10-14 |
+| claude-lens (minhdevtree) | Images, SVG and PDF first pages under tool rows; sextant, quadrant or half-block fallbacks | MIT, 0, 2026-10-12 |
+| html-preview (JAICHANGPARK) | Calls `$.browser.open` when terminal-browser is installed, else a headless-Chrome screenshot | MIT, 0, 2026-10-02 |
+| claude-code-converter (zrdqns) | Converts PDF and Office files to Markdown before Claude reads them, through `tool.call` | MIT, 0, 2026-10-08 |
+| terminal-browser (zenbu-labs) | The only live browser in a pane; kitty or Ghostty outside tmux only | MIT, 3,871, 2026-10-07 |
+
+(measured [VERIFIABLE][^2]). Every doc mod is exploratory under Route A of the fleet's source-vetting procedure: 0 to 19 stars, all created in October 2026. terminal-browser's host project is established (measured and inferred [VERIFIABLE][^2][^4]). No mod was found that views EPUB, DOCX, ODT, RTF, AsciiDoc, reStructuredText, Org or Jupyter notebooks in a pane, across a 3,836-entry catalogue, the 211-entry directory and the GitHub topic (measured [VERIFIABLE][^2]).
+
+Two integration facts shape the design. A mod can redraw the `ToolUse` and `ToolResult` rows for a `Read` of a `.md` or `.pdf`, which changes what the person sees; changing what Claude reads is a `tool.call` job (documented [VERIFIABLE][^2]). And a mod that redraws a reply row without passing it on blocks every mod after it, so a doc viewer that redrew whole replies would collide with claude-markdown-mod or claude-gfm-render (measured and inferred [VERIFIABLE][^2]).
 
 ## 4. Editing inside a mod
 
-(to be written when the render leg returns)
+`Input` is "every surface's one-line text field". A multi-line field is an open request on Anthropic's design issue, and the changelog through 2.1.300 adds none (documented [VERIFIABLE][^1][^2]). Three editing routes exist today.
+
+The first is point-and-ask. claude-mdview sends `Edit lines <start>-<end> of <path>` with the section, the block's first words and the instruction through `$.prompt.submit({ asUser: true })`, then tracks the turn under the block and redraws when the file changes (measured [VERIFIABLE][^2]). GitBook, Confluence and Word's Copilot route block edits through an agent the same way, and Word's result offers keep, discard or refine (documented [VERIFIABLE][^1]). This route works with keyboard focus alone and costs a turn.
+
+The second is a `Client` editor. The surface function runs "on the drawing thread, a second per call at most", receives keys through `onKey` only after a click has given it focus, and posts at most 100,000 characters per frame (documented [VERIFIABLE][^2]). davekiss/md ships one: "Click to place the caret and drag to select", undo on `ctrl+u` because "ctrl+z suspends Claude Code", the document as an array of lines, writes with `$.fs.write` and a re-read when `mtimeMs` changes (measured [VERIFIABLE][^2]). Because keys reach the `Client` only after a click, a keyboard-only session cannot type into it [INFERENCE].
+
+The third is single-line in-place edits through `Input` for headings, list items and table cells, plus checkbox toggles, which are one-character file edits the mod makes itself (documented and inferred [VERIFIABLE][^1]).
+
+Write-back has two hazards. `$.fs.write` can leave a half-written file, so a save needs a write-then-rename helper. An outside editor can change the file between a read and a write, so the mod compares `mtimeMs` first and asks with `$.ui.ask` on a conflict (documented and inferred [VERIFIABLE][^2]). Undo is an in-memory stack; the file-level history is git and Claude Code's own `/rewind` [INFERENCE].
+
+No editor core is needed for Markdown source editing. davekiss/md shows a line array and a 200-step stack suffice. CodeMirror 6 state (16.7 kB gzipped, "strictly functional") is the candidate if structured editing is wanted later, and Yjs the candidate if Claude's file edits must merge with unsaved local edits. Lexical (a bare `setTimeout`, a `happy-dom` dependency), BlockNote (`jsdom`), Automerge and Loro (WebAssembly) cannot run in the mod (measured [VERIFIABLE][^2][^3]).
 
 ## 5. What the mod can share with a web app and an MCP App
 
@@ -161,21 +259,68 @@ The Desktop Code tab's Browser pane already opens "static HTML files, PDFs, imag
 
 The sibling beads-ui README plans "one core package for data access, state, layout and theme, and one package per surface" and already states that surfaces "share logic and design tokens rather than UI components". Both repos were scaffolded from the same private Copier template at the same version (measured [VERIFIABLE][^3]). GitHub scores doc-editor's community profile at 57%: no code of conduct, contributing guide, issue template or `SECURITY.md`. The `.gitignore` does not cover `.claude-plugin/types/` or the `tsconfig.json` Claude Code writes on load. Three Python scripts from the template sit in a TypeScript repo (measured [VERIFIABLE][^3]).
 
+## Gaps, blindspots and emergent findings
+
+- Nothing was run. Every drawing claim comes from vendor pages, the types file, mod source and issue reports. Three conflicts need one live pane to settle: whether `Markdown` draws task lists and strikethrough, whether an over-budget tree is truncated or refused, and whether a terminal `Link` with a non-`https` `href` refuses its tree (measured [VERIFIABLE][^2]).
+- Two keyboard questions decide the key map and the editor: whether a focused `Client` receives Tab, capital letters and `/`, and whether `$.ui.selection()` returns a selection made inside a pane [NO SOURCE].
+- The 1 MB module cap is reported by three mod authors and documented nowhere; the `$.process.run` output limit is named with no number [NO SOURCE].
+- Two Anthropic sources disagree on passing `$` to an imported function (the create page refuses it; the 2.1.299 changelog says the refusal was fixed). A core that never takes `$` is valid under both (measured [VERIFIABLE][^2][^3]).
+- No library was load-tested in the mod environment. "Expected to load" rests on documented browser or Deno support and the absence of Node imports (measured [VERIFIABLE][^3]).
+- No web or social search ran: native WebSearch does not work on this host and the `bms-web-search` tool was absent from every leg's tool set. A doc mod or practitioner report found only on Twitter, Reddit or Hacker News is missing (measured [VERIFIABLE][^1][^2][^3]).
+- Coda, ClickUp and Miro help centres answered 403, so their rows rest on product pages; their signature patterns are mostly non-transferable, so the impact is low (measured [VERIFIABLE][^1]).
+- Emergent: ProseMirror and CodeMirror moved off GitHub in April 2026, so their star counts are frozen; npm downloads stand in for activity (measured [VERIFIABLE][^3]). MCP Apps already render on Claude's iOS and Android apps through a WebView, which bears on the sibling repo's later mobile decision (documented [VERIFIABLE][^3]). The sibling beads-ui repo's shared-core research existed only in a local worktree at read time, so the two designs should compare package layouts before either fixes names [INFERENCE].
+- Anchor bias, named by the legs: the doc-app ranking would differ on the named SaaS apps alone, and the shared-core question moved most sharing below the UI (measured [VERIFIABLE][^1][^3]).
+
 ## Comparison
 
-(to be written when the evidence legs return)
+Which route gives a doc viewer and editor, for each surface the owner's sessions use.
+
+| # | Criterion | Mod pane, text only (tmux, remote) | Mod pane with pictures (kitty or Ghostty, local) | Desktop Code tab | MCP App (Claude web and Desktop chat) | Web app |
+|---|---|---|---|---|---|---|
+| 1 | Renders Markdown with structure | Yes, through `Markdown` blocks and a windowed pane | Yes | Yes, plus `Svg` and `Text` sizes | Yes, any web renderer | Yes |
+| 2 | Renders HTML and PDF as pages | No; text through `pdftotext`, `lynx` or a converter | Pictures through `pdftoppm` and `Image`; live pages through terminal-browser | Native Browser pane, no mod needed | Yes, in the iframe | Yes |
+| 3 | Edits in place | Single-line `Input`, checkbox toggles | Plus a `Client` caret editor in fullscreen | Plus the native file pane's spot edits | A rich editor from the web codebase | Yes |
+| 4 | Edits through Claude | `$.prompt.submit` point-and-ask; registered tools | Same | Same | `tools/call` to the same MCP server; `updateModelContext` | Through the MCP server's API |
+| 5 | Mouse | Fullscreen only; tmux needs mouse mode | Fullscreen | Yes | Yes | Yes |
+| 6 | Works on this host's sessions | Yes | No (tmux, remote) | No (no Desktop here) | No (Claude Code is not an MCP Apps host) | Hosted or local server |
+| 7 | Shares code with the others | Core logic and types only | Same | Same | UI with the web app; core with all | UI with the MCP App; core with all |
+| 8 | Prior art | claude-mdview, claude-code-file-preview, `/diff` | Plus claude-lens, ide-mod, terminal-browser | Built in | `server-pdf`, excalidraw-mcp, `convert-web-app` | Any |
+| 9 | Build cost for the MVP | A mod plus a vendored splitter | Adds picture routes | None | A Vite single-file build plus an MCP server | A web app |
+
+The cells come from sections 1 to 5. Route A of the source-vetting procedure passes for terminal-browser's host project, for `@modelcontextprotocol/ext-apps` (v2.0.3, about 5.2 million weekly downloads) and for the parser libraries; every doc mod is exploratory (measured [VERIFIABLE][^2][^3]).
 
 ## Recommendation
 
-(to be written when the evidence legs return)
+1. Scope the MVP as a Markdown reader in a pane with Claude-mediated editing, and say so in the design doc. Render one keyed `Markdown` element per block of at most 9,000 characters, window the rows in view by answering `ui.scroll` as the `/diff` mod does, and open the pane from a `/doc` command or a tool-row link so it places at any width (sections 1.1, 2.2, 2.3; [VERIFIABLE][^1][^2]).
+2. Make the outline, fold-all and unfold-all, drill-in to one section, find, in-place link following with Back, and a header row with path, heading path, mode and read time the MVP's navigation (section 1.5; [VERIFIABLE][^1]).
+3. Edit in two phases. Phase one is point-and-ask through `$.prompt.submit({ asUser: true })` with file, line range and instruction, keep-discard-refine buttons after the edit lands, margin markers per changed block grouped by Claude turn, and the full diff in `Code` with `format: 'diff'` one key away. Phase two is a `Client` caret editor modelled on davekiss/md, offered in fullscreen only. Use no editor core in the MVP (sections 1.3, 4; [VERIFIABLE][^1][^2]).
+4. Save through a write-then-rename helper process, compare `mtimeMs` before every write, and ask with `$.ui.ask` when the file changed on disk (section 4; [VERIFIABLE][^2]).
+5. Render HTML as Markdown text in-process (a hand-rolled subset or node-html-markdown), full pages through `lynx -dump` or w3m when present, and live pages through `$.browser.open` when terminal-browser is installed. Render PDF as text with `pdftotext -layout` one page range at a time, with `pdftoppm` pictures only where `Image` draws. Treat pandoc as an optional, feature-detected converter for Office and markup formats and keep GPL and AGPL code out of the repository (sections 2.4, 2.5; [VERIFIABLE][^2]).
+6. Define the shared core as dependency-free TypeScript with erasable syntax, no DOM, no Node, no timers, no WebAssembly and no `$` parameter: the document model (Markdown source with block positions), the block cutter and windowing, outline, find and link index, edit operations as source-range replacements, and design tokens. Put its source inside the plugin directory for the MVP, vendor any parser as committed chunks under 1 MB, and let the web and MCP App packages import it by path (sections 2.1, 5; [VERIFIABLE][^2][^3]).
+7. Lay the repository out as a root `.claude-plugin/marketplace.json` over `plugins/doc-editor`, a `packages/` folder for core, web and mcp-app, npm workspaces, and a gate of `claude plugin validate .` plus per-plugin `validate` and `test`. Align package names with beads-ui. Add `CONTRIBUTING.md`, `SECURITY.md`, a code of conduct, and ignore `.claude-plugin/types/` and the generated `tsconfig.json` (section 5.5; [VERIFIABLE][^3]).
+8. Ship the MCP App as the web app's second entry point, built with `vite-plugin-singlefile`, opened full screen, following `@modelcontextprotocol/server-pdf`, after the mod MVP (section 5.4; [VERIFIABLE][^3]).
+9. Run one spike on this host before freezing the design, under `claude plugin test` or a live pane: the three `Markdown` and `Link` conflicts, whether a focused `Client` receives Tab, capitals and `/`, whether `$.ui.selection()` sees a pane selection, and whether micromark, `@codemirror/state` and yjs load in the mod environment (Gaps; [VERIFIABLE][^2][^3]).
+10. Do not build HTML, PDF or video viewing for the Desktop Code tab; its Browser pane does it. Add value there with Markdown structure and Claude integration only (sections 2.5, 5.4; [VERIFIABLE][^2][^3]).
+
+Every recommendation above is inferred from the evidence in sections 1 to 5 and was not tested in a session.
 
 ## Open Questions
 
-(to be written when the evidence legs return)
+1. Does a focused `Client` receive Tab, capital letters and `/`? The answer decides whether the pane can use the `less` key map Claude Code's transcript mode uses, or must substitute lowercase letters as claude-mdview does.
+2. Does `$.ui.selection()` return a selection made inside a mod's pane? Selecting text to ask Claude about it depends on it.
+3. Does the `Markdown` element draw task lists and strikethrough on 2.1.296, and is an over-budget tree truncated or refused? One gallery-style pane settles both.
+4. Do micromark with `mdast-util-from-markdown`, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment when copied into a plugin with DOM-free export conditions? A `claude plugin test` run settles it once the test slot is free.
+5. Where should inline comments on a Markdown file live: a sidecar file, HTML comments in the source, or Beads issues? Every collaborative app stores them outside the text, and plain Markdown has no comment store.
+6. Should the private Copier template behind this public repo's `copier update` instruction be made public, or should the README say the template is private? This is an outward-facing choice for the owner (section 5.5).
 
 ## Sources
 
-(footnote definitions populated as sources are cited)
+[^1]: doc-editor. (2026). [Doc app UI and UX survey for the TUI doc viewer and editor](evidence/ded-doc-editor/doc-app-ux-survey.md). `docs/research/evidence/ded-doc-editor/doc-app-ux-survey.md`, landed on main by PR #3 (merge e9db961) on 2026-10-15. Written by an Opus 5.5 researcher leaf; 1,023 lines, 95 footnotes to vendor and project pages read 2026-10-15, 180 provenance-ledger rows. (The mod-surface filter, per-app pattern inventory, the 53-row transfer table, the ranked MVP list.)
+[^2]: doc-editor. (2026). [Rendering and editing Markdown, HTML, PDF and other doc formats inside a Claude Code mod](evidence/ded-doc-editor/render-and-edit-in-a-mod.md). `docs/research/evidence/ded-doc-editor/render-and-edit-in-a-mod.md`, landed on main by PR #4 (merge ee48242) on 2026-10-15. Written by an Opus 5.5 researcher leaf; 1,199 lines, 68 footnotes to Anthropic pages, the types file, the `/diff` mod source, 256 design-issue comments and 16 mod repositories read 2026-10-15, 193 provenance-ledger rows. (Runtime bounds, element contracts, the `/diff` windowing pattern, the mod table, the format-by-route matrix, editing options.)
+[^3]: doc-editor. (2026). [What a Claude Code mod doc viewer can share with a web app and an MCP App](evidence/ded-doc-editor/shared-core-across-surfaces.md). `docs/research/evidence/ded-doc-editor/shared-core-across-surfaces.md`, landed on main by PR #2 (merge c6743ea) on 2026-10-15. Written by an Opus 5.5 researcher leaf; 765 lines, 61 footnotes to Anthropic pages, the MCP Apps specification and SDK, 10 repositories and 24 npm packages read 2026-10-15, 92 provenance-ledger rows. (Loader constraints, document models and cores, the share matrix, layout patterns, repository hygiene.)
+[^4]: ai-harness. (2026). [A working web browser inside the Claude Code TUI through mods: what exists and what it takes](https://github.com/sergeiwallace/ai-harness/blob/main/docs/research/claude-code-mods-web-browser-in-the-tui.md). `docs/research/claude-code-mods-web-browser-in-the-tui.md` in the private ai-harness repository; read in full on this host 2026-10-14. (terminal-browser, the picture mods, `Raster` and `Image` limits in tmux, the first doc-mod list.)
+[^5]: ai-harness. (2026). [Claude Code mods: capabilities, ecosystem and fit for the fleet](https://github.com/sergeiwallace/ai-harness/blob/main/docs/research/claude-code-mods.md). `docs/research/claude-code-mods.md` in the private ai-harness repository; read in full on this host 2026-10-14. (Mods anatomy and trust model, drawing surfaces, `$.mcp.call`, the ecosystem survey.)
+[^6]: ai-harness. (2026). [Claude Code mods for ai-harness and every project](https://github.com/sergeiwallace/ai-harness/blob/main/docs/designs/aih-xhc5u-claude-code-mods.md). `docs/designs/aih-xhc5u-claude-code-mods.md` in the private ai-harness repository; read in full on this host 2026-10-14. (D-3 TypeScript with no build step, D-4 guards stay hooks, D-10 file contracts.)
 
 <!-- /doc:region name="body" -->
 
@@ -280,7 +425,20 @@ ai-harness docs/research/prompts/TEMPLATE.md on 2026-10-14.
 
 ## Appendix: Provenance Ledger
 
-(none yet; populated from the evidence docs' ledgers when the synthesis is written)
+This doc cites three evidence docs in this repository and three seed docs in ai-harness. Every claim tagged `[VERIFIABLE]` above names the evidence doc it rests on, and that doc's own provenance ledger carries the claim, the fetched URL, the verbatim quote and a verdict: 180 rows in [^1], 193 rows in [^2] and 92 rows in [^3], 465 in all, each quote checked against the fetched text by the leg that wrote it before commit. The coordinator spot-checked the rows behind the main claims of sections 1 to 5 (the hotkey and `Input` rules, the 10,000 and 100,000 character caps, the `/diff` `ui.scroll` pattern, the loader import rules, the no-WebAssembly rule, the `Markdown` task-list conflict, the davekiss/md editor) against the evidence docs' quoted text on 2026-10-15. Where the legs disagreed (the 1 MB module cap), both readings are recorded in section 2.1.
+
+| Claim | Source | Verbatim quote (as recorded in the evidence doc's ledger) | Verdict | Live? |
+|---|---|---|---|---|
+| Button hotkeys are one digit or one lowercase letter | [^1], from the interface page | "give it a `hotkey` of one digit or one lowercase letter" | SUPPORTED | Yes (2026-10-15) |
+| Input submits on Enter | [^1], from the types file | "Runs on Enter with the text, in the plugin's own environment" | SUPPORTED | Yes (2026-10-15) |
+| A `Markdown` element holds at most 10,000 characters | [^1][^2], from the types file | "At most 10000 characters, tab and newline its only control characters" | SUPPORTED | Yes (2026-10-15) |
+| One tree draws its first 100,000 characters | [^1][^2], from the reference | "The first 100,000 characters are drawn" | SUPPORTED | Yes (2026-10-15) |
+| The `/diff` mod answers `ui.scroll` itself | [^2], from the `/diff` README | "(the plugin answers the pane's `ui.scroll` itself)" | SUPPORTED | Yes (2026-10-15) |
+| No WebAssembly in a hooks module | [^2][^3], from the types file | "there is no `WebAssembly` (deliberately; a module that needs compiled code runs it in a process of its own through `$.process.run`)" | SUPPORTED | Yes (2026-10-15) |
+| Imports are relative files plus `claude-code` | [^2][^3], from the create page | "Import only from files inside the plugin directory, by relative path. The one bare import allowed is `claude-code`, for types and a few helpers." | SUPPORTED | Yes (2026-10-15) |
+| Files outside the plugin are not copied on install | [^3], from the loading page | "Files outside the plugin directory aren't copied" | SUPPORTED | Yes (2026-10-15) |
+| davekiss/md edits in a `Client` with caret and selection | [^2], from its README | "In the text, type to edit. Click to place the caret and drag to select." | SUPPORTED | Yes (2026-10-15) |
+| A module file over 1 MB is not read | [^2], from a design-issue comment | "A module file over 1 MB is not read." | PLAUSIBLE (reported by three mod authors; absent from every Anthropic page [^3]) | Yes (2026-10-15) |
 
 <!-- /doc:region name="appendix_provenance" -->
 
@@ -289,5 +447,6 @@ ai-harness docs/research/prompts/TEMPLATE.md on 2026-10-14.
 ## Run History
 
 - 2026-10-15 (Fable coordinator, launched by aih-3 on sem-kg-ec2, worktree `ded-auto-flow`): scaffolded from the canonical research STUB; Founding Ask Coverage, Context and the research prompt appendix written; three Opus research leaves launched at 00:02Z into isolated worktrees. The body awaits their evidence docs.
+- 2026-10-15, later the same night (Fable coordinator): all three legs collected by artifact and merged (PR #2 shared core, 765 lines; PR #3 doc-app UX, 1,023 lines; PR #4 rendering and editing, 1,199 lines). Sections 1 to 5, Gaps, Comparison, Recommendation and Open Questions written from them; the critic pass and the writing pre-ship pass were run before landing. Status set to `complete`.
 
 <!-- /doc:region name="run_history" -->
