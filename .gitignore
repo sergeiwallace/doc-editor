@@ -8,3 +8,14 @@
 
 # Per-machine Dolt server state (runtime)
 .beads/.dolt-server-state.json
+
+# Node and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment (never commit secrets)
+.env
+.env.local
+.direnv/
