@@ -660,6 +660,115 @@ in a mod, with no editor core at all (§6). An editor core earns its place only 
 text or for merging Claude's file edits with unsaved local edits, where a CRDT such as Yjs applies.
 [INFERENCE]
 
+## Tables
+
+### (a) Mods API contract for a viewer and editor
+
+Host is 2.1.296. "2.1.299+" marks a row this host lacks. Every cell comes from §1 to §10 and carries
+those sections' tags.
+
+| API surface | Contract, as the source states it | Bound | Source | What it means for doc-editor |
+|---|---|---|---|---|
+| Hooks-realm globals | "no DOM, no Node", no `eval`, no `new Function`, no `WebAssembly` | Fixed set incl. `TextDecoder`, `URL`, `crypto` | [^1][^2] | Parsers must be pure JS; no pdf.js worker, Automerge or happy-dom in-process |
+| Imports | Relative files inside the plugin; one bare import, `claude-code`; no dynamic `import()` | Module file over 1 MB not read (reported) | [^3][^5] | Vendor third-party code as committed chunks under 1 MB each |
+| Passing `$` | Not to a function imported from another file (create page); allowed for function declarations from 2.1.299 | n/a | [^3][^4] | Keep vendored code `$`-free on this host |
+| `Markdown` | "its own renderer, links, tables, fences"; `text`, `key`, `dimColor`, `onLinkPress`, `pressableLinks` | `text` at most 10,000 characters; 256 pressable links | [^1][^9] | Split documents into blocks under 10,000; links answerable by click in fullscreen |
+| `Code` | Engine highlighter; `language` or `path`; `startLine`; `format: 'diff'` | `source` at most 10,000 characters | [^1][^9] | Fenced code, raw view, diffs |
+| `Text` | Ink text styles, `hover`, seven `wrap` modes; `size`, `weight`, `mono`, `tabular`, `dir` (2.1.299+) | 10,000 per string (reported) | [^1][^4][^15] | Own renderer for headings and spans; typography props need 2.1.299+ |
+| `Box` | Flex, `position: 'absolute'`, `overflow`, `display`, `hover` reveal | Tree: 20,000 nodes, 32 deep | [^1] | Hover-to-reveal edit controls with no hook run |
+| `Link` | OSC 8 in the terminal; `https:` or `http://localhost` on Desktop | `href` at most 2,048; a bad `href` refuses the tree (types) | [^1][^9][^11] | Validate every document link before drawing it |
+| `Input` | "every surface's one-line text field"; `onInput`, `onSubmit` | No declared length | [^1][^17] | One-line edits, find bar, commands; no multi-line |
+| `Select`, `Button` | `options` with unique values; `hotkey` one digit or lowercase letter; `action` binds a keybinding action | Option `value` at most 10,000 | [^9][^11] | Mode pickers, toolbars, key hints |
+| `Client` | Surface module on the drawing thread; `onPointer`, `onKey`, `setState`, `every`, `post` | "a second per call at most"; post and props 100,000 characters | [^1] | Caret, selection and drag editor; keys only after a click |
+| `Raster`, `Image`, `Svg` | `Raster` and `Image` terminal only; `Image` fails in tmux; `Svg` Desktop only | `Raster` 512 by 256 cells; `Image` 255 by 255 cells, 2 MiB; `Svg` 131,072 characters | [^9][^12] | Pictures in tmux only as `Raster` blocks, 256 colours unless truecolor is set |
+| Pane placement | Unasked panes from 144 columns, 110 after a first user open | `bodyColumns`, `scroll.bodyRows`, `viewport` | [^9][^11] | Open on a user action so the pane always places |
+| Site scroll | `ui.scroll` before the move; hook rewrites `offset` or keeps the window | `by`, `bodyRows`, `contentRows`, `pointer` | [^1][^10] | Windowed rendering of any length (the `/diff` pattern) |
+| `$.ui.scroll` | Reveals an element by `key`; "never a row number" | n/a | [^1] | Jump to heading, search hit or edit |
+| Fullscreen and mouse | Mouse only in fullscreen; clicks reach a mod only there | tmux needs mouse mode for the wheel | [^13][^16][^18] | Keep a keyboard path for main-screen sessions |
+| `$.ui.selection()` | Text last selected in fullscreen, and its row when in one transcript row | Pane selections unspecified | [^4][^9] | "Ask about this" from a transcript selection |
+| `$.ui.ask` | Engine question dialog | 2 to 4 options; rejects when dismissed and in `-p` | [^1][^25] | "Are you sure?" before overwriting a file |
+| `$.ui.notify`, `toast`, `status` | Native notification (2.1.295); toast; pinned status line | Toast 4 s by default | [^4][^9] | Report external changes and failed writes |
+| `$.fs.read`, `$.fs.write` | Text or bytes; write "isn't atomic" | 4 MiB per file | [^1][^9] | 4 MiB document ceiling in-process; atomic save needs a helper |
+| `$.process.run` | argv, no shell; one shot; text stdout "cut at the output limit" | 30 s default, 10 min max; output limit unstated | [^1][^9] | pandoc, poppler, mutool, `node` helpers; binary output through files |
+| `$.http.fetch` | `http` or `https`; five redirects | 4 MiB bodies, 30 s | [^9] | Fetch a remote doc or a Browsh text page |
+| `$.store` | Shared key-value store; get then set not atomic | 4 MiB of JSON | [^9][^11] | Recent files, per-file view state, one key each |
+| `$.command.register` | `/command`; `immediate: true` runs during a turn | Names up to 64 characters | [^2][^9] | `/doc <path>`, `/doc find` |
+| `prompt.autocomplete` | `{ suggestions }` rows; engine does not wait | n/a | [^9] | Complete document paths after `/doc` |
+| `ToolUse`, `ToolResult`, `ToolGroup` | Redraw a tool row; stored result untouched; reads fold into a group | Output rewrite checked against the tool's schema | [^1] | Open link or preview under a `Read` of a `.md` or `.pdf` |
+| `AssistantMessage` | Redraw a reply after it completes | Streamed text cannot be restyled | [^24] | Make doc paths in replies clickable |
+| `$.prompt.submit` | Starts a turn when idle; `asUser: true` drops the mod's sender line | Resolves when the turn starts | [^2] | Point at a block and ask Claude to edit it |
+| `$.prompt.fill` | Draft by `replace`, `append` or `insert` | n/a | [^1] | Quote a selected block into the prompt |
+| `$.tool.register` | A tool Claude calls, named `mcp__<plugin>__<name>` | n/a | [^2] | Let Claude open, scroll and annotate the viewer |
+| Tree text | "The first 100,000 characters are drawn" (reference); whole tree refused (reported) | 100,000 characters per tree | [^9][^15] | Budget every redraw well under 100,000 |
+| Redraws | Throttled to 10 a second, 30 for the visible pane | Coalesced | [^9] | No per-keystroke full-document redraw |
+| Hook time | A hook's own code | 10 s; 50 ms for `prompt.edit` | [^9] | Heavy conversion in a process or a timer, not in `ui.render` |
+
+### (b) Existing mods for documents and browsers
+
+Read 2026-10-15. Stars are GitHub counts on that date.
+
+| Mod | Formats | How it parses | How it draws | How it scrolls | Links and images | Edits | Without pictures | Licence | Stars | Last push |
+|---|---|---|---|---|---|---|---|---|---|---|
+| [claude-mdview](https://github.com/xuanji86/claude-mdview) [^13] | Markdown; text as code; common HTML | Regex sections, blocks and HTML-to-Markdown in `doc.ts` | Engine `Markdown` at 9,000 per element, pages of 60,000; `Raster` or `Image` | Engine window; `$.ui.scroll` to a heading; parts `p` `n` | File links followed in place; pictures via `sips` | Point at a block, Claude edits through `$.prompt.submit` | Half blocks | MIT | 6 | 2026-10-03 |
+| [md-preview](https://github.com/hamzafer/claude-code-mods/tree/main/mods/md-preview) [^27] | Markdown | `gh api /markdown`, built-in renderer, or text | Headless Chrome PNG as `Image` parts of 250 rows; styled `Text` view | Engine window | Browser opens the page with working links | No | Text view; "does not work through tmux" | MIT | 242 (collection) | 2026-10-14 |
+| [claude-code-file-preview](https://github.com/abonckus/claude-code-file-preview) [^16] | Markdown, JSON, YAML | Own block splitter | `Box`, `Text`, `Code`, `Markdown`; tables fitted or as cards; callouts | Engine window, footer redrawn on `ui.scroll` | `file:` links in replies; no pictures | No | Text only | MIT | 0 | 2026-10-05 |
+| [claude-markdown-mod](https://github.com/deepskyblue86/claude-markdown-mod) [^24] | Claude's replies | Own inline parser | Styled `Text`; fences and tables by the engine | Transcript | Link text plus address | No | Text only | MIT | 6 | 2026-10-04 |
+| [ide-mod](https://github.com/jkf87/ide-mod) [^28] | PDF, HWP, HWPX | pdf.js in a `node` helper | Character grid from glyph positions; `pdftoppm` picture; SVG on Desktop | Own `ui.scroll` hook | n/a | No | Text grid | MIT | 7 | 2026-10-13 |
+| [claude-lens](https://github.com/minhdevtree/claude-lens) [^14] | Images, SVG, PDF first pages | `pdftoppm`, `mutool`, PDFKit, ImageMagick | Under `ToolGroup`, `ToolUse`, `ToolResult`, messages; `Image` or blocks | Transcript; gallery pane | Pictures only | No | Sextant, quadrant or half blocks | MIT | 0 | 2026-10-12 |
+| [html-preview](https://github.com/JAICHANGPARK/html-preview) [^29] | HTML | terminal-browser or headless Chrome | `Pane`; `$.browser.open` or a screenshot | Own `ui.scroll` hook re-renders | Live links only through terminal-browser | No | Terminal split | MIT | 0 | 2026-10-02 |
+| [claude-code-glance](https://github.com/Rocha101/claude-code-glance) [^30] | HTML, images | Headless Chromium, ImageMagick | Under `ToolResult`, `ToolGroup`, `CommandOutput` | Transcript | Pictures | No | Colour block art | MIT | 1 | 2026-10-02 |
+| [mermaid-inline](https://github.com/dazebug/mermaid-inline) [^8] | Mermaid in replies | beautiful-mermaid in a `node` helper | `Image` via resvg PNG | Transcript | n/a | No | Unicode box drawing | MIT | 0 | 2026-10-09 |
+| [figures](https://github.com/natsukium/claude-code-figures-plugin) [^6] | Mermaid, Graphviz, D2, SVG, math | MathJax in-process; `mmdr`, `dot`, `d2`, `resvg` binaries | `Image` (kitty, Ghostty) | Transcript; pane | n/a | No | Code block stays | Apache-2.0 | 7 | 2026-10-14 |
+| [claude-gfm-render](https://github.com/briangtn/claude-gfm-render) [^7] | Alerts, task lists, strikethrough, Mermaid | Own splitter; vendored mermaid-ascii | Boxes and Unicode art; SVG via `node` on Desktop | Transcript | n/a | No | Unicode art | MIT | 19 | 2026-10-05 |
+| [davekiss/md](https://github.com/davekiss/md) [^21] | Markdown | Own line model | `Client` editor rows; `Markdown` reader view; `Image` or `Raster` | Own `ui.scroll` hook and view top | Image lines as pictures (macOS `sips`) | Yes: caret, selection, undo, comments, Claude tools | Half blocks | MIT | 0 | 2026-10-13 |
+| [claude-code-converter](https://github.com/zrdqns/claude-code-converter) [^23] | PDF, Word, Excel, PowerPoint | markitdown (Python) | Nothing; replaces what Claude reads | n/a | n/a | No | n/a | MIT | 0 | 2026-10-08 |
+| [claude-markdown-pane](https://github.com/JorgeRomero123/claude-markdown-pane) [^26] | Markdown | Not read | Pane; tables as lists when wide | Not read | Not read | No | Not read | MIT | 0 | 2026-10-07 |
+| [claude-docs-viewer](https://github.com/prithivrajmu/claude-docs-viewer) [^32] | Markdown, HTML, text | Not read | Pane file list and reader | Not read | Not read | No | Not read | None detected | 0 | 2026-10-14 |
+| [terminal-browser](https://github.com/zenbu-labs/terminal-browser) [^31] | Web pages | Electron Chromium | `Image` from shared memory plus `Client` input | Wheel to page | Live | Page forms | Blank in tmux | MIT | 3,871 | 2026-10-07 |
+
+Every mod in this table is exploratory under Route A of the source-vetting procedure (0 to 19 stars,
+days old), except terminal-browser's host project. [INFERENCE]
+
+### (c) Rendering routes by format
+
+"In-process" means pure JavaScript that a hooks module can import under §1's rules. Sizes are npm
+unpacked sizes [^38], which include extra builds, so they overstate a bundled file.
+
+| Format | In-process route (no Node APIs) | External binary through `$.process.run` | Licence of the route | Adoption signal | Size risk against 4 MiB, 10,000 and 100,000 caps | Fallback without pictures |
+|---|---|---|---|---|---|---|
+| Markdown | Engine `Markdown`; micromark or markdown-it for block structure | pandoc `-t ansi` or `gfm` | MIT; pandoc GPL-2.0 | markdown-it 21,979 stars; micromark 2,233 | Split under 10,000 per element; window the tree | Native |
+| GFM extras (alerts, footnotes, task lists) | Own rewrite to boxes and glyphs, as claude-gfm-render does | pandoc | MIT | claude-gfm-render 19 | Same | Text glyphs |
+| Math | MathJax to SVG in-process (figures) | `resvg` to PNG | Apache-2.0 | figures 7 | SVG has no terminal output in tmux | TeX source as code |
+| Mermaid | beautiful-mermaid ASCII renderer, 84 KB | `mmdc`, `mmdr`, mermaid-ascii | MIT | beautiful-mermaid 11,194 | ELK layout 1.6 MB exceeds 1 MB | Unicode box art |
+| HTML | node-html-markdown, or parse5 or htmlparser2 plus own conversion; Readability needs a DOM | lynx `-dump`, w3m, Chawan; terminal-browser for live pages | MIT; Apache-2.0 | parse5 3,938; htmlparser2 4,792; Readability 11,501 | linkedom 909,684 bytes near the cap | Markdown text |
+| PDF | pdf.js blocked: worker 2,139,222 bytes | `pdftotext -layout` or `-bbox-layout`; `pdftoppm -png`; `mutool draw` to text, HTML or JSON; pdf.js in `node` | poppler not checked; AGPL-3.0 (MuPDF); Apache-2.0 (pdf.js) | pdf.js 54,003; poppler on this host | Text of a long PDF can pass 4 MiB of stdout; page through it | Text grid (ide-mod) |
+| DOCX | mammoth to HTML (jszip, xmldom) | pandoc; markitdown | BSD-2-Clause; GPL-2.0; MIT | mammoth 6,325; markitdown 190,255 | mammoth package 1.67 MB unpacked | Markdown text |
+| RTF, ODT | None evaluated | pandoc | GPL-2.0 | pandoc 46,588 | n/a | Markdown text |
+| EPUB | fflate unzip, then the HTML route per chapter; epub.js needs a DOM | pandoc; `mutool draw` | MIT | epub.js 6,963 (browser only) | One chapter at a time | Markdown text |
+| Jupyter `.ipynb` | JSON cells to Markdown and `Code` blocks | pandoc | BSD-3-Clause schema | nbformat (official schema) | Output cells with base64 pictures can pass 4 MiB | Text outputs |
+| CSV, TSV | PapaParse | pandoc | MIT | PapaParse 13,589 | Reply tables cut at 200 rows; window rows | Aligned `Text` grid |
+| AsciiDoc | asciidoctor.js too large for one file | pandoc; asciidoctor.js in `node` | MIT | asciidoctor.js 805 | Package 3.4 MB unpacked | Markdown text |
+| reStructuredText, Org, LaTeX | None evaluated; uniorg (Org) is GPL-3.0 | pandoc | GPL | pandoc 46,588 | n/a | Markdown text |
+| SVG | Source only | `rsvg-convert`, resvg, ImageMagick to PNG | Various | claude-lens 0 | 131,072-character `Svg` on Desktop only | Blocks or alt text |
+| Images | No decoder in-process; BMP pixels via `sips` (mdview) | ImageMagick, `sips` | Various | claude-lens, mdview | `Image` 2 MiB inline | Half, quadrant or sextant blocks |
+
+### (d) Editing options
+
+| Option | What it gives | Limits | Evidence | Fit for the MVP |
+|---|---|---|---|---|
+| `Input` element | One-line field with `onInput` and `onSubmit` | Single line; Desktop pastes lose line breaks | [^1][^17] | Find, rename, one-line instructions |
+| Point and ask Claude | Hover a block, type an instruction, `$.prompt.submit({ asUser: true })` with file and line range | Costs a turn; Claude does the write | [^2][^13] | First editing path; works with keyboard focus too |
+| `Client` editor | Caret, selection, drag, typed keys, undo, file writes | Fullscreen and a click for focus; props and posts under 100,000 characters | [^1][^21] | Second phase; proven by davekiss/md |
+| Claude tools in the pane | `suggest`, `edit`, `comment` tools Claude calls, shown inline for accept or reject | Needs careful write guarding | [^2][^21] | Pairs with either path above |
+| Write-back | `$.fs.write` replaces the file in place | Not atomic; 4 MiB | [^9] | Use a write-then-rename helper, check `mtimeMs` first |
+| Conflict with an outside editor | Re-read when `mtimeMs` changes (davekiss/md; mdview polls every 1.5 s) | Lost-update window between check and write | [^13][^21] | Detect, then ask with `$.ui.ask` |
+| Undo | In-memory stack (davekiss/md keeps 200) | Lost on reload unless kept in `$.state` | [^11][^21] | Enough for the MVP |
+| CodeMirror 6 state | Immutable state and change sets | DOM-free status implied, not stated; repo moved off GitHub | [^38][^62] | Only if structured editing is needed |
+| ProseMirror model and transform | Schema-checked rich documents; replayable steps | Model carries DOM helpers; repo moved | [^38][^63] | Overkill for Markdown source editing |
+| Lexical headless | Headless editor API | Package depends on happy-dom; 3.2 MB core | [^38][^66] | Poor fit |
+| Yjs `Y.Text` | CRDT text with Quill deltas | 2.3 MB unpacked; bundle under 1 MB per file needed | [^38][^64] | Later, for merging Claude's edits with unsaved ones |
+| Automerge | CRDT documents | Rust compiled to WebAssembly; no WebAssembly in the realm | [^1][^65] | Ruled out in-process |
+
 ## Sources
 
 [^1]: Anthropic. (2026). [claude-code: mods/types/claude-code.d.ts](https://raw.githubusercontent.com/anthropics/claude-code/main/mods/types/claude-code.d.ts). GitHub. Verified accessible (HTTP 200) 2026-10-15; 517,451 bytes; header "Written by Claude Code 2.1.277." (Hooks-realm globals, element props and bounds, `Client` contract, scroll, fs, process, prompt and row-site types.)
