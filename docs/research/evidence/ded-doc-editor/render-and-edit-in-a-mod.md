@@ -769,6 +769,144 @@ unpacked sizes [^38], which include extra builds, so they overstate a bundled fi
 | Yjs `Y.Text` | CRDT text with Quill deltas | 2.3 MB unpacked; bundle under 1 MB per file needed | [^38][^64] | Later, for merging Claude's edits with unsaved ones |
 | Automerge | CRDT documents | Rust compiled to WebAssembly; no WebAssembly in the realm | [^1][^65] | Ruled out in-process |
 
+## Gaps, blindspots and emergent findings
+
+### Unresolved conflicts that one live session settles
+
+- Task lists and strikethrough in `Markdown`. The changelog says both render (2.1.149, 2.1.186),
+  and claude-gfm-render reports raw brackets in the terminal on 2.1.286. [VERIFIABLE][^4][^7]
+- Over-budget trees. The reference says the first 100,000 characters are drawn, and a mod author
+  reports the whole tree refused. [VERIFIABLE][^9][^15]
+- `Link` in the terminal. The interface page says the URL rules do not apply there, and the types
+  file says a bad `href` refuses the tree. [VERIFIABLE][^1][^11]
+
+Each is a one-screen check with a gallery-style pane on this host. None was run, because the brief
+forbade starting Claude Code. [INFERENCE]
+
+### Version drift
+
+The types file says "Written by Claude Code 2.1.277.", the reference is "as of v2.1.290", the
+changelog reaches 2.1.300, and this host runs 2.1.296. The reference itself says "When the two
+disagree, trust the copy Claude Code writes for your version." [VERIFIABLE][^1][^4][^9] Several
+items cited here are newer than this host: `Text` typography and `dir`, and `$` passed to an
+imported function. A design built against 2.1.296 has to read the types the host writes into
+`.claude-plugin/types/` and treat 2.1.299+ props as later enhancements. [INFERENCE]
+
+### Limits nobody documents
+
+- The 1 MB module file limit is reported by three independent mod authors and absent from the
+  reference, the troubleshoot page and the types file. [VERIFIABLE][^5][^6][^7]
+- The `$.process.run` output limit is named ("cut at the output limit") with no number.
+  [VERIFIABLE][^1]
+- Whether `$.ui.selection()` sees a selection made inside a mod's own pane. [NO SOURCE]
+- How long a 60,000-character tree takes to serialise and draw. [NO SOURCE]
+
+### Coverage blindspots
+
+- No general web or social search ran. `bms-web-search` was absent from this run's tools and native
+  WebSearch does not work on this host. A doc mod announced only on X, Reddit or Hacker News, with
+  no GitHub topic or catalogue entry, is missing here. [NO SOURCE]
+- The catalogue grep matched descriptions cut at about 110 characters, so a doc mod with an
+  unrelated name and a long description can be missed. [INFERENCE]
+- Not researched: pdfium, Typst, Browsh's text mode beyond the browser survey, and any in-process
+  reader for RTF, ODT, reStructuredText or LaTeX. [NO SOURCE]
+- Drawing on Bedrock is still unmeasured (the mods survey, Gaps), and so is every drawing claim
+  here. [INFERENCE]
+
+### Contrarian evidence
+
+- On the Desktop app the rendering half of the ask is already met with no mod: the Code tab's
+  Browser pane opens HTML and PDF files. [VERIFIABLE][^54] A doc-editor mod adds editing, Claude
+  integration and the terminal there, not rendering.
+- In the fleet's tmux sessions, "render HTML and PDF" reduces to text plus block pictures. `Image`
+  fails in tmux, and colour is clamped to 256 unless `CLAUDE_CODE_TMUX_TRUECOLOR` is set.
+  [VERIFIABLE][^12][^20] Real pictures need kitty or Ghostty outside tmux, which in practice means
+  Sergei's local Mac (the browser survey, Recommendation 1). [INFERENCE]
+- The prior art is young. The most-starred doc mod read has 19 stars, and every one was created
+  in October 2026. [VERIFIABLE][^7][^33]
+
+### Emergent findings not in the seed docs
+
+- Anthropic's own `/diff` mod is the reference for windowed rendering: it answers `ui.scroll`
+  itself and keeps the engine's window still. [VERIFIABLE][^10]
+- davekiss/md is a working in-pane Markdown editor on `Client`, with caret, selection, undo,
+  anchored comments and Claude tools. The browser survey did not list it. [VERIFIABLE][^21]
+- Vendoring third-party JavaScript needs a dev-time bundle split under 1 MB per file, which refines
+  the fleet design's D-3. [VERIFIABLE][^6][^7]
+- claude-code-converter changes what Claude reads, not what the person sees. A doc-editor that
+  converts a PDF or DOCX for display can hand the same Markdown to Claude through `tool.call`.
+  [VERIFIABLE][^23]
+- ProseMirror and CodeMirror moved off GitHub, so their GitHub star counts are frozen and
+  understate adoption. [VERIFIABLE][^62][^63]
+- Mods that redraw the same rows collide. A mod that redraws a row without passing it on blocks
+  every mod after it, and claude-lens works around it with a fallback band. [VERIFIABLE][^14] A
+  doc-editor that redraws replies would collide with claude-markdown-mod or claude-gfm-render if the
+  user runs either. [INFERENCE]
+
+### Security and privacy notes
+
+- Converting untrusted documents runs external binaries on untrusted input, outside any sandbox:
+  a mod's processes run as the user (the mods survey §1.3). Readability's README asks for a
+  sanitiser "with untrusted input". [VERIFIABLE][^42]
+- A renderer that calls a web service sends the document. md-preview's GitHub renderer sends "the
+  file's text ... to GitHub's API". [VERIFIABLE][^27]
+- Licences. pandoc is GPL-2.0, MuPDF AGPL-3.0 and uniorg GPL-3.0. [VERIFIABLE][^39] Calling a
+  separate binary and vendoring code into an MIT repository are different cases, and a licence
+  review is needed before bundling any of them. [INFERENCE] GitHub detects no licence for
+  node-html-markdown (npm says MIT) and reports "Other" for marked and epub.js. [VERIFIABLE][^38][^39]
+
+### Founding ask alignment
+
+| Part of the ask (entry A001) | Status in this evidence | Where |
+|---|---|---|
+| "rendering markdown and other docs and doc-like file types" | Covered for Markdown, HTML, PDF, DOCX, RTF, ODT, EPUB, notebooks, CSV, AsciiDoc, rST, Org, LaTeX, SVG, images | §2, §12, table (c) |
+| "making them interactive" | Covered: links, scroll, find, hover, point-to-edit, `Client` editing | §3 to §9, table (d) |
+| "render markdown / html / pdf etc in the claude mod doc viewer" | Narrowed: in tmux, HTML and PDF draw as text and block pictures, not as pages | §2.4, Contrarian evidence |
+| "plugins for showing an entire functional web browser in claude mods tui" | Covered by the browser survey; reuse path through `$.browser.open` noted | §11, §12.2 |
+| "existing open source popular claude code mod plugins and repos" | Covered for doc and browser mods; none is popular yet (19 stars at most) | §11, table (b) |
+| Doc-app UX from Confluence, Notion, Google Docs, Word (A001, A002) | Not in this leg; another leg owns it | n/a |
+| Repo, MVP phasing, design doc (A001, A004) | Not in this leg; the coordinator owns it | n/a |
+| Live verification | Deferred: nothing was run (brief) | Gaps, first subsection |
+
+## Recommendations to the coordinator
+
+1. Draw Markdown with the engine's `Markdown` element in blocks of at most 9,000 characters, and
+   draw only the rows in view by answering `ui.scroll` the way Anthropic's `/diff` mod does. This
+   removes the 100,000-character ceiling for any document length. (Findings 2.1, 2.3, 4, 10.)
+2. Split documents into blocks with a vendored, `$`-free parser (micromark or a hand-rolled
+   splitter like claude-mdview's), bundled once on a developer machine into files under 1 MB and
+   committed. Record this as a refinement of D-3 in the design doc. (Findings 1, 12.1.)
+3. Open the pane from a command or a click so it places at any width. Treat fullscreen as the
+   mouse mode and keep a full keyboard path through hotkeys, the arrow-key scroll and an `Input`
+   find bar. (Findings 3, 4, 5.)
+4. Make editing two-phase. Phase 1 is point-and-ask through `$.prompt.submit({ asUser: true })`
+   plus registered tools Claude calls to open, highlight and suggest. Phase 2 is a `Client` editor
+   modelled on davekiss/md, offered only in fullscreen. Use no editor core in the MVP; revisit Yjs
+   only if Claude's file edits must merge with unsaved local edits. (Findings 6, 9, 14; table d.)
+5. Save through a write-then-rename helper, compare `mtimeMs` before every write, and ask with
+   `$.ui.ask` when the file changed on disk. `$.fs.write` alone can leave a half-written file.
+   (Finding 7; table d.)
+6. Render HTML as Markdown text: in-process for HTML inside Markdown (claude-mdview's subset or
+   node-html-markdown), and through `lynx -dump` or w3m for full pages when present. Hand live pages
+   to `$.browser.open` when terminal-browser is installed, as html-preview does. (Finding 12.2.)
+7. Render PDF as text with `pdftotext -layout`, one page range at a time, which is installed on this
+   host. Offer `pdftoppm -png` pictures only where `Image` draws, and `Raster` blocks elsewhere with
+   a hint to set `CLAUDE_CODE_TMUX_TRUECOLOR`. Do not vendor pdf.js: its worker is twice the module
+   cap. (Findings 2.4, 12.3.)
+8. Treat pandoc as an optional, feature-detected converter for DOCX, ODT, RTF, rST, Org, LaTeX and
+   AsciiDoc. Do notebooks, CSV (PapaParse) and EPUB (fflate plus the HTML route) in-process.
+   (Finding 12.4.)
+9. Integrate with the transcript by adding an "open in doc-editor" link under `Read`, `Write` and
+   `Edit` rows through `ToolUse` and `ToolGroup`. Do not redraw whole replies by default, to avoid
+   colliding with other reply mods. (Finding 8; Emergent findings.)
+10. Pin the design to 2.1.296 features and read the types the host writes. List 2.1.299+ props
+    (`Text` typography, `dir`) as enhancements. (Gaps, Version drift.)
+11. Before freezing the design, run one spike on this host that draws the three conflict cases:
+    a task list and strikethrough in `Markdown`, a tree over 100,000 characters, and a terminal
+    `Link` with a non-`https` `href`. (Gaps, first subsection.)
+12. Keep GPL and AGPL code out of the repository. Call pandoc and mutool as separate binaries only,
+    after a licence review. (Gaps, Security and privacy notes.)
+
 ## Sources
 
 [^1]: Anthropic. (2026). [claude-code: mods/types/claude-code.d.ts](https://raw.githubusercontent.com/anthropics/claude-code/main/mods/types/claude-code.d.ts). GitHub. Verified accessible (HTTP 200) 2026-10-15; 517,451 bytes; header "Written by Claude Code 2.1.277." (Hooks-realm globals, element props and bounds, `Client` contract, scroll, fs, process, prompt and row-site types.)
