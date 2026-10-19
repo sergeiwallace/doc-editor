@@ -1,7 +1,7 @@
-_commit: v1.18.0-171-ge264fd8
+_commit: v1.18.0-174-gc91c7ac
 _src_path: https://github.com/sergeiwallace/project-template
 project_description: 'A doc viewer and editor inside the Claude Code TUI, built as
-  a Claude Code mod: rendered, interactive markdown, HTML and PDF'
+    a Claude Code mod: rendered, interactive markdown, HTML and PDF'
 project_name: doc-editor
 project_vision: ''
 tech_stack: typescript
