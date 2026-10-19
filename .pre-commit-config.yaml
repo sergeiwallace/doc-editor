@@ -2,7 +2,7 @@
 # Pre-commit framework config (SW-796 — adopted Option 1c Round 1, 2026-04-23).
 # Runs on every `git commit` (pre-commit stage) and `git push` (pre-push stage).
 #
-# Install: `pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-push`
+# Install: `pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push`
 # (Auto-run by copier `_tasks` on copy + update.)
 #
 # Update hook pins: `pre-commit autoupdate` (quarterly — see D-02 in
@@ -20,7 +20,7 @@ default_stages: [pre-commit]
 # hooks (check-json/check-yaml/end-of-file-fixer/trailing-whitespace): bd's output
 # doesn't satisfy them, and the pre-push stash/auto-fix/restore dance conflicts on
 # the churning store files (SW-841 #73). Global-exclude the whole dir. Committed
-# .beads/issues.jsonl is still version-controlled; it's just not linted.
+# .beads/issues.jsonl, in a repo that still tracks that mirror, is version-controlled but not linted.
 exclude: ^\.beads/
 
 repos:
@@ -116,8 +116,24 @@ repos:
       # same pattern as bd-new/bdx) rather than vendored per repo.
       # Bypass: SKIP=bd-precommit-validate git commit
       - id: bd-precommit-validate
-        name: bd dual-ID invariant (staged .beads/issues.jsonl)
+        name: bd dual-ID invariant (a staged .beads/issues.jsonl mirror, if tracked)
         entry: bd-precommit-validate
         language: system
+        pass_filenames: false
+        always_run: true
+      # Every blocked Beads issue carries its timestamped [blocked ...] transition
+      # comment, written by bd-block (ai-harness goal amendment riders design, the
+      # blocked-status contract). The checker lives in ai-harness and is resolved
+      # via PATH (~/.claude/bin/bd-blocked-check), like bd-precommit-validate.
+      # Issues already blocked when the hook arrived are exempt through
+      # .beads/blocked-legacy.tsv, written once by
+      # `bd-blocked-check --current-repo --capture-baseline`. `--stage` stages that
+      # file when a run shrinks it. Exit 2 (store unreadable) becomes 0 here, so a
+      # repo with no Beads store commits as before; a hand run still sees the 2.
+      - id: bd-blocked-comment
+        name: every blocked Beads issue carries its transition comment
+        entry: bash -c 'bd-blocked-check --current-repo --stage; rc=$?; if [ "$rc" -eq 2 ]; then exit 0; fi; exit "$rc"'
+        language: system
+        stages: [pre-commit]
         pass_filenames: false
         always_run: true

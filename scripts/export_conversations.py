@@ -185,7 +185,7 @@ def _output_subdir_and_stem(
     is_stub = user_turns < STUB_THRESHOLD
 
     try:
-        dt = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(first_ts.replace("Z", "+00:00"))  # noqa: FURB162 3.10 rejects a "Z" suffix; consumers may run python3 3.10
         date_str = dt.strftime("%Y-%m-%d")
     except (ValueError, AttributeError):
         date_str = "0000-00-00"
