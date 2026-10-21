@@ -341,7 +341,7 @@ Every recommendation above is an inference from the evidence in sections 1 to 5 
 
 ## Appendix: Research Prompt
 
-**Registry ID:** none (orchestrated `/orchestrate` plus `/auto-flow` run on sem-kg-ec2; no ai-core registry on this host)
+**Registry ID:** none (orchestrated `/orchestrate` plus `/auto-flow` run on a Linux development host; no ai-core registry on this host)
 **Model:** `us.anthropic.claude-fable-5-1` (coordinator: decomposition, briefs, synthesis and authorship of this doc); three research leaves launched through the Claude Code Agent tool as the `researcher` persona at tier opus, model `us.anthropic.claude-opus-5-5`, effort high, `isolation: worktree`
 **Date:** 2026-10-15
 
@@ -451,7 +451,7 @@ This doc cites three evidence docs in this repository and three seed docs in ai-
 
 ## Run History
 
-- 2026-10-15 (Fable coordinator, launched by aih-3 on sem-kg-ec2, worktree `ded-auto-flow`): scaffolded from the canonical research STUB; Founding Ask Coverage, Context and the research prompt appendix written; three Opus research leaves launched at 00:02Z into isolated worktrees. The body awaits their evidence docs.
+- 2026-10-15 (Fable coordinator, launched by aih-3 on a Linux development host, worktree `ded-auto-flow`): scaffolded from the canonical research STUB; Founding Ask Coverage, Context and the research prompt appendix written; three Opus research leaves launched at 00:02Z into isolated worktrees. The body awaits their evidence docs.
 - 2026-10-15, later the same night (Fable coordinator): all three legs collected by artifact and merged (PR #2 shared core, 765 lines; PR #3 doc-app UX, 1,023 lines; PR #4 rendering and editing, 1,199 lines). Sections 1 to 5, Gaps, Comparison, Recommendation and Open Questions written from them; the critic pass and the writing pre-ship pass were run before landing. Status set to `complete`.
 
 <!-- /doc:region name="run_history" -->

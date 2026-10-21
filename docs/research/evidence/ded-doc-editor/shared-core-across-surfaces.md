@@ -20,7 +20,7 @@ Heavy work such as PDF parsing belongs in a Node sidecar or the MCP server the m
 
 ## Method
 
-Read 2026-10-14 23:55Z to 2026-10-15 00:25Z on sem-kg-ec2. Native WebSearch is unavailable on this
+Read 2026-10-14 23:55Z to 2026-10-15 00:25Z on a Linux development host. Native WebSearch is unavailable on this
 host and the host's web-search MCP tool was not in this run's tool set, so every source below was fetched
 directly with `curl`, `ghp api` or the public npm, bundlejs and GitHub APIs. Context7 was not used:
 every library fact needed was available from the project's own README, docs page or published

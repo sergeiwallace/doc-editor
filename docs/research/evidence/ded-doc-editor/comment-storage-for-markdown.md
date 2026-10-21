@@ -16,7 +16,7 @@ This file is evidence for the doc-editor coordinator. It extends, and does not r
 
 ## Method
 
-Read dates: 2026-10-15 01:09Z to 01:25Z (UTC, measured with `date -u`). Host: sem-kg-ec2, Claude Code 2.1.296 per the brief (not re-measured). The doc-editor worktree was at `d733854`, equal to `origin/main` after a fetch at 01:10Z. A fetch at 01:38Z found `origin/main` at `53ea548`: a Codex review fold had turned Open Question 5 into decision D-17. Every design-doc quote below was re-checked against `53ea548`, and the two that no longer exist were replaced. Nothing was installed, built, tested or launched. No mod, session or browser ran.
+Read dates: 2026-10-15 01:09Z to 01:25Z (UTC, measured with `date -u`). Host: a Linux development host, Claude Code 2.1.296 per the brief (not re-measured). The doc-editor worktree was at `d733854`, equal to `origin/main` after a fetch at 01:10Z. A fetch at 01:38Z found `origin/main` at `53ea548`: a Codex review fold had turned Open Question 5 into decision D-17. Every design-doc quote below was re-checked against `53ea548`, and the two that no longer exist were replaced. Nothing was installed, built, tested or launched. No mod, session or browser ran.
 
 What was read this run:
 
