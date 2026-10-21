@@ -415,6 +415,6 @@ A symlink resolves when its target is inside the plugin directory and is refused
 
 ## Gaps
 
-- The `claude plugin test` pass ran in a scratch plugin root, not on `plugins/doc-editor` in this branch, because the branch has no `hooks/hooks.json` yet. It should be re-run on `plugins/doc-editor` once the scaffold lands there.
+- The `claude plugin test` pass ran in a scratch plugin root, not on `plugins/doc-editor` in this branch, because the branch has no `hooks/hooks.json` yet. It should be re-run on `plugins/doc-editor` once the scaffold lands there. Closed on 2026-10-21 by the build coordinator: after both Phase 0 branches merged (integration tip `cc67590`), `npm test` ran `claude plugin test plugins/doc-editor` on 2.1.306 and printed the four `vendored libraries` tests as `(pass)`, then `Ran 6 tests across 2 files.`
 - Mouse input was sent as raw bytes through tmux, not by a physical mouse. The engine treated it as real input: it reported the copy to the tmux buffer and the `Client` reported the press and release.
 - Only one terminal was measured: tmux. A terminal outside tmux may draw strikethrough, OSC 8 and the selection highlight differently.
