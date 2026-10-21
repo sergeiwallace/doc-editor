@@ -312,6 +312,8 @@ export class DocPane {
   private minutes = 1;
   private statusText: string | undefined;
   private cache: { key: string; pieces: Piece[] } | undefined;
+  /** Each file's text as the review last measured it, so a file the pane is not showing can be measured later. */
+  private readonly known = new Map<string, Snapshot>();
   /** A table piece's rows as the core counted them, for one the pane draws taller (sized). */
   private readonly sourceRows = new Map<string, number>();
 
@@ -397,6 +399,13 @@ export class DocPane {
     if (host === undefined) return;
     const history = this.history;
     this.doc = toDocument(loaded.path, loaded.stamp.mtimeMs, loaded.text, host.repoRoot);
+    // The file may have changed while another was shown or the pane was closed: carry its changes.
+    const prior = this.known.get(loaded.path);
+    this.known.set(loaded.path, this.doc);
+    if (prior !== undefined && prior.source !== this.doc.source) {
+      this.review.fileChanged(loaded.path, prior, this.doc);
+      this.persist(loaded.path);
+    }
     this.view = { ...emptyView(loaded.path), history };
     this.view.focus = this.order()[0] ?? null;
     this.screen = "document";
@@ -436,9 +445,10 @@ export class DocPane {
    * newest kept; none is an empty list.
    */
   private persist(path: string): void {
-    const doc = this.doc;
+    // Checked against the file's text as last measured, which a closed pane's document may lag.
+    const source = this.known.get(path)?.source;
     const changes = this.review.of(path);
-    const live = doc === undefined || doc.path !== path ? changes : changes.filter((change) => discardChange(change, doc.source).ok);
+    const live = source === undefined ? changes : changes.filter((change) => discardChange(change, source).ok);
     void this.host?.storeChanges(path, live.slice(-MAX_KEPT_CHANGES)).catch(() => undefined);
   }
 
@@ -917,6 +927,7 @@ export class DocPane {
     const next = toDocument(doc.path, reload.stamp.mtimeMs, reload.text, host.repoRoot);
     this.stamp = reload.stamp;
     this.review.fileChanged(doc.path, doc, next);
+    this.known.set(doc.path, next);
     const map = mapBlockIds(doc.blocks, next.blocks);
     const follow = (id: string | null): string | null => {
       if (id === null) return null;
@@ -1043,13 +1054,18 @@ export class DocPane {
   }
 
   /**
-   * A main-loop turn ended. For a request of the pane's, the file is read once more so its last
-   * edit counts, the first changed block is focused and its actions are drawn under it.
+   * A main-loop turn ended. For a request of the pane's, its file is read once more so its last
+   * edit counts: through the watcher while the pane shows it, else read and measured directly, so
+   * a pane closed or showing another file during the turn still records the turn's changes, there
+   * when the file is opened again. The first changed block is focused, its actions drawn under it.
    */
   async turnEnded(turnId: string): Promise<void> {
     const host = this.host;
     const ask = this.review.asks.find((entry) => entry.turnId === turnId);
-    if (host !== undefined && ask !== undefined && this.doc?.path === ask.path) await host.watcher.check();
+    if (host !== undefined && ask !== undefined) {
+      if (this.isOpen && this.doc?.path === ask.path) await host.watcher.check();
+      else await this.measure(ask.path, ask.baseline);
+    }
     const landed = this.review.turnEnded(turnId);
     if (landed === null || host === undefined) return;
     const shown = landed.ask.request.path;
@@ -1063,6 +1079,22 @@ export class DocPane {
     }
     this.persist(landed.ask.path);
     host.invalidate();
+  }
+
+  // Reads a file the pane is not watching and records what changed in it since the review last
+  // measured it (or since `baseline`, the text a request's turn started from).
+  private async measure(path: string, baseline: Snapshot | null): Promise<void> {
+    const host = this.host;
+    if (host === undefined) return;
+    const loaded = await this.load(path);
+    if (!loaded.ok) {
+      this.say(loaded.reason);
+      return;
+    }
+    const after = toDocument(loaded.path, loaded.stamp.mtimeMs, loaded.text, host.repoRoot);
+    const before = this.known.get(path) ?? baseline ?? after;
+    this.review.fileChanged(path, before, after);
+    this.known.set(path, after);
   }
 
   // ---- editing: review (T-1.5) --------------------------------------------------------------
