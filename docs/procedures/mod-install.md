@@ -22,8 +22,9 @@ a task checkbox ticks it. The keys are listed in the plugin's
 - `node` on your `PATH` for saves, from the reader release on. The mod saves a file through
   `plugins/doc-editor/bin/save.mjs`, a write-then-rename helper with no dependencies that it runs
   with `node`. The helper renames its temporary file over yours only if your file's modification
-  time and size still match what the mod read, so an edit made elsewhere at the same moment is
-  never overwritten; the save fails instead and the status line shows why. The mod checks for
+  time and size still match what the mod read, checked immediately before the rename. An edit made
+  elsewhere before that check makes the save fail, and the status line shows why; only a write
+  that lands in the moment between the check and the rename can still be lost. The mod checks for
   `node` once per session by running `node --version`. Without it, saves still work, but through a
   direct write that is not atomic, and the status line says so once per session.
 - For the test gate: Node.js 24 or later and npm.
