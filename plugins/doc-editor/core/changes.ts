@@ -81,6 +81,21 @@ export function changedBlockIds(before: readonly Block[], after: readonly Block[
 
 
 /**
+ * Old block id to new block id for every block the alignment keeps, so focus, folds and drill-in
+ * can follow a block across a reload even when an earlier insertion renumbered it. A block whose
+ * text changed has no entry.
+ */
+export function mapBlockIds(before: readonly Block[], after: readonly Block[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [i, j] of alignBlocks(before, after)) {
+    const from = before[i];
+    const to = after[j];
+    if (from !== undefined && to !== undefined) map[from.id] = to.id;
+  }
+  return map;
+}
+
+/**
  * The source as lines that each keep their own line ending, so that joining them gives the source
  * back byte for byte and a change to a line ending (the final newline included) is a changed line.
  */

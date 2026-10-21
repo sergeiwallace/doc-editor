@@ -6,6 +6,7 @@ import {
   changedBlockIds,
   diffsByTurn,
   discardChange,
+  mapBlockIds,
   markedBlockIds,
   recordChanges,
   turnDiff,
@@ -105,6 +106,23 @@ describe("marking changed blocks", () => {
       [2, 1],
     ]);
     expect(changedBlockIds(a, b)).toEqual(["h:3"]);
+  });
+});
+
+describe("mapping ids across a reload", () => {
+  test("should map each unchanged block's old id to its new id when an earlier block is inserted", () => {
+    const before = parseBlocks(BEFORE).blocks;
+    const after = parseBlocks("# T\n\nNew.\n\nOne.\n\nTwo.\n\nThree.\n").blocks;
+
+    expect(mapBlockIds(before, after)).toEqual({ h1: "h1", "h1:1": "h1:2", "h1:2": "h1:3", "h1:3": "h1:4" });
+  });
+
+  test("should leave out a block whose text changed", () => {
+    const before = parseBlocks(BEFORE).blocks;
+    const after = parseBlocks("# T\n\nOne!\n\nTwo.\n\nThree.\n").blocks;
+
+    expect(mapBlockIds(before, after)["h1:1"]).toBeUndefined();
+    expect(mapBlockIds(before, after)["h1:2"]).toBe("h1:2");
   });
 });
 
