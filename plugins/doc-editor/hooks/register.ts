@@ -27,7 +27,7 @@ export function register(on: On) {
     session.save = createSaver({
       stat,
       write: (path, text) => $.fs.write(path, text),
-      run: (argv, stdin) => $.process.run(argv, stdin === undefined ? {} : { stdin }),
+      node: (args, stdin) => $.process.run(["node", ...args], stdin === undefined ? {} : { stdin }),
       ask: (question, options) => $.ui.ask(question, options),
       status: (text) => $.ui.status(text),
       helper: `${$.plugin.root}/bin/save.mjs`,
