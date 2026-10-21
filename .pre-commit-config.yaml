@@ -88,6 +88,48 @@ repos:
         pass_filenames: false
         always_run: true
 
+      # The mod's gates (design D-11), at commit and at push. `npm test` runs the Vitest checks
+      # (core purity lint, declared hooks and calls, marketplace, file size, hygiene) and then
+      # `claude plugin test plugins/doc-editor`. The validate and size gates also run on their
+      # own, so a failure names its gate. All need `npm ci` first and fail loudly without it.
+      # Without a usable `claude` (not on PATH, or below the floor in scripts/claude-floor.mjs)
+      # a claude-backed gate prints that it did NOT run and why, and never prints a pass.
+      - id: npm-test
+        name: npm test (Vitest repository checks, then claude plugin test plugins/doc-editor)
+        entry: npm test
+        language: system
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        always_run: true
+      - id: typecheck
+        name: npm run typecheck (the repository, then the core with no DOM or Node types)
+        entry: npm run typecheck
+        language: system
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        always_run: true
+      - id: plugin-declared
+        name: claude plugin validate --json plugins/doc-editor matches the README's declared list
+        entry: node scripts/check-plugin-declared.mjs plugins/doc-editor
+        language: system
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        always_run: true
+      - id: marketplace-validate
+        name: claude plugin validate . (the marketplace lists ./plugins/doc-editor)
+        entry: node scripts/check-marketplace.mjs . ./plugins/doc-editor
+        language: system
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        always_run: true
+      - id: plugin-size
+        name: no tracked or staged file under plugins/doc-editor over 1 MB
+        entry: node scripts/check-plugin-size.mjs plugins/doc-editor
+        language: system
+        stages: [pre-commit, pre-push]
+        pass_filenames: false
+        always_run: true
+
       # docs-index-check REMOVED (CORE-55). The generated docs/README.md index had
       # no reader -- nothing in the fleet consumed it -- yet the gate blocked every
       # docs commit until it was regenerated. It also could not be regenerated
