@@ -2,7 +2,7 @@
 title: "doc-editor: a document viewer and editor inside the Claude Code TUI as a mod"
 category: design
 tags: [design, claude-code, mods, tui, markdown, html, pdf, doc-editor, mcp-apps]
-status: draft
+status: approved
 source: "claude-fable-5-1-orchestrated-2026-10-15"
 template_version: "design-1.0.0"
 delegation_provenance:
@@ -32,7 +32,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
 | A003 | FOLLOW-UP, 2026-10-14T23:46:39Z. "the doc viewer will be doc-editor" names this repo. The shared-components question raised for beads-ui is answered for doc-editor by D-9 and D-15: logic, types and design tokens are shared across the mod, the web app and the MCP App; UI components are shared between the web app and the MCP App only. |
 | A004 | FOLLOW-UP, 2026-10-14T23:46:39Z. Repo creation, Copier configuration, README and GitHub metadata were done by the launching session (PR #1). D-10 keeps that scaffold and adds the plugin and package layout. The Copier template's visibility is D-16: keeping it private and saying so in the README was resolved and applied by the launching session (PR #7); making it public stays an outward-facing act for Sergei. |
 
-**Status:** DRAFT (awaiting Sergei's review; the run's natural end)
+**Status:** APPROVED (all 17 decisions resolved; a fully decided design is approved, Sergei, 2026-10-21). Phase 0 and Phase 1 are in build.
 
 **Created:** 2026-10-15
 
@@ -73,6 +73,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
   - [Phase 4: Enhancements](#phase-4-enhancements)
 - [Implementation Audit](#implementation-audit)
 - [Risks and Mitigations](#risks-and-mitigations)
+- [Run Ledger](#run-ledger)
 - [Design Decisions](#design-decisions)
   - [Decision Summary](#decision-summary)
   - [Decision Details](#decision-details)
@@ -370,7 +371,7 @@ The source text with line ranges is the canonical document. Edits are source-ran
 - Replacement/refactor tasks: inventory the existing behaviors, then a parity AC for each (preserved, or intentionally dropped + reason).
 <!-- doc:ac-rules:mirror:end -->
 
-Implementation starts after Sergei's review of this doc. Each phase is filed as a child Beads issue of the epic with these ACs as its body; a phase is done when its exit gate is green. Tests run with `claude plugin test` (the core and the hooks module) and, from Phase 3, Vitest for the web packages (D-11).
+The design is approved as fully decided (Sergei, 2026-10-21), so implementation proceeds phase by phase. Each phase is filed as a child Beads issue of the epic with these ACs as its body; a phase is done when its exit gate is green. Tests run with `claude plugin test` (the core and the hooks module) and, from Phase 3, Vitest for the web packages (D-11).
 
 ### Phase 0: Spike and scaffold
 
@@ -526,6 +527,22 @@ FR-13, each started once the MVP has been used: inline comments per D-17 (first 
 | 9 | pandoc and MuPDF are GPL or AGPL | Licence contamination of an MIT repository | NFR-7: call them as binaries only after a licence review; vendor nothing from them |
 | 10 | The sibling beads-ui fixes a different package layout | Two public repos with incompatible cores | D-9 and D-10 name the layout; compare with beads-ui's design before Phase 3 fixes package names |
 | 11 | A document over 4 MiB cannot be read by `$.fs.read` | Large PDFs and notebooks fail | Converters read the file themselves and return page ranges; the mod reads only converted text |
+
+## Run Ledger
+
+`ledger-version`: 1
+
+The restart contract for the build runs that implement this design. One authority row per run; transition rows record each stage verdict.
+
+| Run ID | Contract | Decision classes | Push |
+|---|---|---|---|
+| `doc-editor-build-2026-10-21-aih-ec2-3` | `auto-flow/AIH-701#d-7` | `["adn:in-scope"]` | `true` |
+
+| Transition | Round | Verdict | Basis | Items | Recorded by | Commit |
+|---|---:|---|---|---|---|---|
+| `entry->implement` | 0 | `advance` | `explicit` | Sergei, 2026-10-21: "it appears all the doc editor design doc decisions are already made. if they're already made, then why aren't you bilding them". All 17 decisions are resolved and no Open Question blocks Phase 0 or Phase 1. | `session` | `53b303b` |
+
+Resolved plan for this run: stages Phase 0 (T-0.1 to T-0.3) then Phase 1 (T-1.1 to T-1.8); implementation by Claude engineer children on Opus (the machine profile's default delegation family); cross-family review of each merged child and each phase diff by Codex (`cx review`, read-only); integration mode `parent` with integration ownership; at most 2 concurrent children. Target: doc-editor `main` at `53b303b`; integration worktree `.worktrees/aih-ec2-3-agents/ded-build` on branch `wt/aih-ec2-3/ded-build`. Stage cursor: Phase 0. Last completed integration boundary: none.
 
 <!-- /doc:region name="overview" -->
 
