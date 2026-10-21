@@ -27,8 +27,11 @@ Run these before you push. The hooks run them too, at commit and at push.
 
 ```sh
 npm test            # the repository checks under Vitest, then claude plugin test
-npm run typecheck   # tsc over the repository, then over the core with no DOM or Node types
+npm run typecheck   # tsc over the repository, the core with no DOM or Node types, then the hooks
 ```
+
+The hooks type check reads the mod types Claude Code writes into the plugin when a session loads
+it, so run `claude --plugin-dir plugins/doc-editor` once first; until then it says it did not run.
 
 `npm test` and the `claude plugin validate` hooks need Claude Code 2.1.299 or later. Without it,
 each of them prints a line saying it did not run and why, and the Vitest cases that call

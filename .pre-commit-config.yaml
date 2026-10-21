@@ -102,7 +102,7 @@ repos:
         pass_filenames: false
         always_run: true
       - id: typecheck
-        name: npm run typecheck (the repository, then the core with no DOM or Node types)
+        name: npm run typecheck (the repository, the core with no DOM or Node types, the hooks)
         entry: npm run typecheck
         language: system
         stages: [pre-commit, pre-push]
