@@ -382,21 +382,21 @@ The design is approved as fully decided (Sergei, 2026-10-21), so implementation 
   - Tests added: `plugins/doc-editor/hooks/register.test.ts` (loads, registers `/doc`), `plugins/doc-editor/core/vendor.test.ts` (each candidate library loads and parses)
 - **Tasks + acceptance criteria:**
   - **T-0.1 Spike the unknowns**, recorded verbatim in the evidence file:
-    - [ ] `When a gallery-style pane draws a task list, strikethrough, a tree of 110,000 characters and a terminal Link with a non-https href on this host's Claude Code, the evidence file shall record what each drew, quoted from the screen.`
-    - [ ] `When the same pane draws an HTML comment, a CriticMarkup comment and a %% comment inside a Markdown element, the evidence file shall record whether each is hidden, shown as text or breaks the block.`
-    - [ ] `When a focused Client receives Tab, a capital letter and a slash, the evidence file shall record which of the three reached onKey.`
-    - [ ] `When text is selected inside the pane in fullscreen, the evidence file shall record what $.ui.selection() returned.`
-    - [ ] `When claude plugin test imports a copied micromark with mdast-util-from-markdown (default export condition), @codemirror/state, prosemirror-model and yjs, the test shall record for each whether it loaded and parsed a sample.`
-    - [ ] `If a candidate library fails to load, then the evidence file shall record the refusal verbatim and D-3 shall be re-run with that result.`
+    - [x] `When a gallery-style pane draws a task list, strikethrough, a tree of 110,000 characters and a terminal Link with a non-https href on this host's Claude Code, the evidence file shall record what each drew, quoted from the screen.`
+    - [x] `When the same pane draws an HTML comment, a CriticMarkup comment and a %% comment inside a Markdown element, the evidence file shall record whether each is hidden, shown as text or breaks the block.`
+    - [x] `When a focused Client receives Tab, a capital letter and a slash, the evidence file shall record which of the three reached onKey.`
+    - [x] `When text is selected inside the pane in fullscreen, the evidence file shall record what $.ui.selection() returned.`
+    - [x] `When claude plugin test imports a copied micromark with mdast-util-from-markdown (default export condition), @codemirror/state, prosemirror-model and yjs, the test shall record for each whether it loaded and parsed a sample.`
+    - [x] `If a candidate library fails to load, then the evidence file shall record the refusal verbatim and D-3 shall be re-run with that result.`
   - **T-0.2 Marketplace, plugin and core skeleton**
-    - [ ] `When claude plugin validate . runs at the repository root, the system shall exit 0 and list the doc-editor plugin.`
-    - [ ] `When claude plugin validate plugins/doc-editor runs, the system shall exit 0 and list exactly the hooks and calls the plugin README declares.`
-    - [ ] `If a file under plugins/doc-editor/core/ imports anything but a relative path, then the core lint test shall fail naming the file and the import.`
-    - [ ] `If a file under plugins/doc-editor/core/ references document, window, process, setTimeout or $, then the core lint test shall fail naming the file and the token.`
+    - [x] `When claude plugin validate . runs at the repository root, the system shall exit 0 and list the doc-editor plugin.`
+    - [x] `When claude plugin validate plugins/doc-editor runs, the system shall exit 0 and list exactly the hooks and calls the plugin README declares.`
+    - [x] `If a file under plugins/doc-editor/core/ imports anything but a relative path, then the core lint test shall fail naming the file and the import.`
+    - [x] `If a file under plugins/doc-editor/core/ references document, window, process, setTimeout or $, then the core lint test shall fail naming the file and the token.`
   - **T-0.3 Repository hygiene**
-    - [ ] `When the repository is read, CONTRIBUTING.md, SECURITY.md and CODE_OF_CONDUCT.md shall exist and the README shall say the Copier template is private, or link it if D-16 made it public.`
-    - [ ] `When a plugin is loaded with --plugin-dir, git status shall report no untracked file under plugins/doc-editor.`
-    - [ ] `If any of CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md is missing, or the README neither states the template is private nor links a public template, then the hygiene test shall fail naming the file or sentence.`
+    - [x] `When the repository is read, CONTRIBUTING.md, SECURITY.md and CODE_OF_CONDUCT.md shall exist and the README shall say the Copier template is private, or link it if D-16 made it public.`
+    - [x] `When a plugin is loaded with --plugin-dir, git status shall report no untracked file under plugins/doc-editor.`
+    - [x] `If any of CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md is missing, or the README neither states the template is private nor links a public template, then the hygiene test shall fail naming the file or sentence.`
 - **Exit gate:** T-0.1's evidence file committed with every unknown answered or marked unanswerable with the reason; `claude plugin validate` green at the root and the plugin; `claude plugin test` green; D-3 and D-5 re-run on the spike's answers and their records updated.
 
 ### Phase 1: MVP reader with Claude-mediated editing
@@ -505,7 +505,7 @@ FR-13, each started once the MVP has been used: inline comments per D-17 (first 
 | # | Phase | Section / Decision | Verified | Notes |
 |---|-------|--------------------|---------|-------|
 | 1 | N/A | **Design Overview filled**: confirm the `## Design Overview` section above is filled in with concrete implementation knowledge, not left as a stub | - [ ] | |
-| 2 | Phase 0 | T-0.1 spike answers folded into D-3 and D-5; marketplace and core lint (D-9, D-10, D-11) | - [ ] | |
+| 2 | Phase 0 | T-0.1 spike answers folded into D-3 and D-5; marketplace and core lint (D-9, D-10, D-11) | - [x] | PASS 2026-10-21. Spike evidence `docs/research/evidence/ded-doc-editor/phase-0-spike.md` answers every unknown; D-3 and D-5 re-run, both unchanged. D-9: the core is `plugins/doc-editor/core/`, `$`-free and DOM-free, held there by the scope-aware `scripts/check-core-purity.mjs`. D-10: root `.claude-plugin/marketplace.json` over `plugins/doc-editor`, npm workspaces. D-11: `npm test` runs the Vitest repository checks then `claude plugin test`, and the validate, declared-list, size and type checks run at commit and push; without a usable `claude` they report not run. Codex review findings fixed or justified in the Run Ledger |
 | 3 | Phase 1 | D-1 scope, D-2 windowed renderer, D-4 Claude-mediated edit and review, D-12 safe write, D-13 transcript links, NFR-1 to NFR-9 | - [ ] | |
 | 4 | Phase 2 | D-6 HTML, D-7 PDF, D-14 pictures, the `Client` editor | - [ ] | |
 | 5 | Phase 3 | D-8 other formats, D-9 core home, D-15 web app and MCP App | - [ ] | |
@@ -547,6 +547,20 @@ Resolved plan for this run: stages Phase 0 (T-0.1 to T-0.3) then Phase 1 (T-1.1 
 Expression repairs this run made (Authority test Gate C, `✅ Resolved by Opus orchestrator (doc-editor build coordinator)`, model `claude-opus-5-5`):
 
 1. D-11's mitigation sentence. Before: "the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green". After: "when the binary is absent or below the floor, the script reports the plugin tests as not run and prints the runner's verbatim reason, never a false green". The ratified intent is that same sentence: no plugin-test run without the binary, the runner's reason printed, no false green. The fleet's lexical founding-ask check read the old verb as a requirement being given up; the new wording says the same thing affirmatively. Not changed: what the gate does when `claude` is missing or too old.
+
+Phase 0 children (each Claude engineer on Opus, model `us.anthropic.claude-opus-5-5[1m]`, effort medium, in its own worktree): T-0.1 the spike (branch `wt/aih-ec2-3/ded-t-0-1-spike-five-qexn`); T-0.2 and T-0.3 the scaffold, gate and hygiene (branch `wt/aih-ec2-3/ded-t-0-2-marketplace-rngv`, which also carried the review fixes below).
+
+Phase 0 cross-family review (Codex `review` role, model `gpt-5.6-sol`, effort medium, read-only), findings and dispositions:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | The spike's tree case is 110,055 characters, not 110,000 | Justified. The criterion tests a tree over the 100,000 budget. `big1` holds 110,000 characters in one element and `big` 110,000 in eleven, each plus the 55-character header every pane draws; both are over budget, which is what was measured |
+| 2 | Beads task ids and session names appear in public files | Justified by the owner's own words for this repository (A001): "its fine to have the beads store etc in the repo for that one. no need to scrub beads task ids or whatever. and no need to scrube any private repo names either." Host and employer names, which that sentence does not cover, were removed from every committed doc |
+| 3 | A gate that cannot run exits 0, and pre-commit hides its "did NOT run" line behind `Passed` | Fixed: the skipping hooks print their output, and `npm test` ends with a line naming any gate that did not run (D-11's "never a false green") |
+| 4 | The core purity lint resolved bindings per file, so a name bound in one scope hid a free use in another; it also missed `self.document`, aliases of `globalThis`, computed access and an aliased `require` | Fixed: scope-aware resolution, with a fixture for each case in both directions |
+| 5 | The spike's vendor test never ran inside the finished plugin | Fixed: it ran in the tree after both branches merged (6 tests, 2 files, all pass), recorded in the spike's Gaps |
+| 6 | The hygiene test checks a fixed list of files a load writes, not a live load | Justified: a commit hook cannot start a Claude Code session. The list is what a load was measured to write on 2.1.306, a live load at the integration tip left `git status` clean under the plugin, and the Phase 1 live check repeats that |
+| 7 | T-0.1's screen findings have no regression assertions | Justified: T-0.1's criteria are measurements of the engine, recorded in the evidence file. The behaviours they call for (task-marker glyphs, dropped comments, link validation) are Phase 1 core work with their own tests |
 
 <!-- /doc:region name="overview" -->
 
