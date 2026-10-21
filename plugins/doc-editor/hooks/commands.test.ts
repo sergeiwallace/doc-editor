@@ -123,7 +123,7 @@ describe("when /doc is taken", () => {
     expect(w.commands).toEqual([FALLBACK_COMMAND_NAME]);
     expect(w.tools).toEqual(["show"]);
     expect(w.statuses).toEqual([takenText(TAKEN)]);
-    expect(w.statuses[0]).toBe("doc-editor: /doc is taken by another command (refused: it is the user's /doc); use /doc-editor");
+    expect(w.statuses[0]).toBe("/doc is taken by another command (refused: it is the user's /doc); use /doc-editor");
 
     await $.command.run({ command: FALLBACK_COMMAND_NAME, args: "doc.md", ...RUN });
     expect(w.opened.map((open) => open.id)).toEqual([PANE_ID]);
@@ -143,7 +143,7 @@ describe("when /doc is taken", () => {
     expect(w.commands).toEqual([]);
     expect(w.tools).toEqual(["show"]);
     expect(w.statuses).toEqual([
-      "doc-editor: neither /doc nor /doc-editor could be registered (refused: taken); ask Claude to show a file instead",
+      "neither /doc nor /doc-editor could be registered (refused: taken); ask Claude to show a file instead",
     ]);
   });
 });
