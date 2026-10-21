@@ -708,6 +708,11 @@ Criterion 2 resolves it: the renderer is the foundation every other feature draw
 
 Criterion 1 resolves it: the document model is what every surface and every edit depends on, so the parser is a one-way door once positions and block ids are in use. Mitigations for (b)'s cons: the bundle step is a script in the repository with its output committed and a pre-commit check that each chunk is under 1 MB and matches the script's output; the bundle is built with the default export condition and a core lint test fails on `document`; T-0.1 load-tests the bundle before Phase 1 and the hand-rolled splitter from the shipped mods is the recorded fallback. Confidence: medium, pending T-0.1.
 
+> **Decision (re-run on the T-0.1 spike, 2026-10-21):** ✅ Resolved by Opus orchestrator (doc-editor build coordinator) — (b) stands: the vendored micromark plus mdast-util-from-markdown bundle, with the GFM extensions, as one committed chunk under 500 KB
+<!-- decision-record: chosen-option=(b); ai-family=claude; ai-model=claude-opus-5-5; ai-effort=medium; ai-profile=architect -->
+
+The spike ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), section "Vendored libraries under claude plugin test") measured the bundle loading and parsing GFM with positions under `claude plugin test` on 2.1.306, and loading in a live hooks module. No library failed, so option (a) is not triggered and stays recorded as the fallback. The bundle is 297,031 bytes in one chunk, built by `scripts/bundle-vendor.mjs` with the default export condition, and a rebuild reproduces it byte for byte. Its nine `document` matches are micromark's own local binding, property names and strings; none reaches the DOM global, and the core purity lint resolves identifiers rather than words, so it passes the bundle and still fails on a free `document`. One finding changes how the core feeds the engine rather than which parser it uses: the `Markdown` element draws task markers `[ ]` and `[x]` as literal text and shows HTML, CriticMarkup and `%%` comments as text, so the core rewrites task markers to glyphs and drops comments from the text it hands the element (D-2's named fallback). The repository's 500 KB file limit is stricter than the 1 MB chunk rule and satisfies it. Same conclusion as the original call. Confidence: high.
+
 ---
 
 <a id="d-4"></a>
@@ -789,6 +794,11 @@ Criterion 2 resolves it: the edit pipeline crosses the boundary between the pane
 <!-- decision-lineage: decision-id=DED-b3p/D-5; decision-topic=doc-editor-key-map; governs=component:doc-editor/plugins/doc-editor/hooks/hints; normalized-proposition=the-mvp-key-map-uses-lowercase-hotkeys-and-arrow-keys-and-a-less-style-client-map-follows-if-the-spike-permits; applicability=repo:doc-editor; outcome-id=key-map; relation=different-question; related-decision-id=DED-b3p/D-4; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
 Criterion 1 resolves it: a key map is a two-way door with low decay, so the simple option that works everywhere ships first. Mitigation for (a)'s con: the hint row names every key, and T-2.4 adds the `less` map once measured. Confidence: high.
+
+> **Decision (re-run on the T-0.1 spike, 2026-10-21):** ✅ Resolved by Opus orchestrator (doc-editor build coordinator) — (a) stands for the MVP; the condition this decision set for (b) in Phase 2 is met
+<!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-opus-5-5; ai-effort=medium; ai-profile=architect -->
+
+The spike ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), section "Client: Tab, a capital letter and a slash") measured that a focused `Client` receives Tab, a capital letter and `/` at `onKey` after one click in fullscreen, and Shift-Tab and the arrows as well. That meets the condition for adding the `less` map in Phase 2 (T-2.4). It does not change the MVP: a `Client` still needs fullscreen and a click before it gets keys, and every MVP feature must work with the keyboard alone on the main screen (NFR-2), so the pane's lowercase hotkeys ship first. The spike also found fullscreen rendering on by default inside tmux under `--setting-sources project`, which puts the Phase 2 map within reach of more sessions than the research expected. Same conclusion as the original call. Confidence: high.
 
 ---
 
@@ -1269,10 +1279,14 @@ Criteria 2 and 5 resolve it: the store is a contract the mod, the web app and th
 
 ## Open Questions
 
-1. Does a focused `Client` receive Tab, capital letters and `/`? Decides T-2.4 and whether D-5's `less` map is possible. Measured by T-0.1.
-2. Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
-3. What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
-4. Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
+1. **[RESOLVED]** Does a focused `Client` receive Tab, capital letters and `/`? Decides T-2.4 and whether D-5's `less` map is possible. Measured by T-0.1.
+   - **Resolution:** yes. After one click in fullscreen, Tab, `A` (with `shift`) and `/` all reached `onKey`, as did Shift-Tab and the arrows ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), "Client: Tab, a capital letter and a slash"). D-5 was re-run: the MVP map stands and T-2.4 is unblocked.
+2. **[RESOLVED]** Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
+   - **Resolution:** yes in fullscreen: a drag inside the pane returned `{"text":"SELECTME alpha bravo"}` with no `requestId`; on the main screen it returned `undefined`. No position comes with the text, so the mod maps it back to a block itself (spike, "$.ui.selection() for a selection inside the pane").
+3. **[RESOLVED]** What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
+   - **Resolution (measured on 2.1.306):** task markers draw as literal `[ ]` and `[x]`, so the core rewrites them; `~~x~~` draws struck through; a 110,000-character tree is drawn to its first 100,000 characters with a "more characters, not drawn" row, not refused; a terminal `Link` writes any non-blank `href` into an OSC 8 hyperlink, `javascript:` included, so the mod validates every link before it draws one. HTML, CriticMarkup and `%%` comments show as text, so the core drops them. The 9,000-per-element and 60,000-per-tree budget stands.
+4. **[RESOLVED]** Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
+   - **Resolution:** all four loaded and parsed a sample under `claude plugin test`, and the micromark bundle loaded in a live hooks module. D-3 was re-run: (b) stands. A symlink whose target is outside the plugin directory is refused at load, so D-9's option (c) does not work for an in-place load; Phase 3 re-runs D-9 with that result.
 5. **[RESOLVED]** Where should inline comments on a Markdown file live? Three options exist, so this is a decision, recorded as D-17.
    - **Resolution:** D-17 chose a repository sidecar in MRSF's shape with quote re-anchoring, on the comments spike's evidence (`docs/research/evidence/ded-doc-editor/comment-storage-for-markdown.md`). What stays open is whether the owner wants persistent comments at all, which only use of the MVP shows; the Phase 4 build waits on that.
 6. Will Claude Code wrap kitty graphics for tmux passthrough? If it does, `Image` opens to every tmux session and D-14 is revisited. Upstream.
