@@ -1,8 +1,8 @@
 // Runner: Vitest. It runs the mod's gate scripts with a PATH that has no usable `claude`.
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { CLAUDE_FLOOR } from "../scripts/claude-floor.mjs";
@@ -39,6 +39,45 @@ const runWith = (path: string, script: string, args: readonly string[]) =>
     encoding: "utf8",
     env: { ...process.env, PATH: path },
   });
+
+// The runner's own Vitest pass is narrowed to one quick suite, so it does not run this file again.
+// That suite needs git, so the PATH also holds node's and git's directories, neither with claude.
+const runGate = (bin: string) =>
+  runWith(`${bin}:${dirname(process.execPath)}:/usr/bin:/bin`, "scripts/run-gate.mjs", [
+    "plugins/doc-editor",
+    "test/size.spec.ts",
+  ]);
+
+describe("the npm test summary line", () => {
+  it("should end by naming the gates that did not run and why when claude is not on PATH", () => {
+    const result = runGate(binDir());
+
+    expect(result.stdout.trim().split("\n").at(-1)).toMatch(
+      /^npm test: did NOT run claude plugin test plugins\/doc-editor or the Vitest suites that call claude \(declared list, marketplace\): claude is not on PATH \(.*ENOENT.*\)$/,
+    );
+    expect(result.status).toBe(0);
+  });
+
+  it("should end by saying every gate ran when claude meets the floor", () => {
+    const result = runGate(binDir(CLAUDE_FLOOR));
+
+    expect(result.stdout.trim().split("\n").at(-1)).toBe("npm test: every gate ran");
+    expect(result.status).toBe(0);
+  });
+});
+
+describe("the pre-commit hooks that can skip", () => {
+  // pre-commit prints a passing hook's output only when the hook is verbose.
+  for (const id of ["npm-test", "typecheck", "plugin-declared", "marketplace-validate"]) {
+    it(`should show the ${id} hook's output when the hook exits 0`, () => {
+      const config = readFileSync(join(repoRoot, ".pre-commit-config.yaml"), "utf8");
+      const block = new RegExp(`- id: ${id}\\n((?:        .*\\n)+)`).exec(config)?.[1];
+
+      expect(block, `.pre-commit-config.yaml has no ${id} hook`).toBeDefined();
+      expect(block).toMatch(/^        verbose: true$/m);
+    });
+  }
+});
 
 describe("the mod's gates without a usable claude", () => {
   for (const [gate, script, args, what] of GATES) {

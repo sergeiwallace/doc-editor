@@ -78,6 +78,38 @@ describe("the core purity lint", () => {
     ]);
   });
 
+  it("should pass when every forbidden name is declared by a scope enclosing its use", () => {
+    const result = run(`${fixtures}/clean-scopes`);
+
+    expect(result.stdout.trim()).toBe("check-core-purity: 1 file(s) clean");
+    expect(result.status).toBe(0);
+  });
+
+  it("should fail naming each escape when a name is bound only in another scope or reached through the global object or require", () => {
+    const result = run(`${fixtures}/impure-scopes`);
+
+    expect(result.status).toBe(1);
+    const file = `${fixtures}/impure-scopes/escapes.js`;
+    expect(findings(result.stdout)).toEqual([
+      `${file}:3: document`,
+      `${file}:4: window`,
+      `${file}:5: self.document`,
+      `${file}:6: globalThis aliased or indexed by a computed key`,
+      `${file}:8: globalThis.document`,
+      `${file}:9: globalThis aliased or indexed by a computed key`,
+      `${file}:10: require`,
+      `${file}:11: require`,
+      `${file}:12: window.process`,
+      `${file}:12: window`,
+      `${file}:13: globalThis.globalThis.document`,
+      `${file}:14: self.self.document`,
+      `${file}:15: globalThis.window.document`,
+      `${file}:15: globalThis.window`,
+      `${file}:16: window.self.process`,
+      `${file}:16: window`,
+    ]);
+  });
+
   it("should fail when a core file is added that uses a timer", () => {
     const dir = scratchDir();
     writeFileSync(join(dir, "clock.ts"), "export const tick = () => 1;\n\nsetTimeout(tick, 5);\n");

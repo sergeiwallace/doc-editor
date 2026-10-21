@@ -4,20 +4,26 @@
 //
 // Parses every .ts, .tsx, .js and .mjs file under <core-dir>, tests and vendored code included,
 // and prints one line per finding:
-//   <file>:<line>: import <specifier>   an import, export-from, import() or require() whose
-//                                       specifier is not a relative path ("./" or "../")
+//   <file>:<line>: import <specifier>   an import, export-from or import() whose specifier is
+//                                       not a relative path ("./" or "../")
 //   <file>:<line>: import() of a computed specifier
-//   <file>:<line>: <token>              a reference to document, window, process or setTimeout
-//                                       that no declaration in the same file binds
-//   <file>:<line>: globalThis.<token>   the same name reached as a property of globalThis
+//   <file>:<line>: <token>              a free reference to document, window, process or
+//                                       setTimeout
+//   <file>:<line>: <global>.<token>     the same name read as a property, plain or as a string
+//                                       literal key, of a free globalThis, self or window
+//   <file>:<line>: <global> aliased or indexed by a computed key
+//                                       a free globalThis or self used other than as `x.name`
+//   <file>:<line>: require              any free `require`, called or aliased
 //   <file>:<line>: $                    any identifier `$`, bound or free: the core takes no `$`
 //                                       parameter anywhere
 // A name inside a comment, a string, template text or a regular expression is not an identifier,
 // and neither is a property name after `.` or an object-literal key, so none of those is flagged.
 // A test file (*.test.ts, *.test.tsx) may import the test kit, `claude-code/testing`.
 //
-// "Binds" is per file: a vendored bundle that declares its own `var document` uses that local,
-// while a file that never declares `document` reaches the DOM global.
+// "Free" is resolved by scope: a reference is free when no scope enclosing the use declares the
+// name (function and block scopes, parameters, catch bindings, hoisted `var`, imports, class and
+// function names). A vendored bundle's own `var document` is a local; the same name used outside
+// that function reaches the DOM global.
 // Exits 1 on any finding or a file it cannot parse, 2 when the directory is missing or holds no
 // source file.
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -27,6 +33,10 @@ import { parseAst } from "rolldown/parseAst";
 
 const FREE_NAMES = new Set(["document", "window", "process", "setTimeout"]);
 const ENGINE = "$";
+// Free names that are the global object; a forbidden name read as their property is flagged.
+const GLOBAL_OBJECTS = new Set(["globalThis", "self", "window"]);
+// Free global-object names that may be read only as `x.name` or `x["name"]`, never aliased.
+const ALIASABLE_GLOBALS = new Set(["globalThis", "self"]);
 const TEST_KIT = "claude-code/testing";
 const LANG = { ".ts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js" };
 const TEST_FILE = /\.test\.tsx?$/;
@@ -91,34 +101,84 @@ function patternNames(pattern, names) {
   }
 }
 
-function boundNames(program) {
-  const names = new Set();
-  walk(program, (node) => {
+const FUNCTION_SCOPES = new Set([
+  "FunctionDeclaration",
+  "FunctionExpression",
+  "ArrowFunctionExpression",
+]);
+const BLOCK_SCOPES = new Set([
+  "BlockStatement",
+  "StaticBlock",
+  "ForStatement",
+  "ForInStatement",
+  "ForOfStatement",
+  "SwitchStatement",
+  "CatchClause",
+  "ClassDeclaration",
+  "ClassExpression",
+  "TSModuleBlock",
+]);
+
+const newScope = (parent, isFunction) => ({ parent, isFunction, names: new Set() });
+
+function functionScopeOf(scope) {
+  let current = scope;
+  while (!current.isFunction) current = current.parent;
+  return current;
+}
+
+// The scope tree: each scope-making node mapped to its scope, holding every name declared there.
+// `var` hoists to the nearest function or module scope; `let`, `const` and classes stay in their
+// block; a function declaration's name goes to the scope that holds it, its parameters to its own.
+function buildScopes(program) {
+  const root = newScope(null, true);
+  const scopes = new Map([[program, root]]);
+  const visit = (node, scope) => {
+    let inner = scope;
+    if (FUNCTION_SCOPES.has(node.type)) {
+      if (node.type === "FunctionDeclaration" && node.id) scope.names.add(node.id.name);
+      inner = newScope(scope, true);
+      if (node.type === "FunctionExpression" && node.id) inner.names.add(node.id.name);
+      for (const param of node.params) patternNames(param, inner.names);
+      scopes.set(node, inner);
+    } else if (BLOCK_SCOPES.has(node.type)) {
+      if (node.type === "ClassDeclaration" && node.id) scope.names.add(node.id.name);
+      inner = newScope(scope, false);
+      if (node.type === "ClassExpression" && node.id) inner.names.add(node.id.name);
+      if (node.type === "CatchClause") patternNames(node.param, inner.names);
+      scopes.set(node, inner);
+    }
     switch (node.type) {
-      case "VariableDeclarator":
-        patternNames(node.id, names);
+      case "VariableDeclaration": {
+        const target = node.kind === "var" ? functionScopeOf(inner) : inner;
+        for (const declarator of node.declarations) patternNames(declarator.id, target.names);
         break;
-      case "FunctionDeclaration":
-      case "FunctionExpression":
-      case "ArrowFunctionExpression":
-        if (node.id) names.add(node.id.name);
-        for (const param of node.params) patternNames(param, names);
-        break;
-      case "ClassDeclaration":
-      case "ClassExpression":
-        if (node.id) names.add(node.id.name);
-        break;
-      case "CatchClause":
-        patternNames(node.param, names);
-        break;
+      }
       case "ImportSpecifier":
       case "ImportDefaultSpecifier":
       case "ImportNamespaceSpecifier":
-        names.add(node.local.name);
+        root.names.add(node.local.name);
         break;
     }
-  });
-  return names;
+    for (const [, child] of children(node)) visit(child, inner);
+  };
+  visit(program, root);
+  return scopes;
+}
+
+function declares(scope, name) {
+  for (let current = scope; current !== null; current = current.parent) {
+    if (current.names.has(name)) return true;
+  }
+  return false;
+}
+
+function walkScoped(node, scopes, scope, visit, parent = null, key = null) {
+  const inner = scopes.get(node) ?? scope;
+  visit(node, parent, key, inner);
+  for (const [childKey, child] of children(node)) {
+    walkScoped(child, scopes, inner, visit, node, childKey);
+  }
 }
 
 // True when the identifier under `parent[key]` is a name rather than a reference to a binding.
@@ -180,7 +240,7 @@ function scanFile(file) {
     const reason = String(error?.message ?? error).split("\n").slice(0, 2).join(" ");
     return [{ line: 0, finding: `cannot parse: ${reason}` }];
   }
-  const bound = boundNames(program);
+  const scopes = buildScopes(program);
   const allowsTestKit = TEST_FILE.test(file);
   const hits = [];
   const hit = (node, finding) => hits.push({ line: lineAt(text, node.start), finding });
@@ -194,7 +254,11 @@ function scanFile(file) {
     }
   };
 
-  walk(program, (node, parent, key) => {
+  // The property a member access names: its identifier, or a computed string literal; else null.
+  const propertyName = (member) =>
+    member.computed ? stringValue(member.property) : member.property.name;
+
+  walkScoped(program, scopes, scopes.get(program), (node, parent, key, scope) => {
     switch (node.type) {
       case "ImportDeclaration":
       case "ExportNamedDeclaration":
@@ -205,22 +269,42 @@ function scanFile(file) {
       case "TSImportType":
         checkSpecifier(node, node.argument?.literal ?? node.argument);
         return;
-      case "CallExpression":
-        if (node.callee.type === "Identifier" && node.callee.name === "require") {
-          checkSpecifier(node, node.arguments[0] ?? null);
+      case "MemberExpression": {
+        // A chain through globalThis, self or window (`globalThis.self.window`) is still the
+        // global object, so walk down to its root and read the path on the way.
+        const path = [];
+        let object = node.object;
+        while (object.type === "MemberExpression" && GLOBAL_OBJECTS.has(propertyName(object))) {
+          path.unshift(propertyName(object));
+          object = object.object;
+        }
+        if (object.type !== "Identifier" || !GLOBAL_OBJECTS.has(object.name)) return;
+        if (declares(scope, object.name)) return;
+        const name = propertyName(node);
+        if (FREE_NAMES.has(name) || name === ENGINE) {
+          hit(node.property, [object.name, ...path, name].join("."));
         }
         return;
-      case "MemberExpression":
-        if (node.object.type === "Identifier" && node.object.name === "globalThis") {
-          const name = node.computed ? stringValue(node.property) : node.property.name;
-          if (FREE_NAMES.has(name) || name === ENGINE) hit(node.property, `globalThis.${name}`);
-        }
-        return;
-      case "Identifier":
+      }
+      case "Identifier": {
         if (isPropertyName(parent, key)) return;
-        if (node.name === ENGINE) hit(node, ENGINE);
-        else if (FREE_NAMES.has(node.name) && !bound.has(node.name)) hit(node, node.name);
+        const name = node.name;
+        if (name === ENGINE) {
+          hit(node, ENGINE);
+          return;
+        }
+        if (declares(scope, name)) return;
+        if (FREE_NAMES.has(name)) {
+          hit(node, name);
+        } else if (name === "require") {
+          hit(node, "require");
+        } else if (ALIASABLE_GLOBALS.has(name)) {
+          const plainAccess =
+            parent?.type === "MemberExpression" && key === "object" && propertyName(parent) !== null;
+          if (!plainAccess) hit(node, `${name} aliased or indexed by a computed key`);
+        }
         return;
+      }
     }
   });
   return hits.sort((a, b) => a.line - b.line);
