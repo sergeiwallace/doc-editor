@@ -50,7 +50,10 @@ list in the same commit.
 
 The plugin registers no `tool.check` hook, answers no `tool.call`, calls no model and makes no
 network request. Its one `tool.call` hook observes `Write` and `Edit`: it passes each call on and
-returns the tool's own result, then re-reads the open file if it changed.
+returns the tool's own result, then re-reads the open file if it changed. The same gate enforces
+this safety floor whatever the list says. It fails, naming the hook or call, on any `tool.check`
+hook, any other `tool.call` hook except one for the plugin's own `mcp__doc-editor__` tools, any
+model call (`$.model.*`, `$.agent.spawn`) and any network call (`$.http.*`, `$.mcp.*`).
 
 ## Saving
 
