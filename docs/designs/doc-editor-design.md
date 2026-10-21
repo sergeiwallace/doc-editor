@@ -107,7 +107,17 @@ Claude Code shows a document only as the raw text a `Read` tool call returns, or
 
 ## Design Overview
 
-**Status:** stub; to be filled during/after implementation.
+**Status:** Phase 0 built and on `main`; Phase 1 in build. Phases 2 to 4 are not built.
+
+doc-editor ships as one Claude Code plugin, `plugins/doc-editor`, listed by the repository's own `.claude-plugin/marketplace.json`, so the repository installs as a git marketplace or loads from a clone with `claude --plugin-dir plugins/doc-editor`. The install note is [docs/procedures/mod-install.md](../procedures/mod-install.md). The plugin needs Claude Code 2.1.299 or later and was built and measured on 2.1.306.
+
+The code splits as D-9 decided. `plugins/doc-editor/core/` is the shared core: dependency-free TypeScript that parses Markdown through the vendored micromark and mdast bundle (`core/vendor/mdast.js`, built by `scripts/bundle-vendor.mjs` with pinned versions and checked against the script's output), cuts it into blocks with 1-based line ranges, builds the outline, folds and drill-in, finds text, classifies and resolves links, windows the visible blocks into keyed pieces of at most 9,000 characters within a 60,000-character page, and records Claude's changes by turn with their unified diff. The core never touches the file system and never sees `$`; `scripts/check-core-purity.mjs` resolves every identifier by scope and fails the gate on any reference to the DOM, Node, timers or `$`, or any non-relative import. `plugins/doc-editor/hooks/` holds every call to the mods API, in `register.ts`, with helpers that take plain closures. `plugins/doc-editor/bin/save.mjs` is the safe-write helper of D-12: it writes a temporary file beside the target, re-checks `mtimeMs` and size immediately before the rename, and renames only on a match.
+
+The gate is D-11's: `npm test` runs the repository checks under Vitest (core purity, the declared hooks and calls, the safety floor, the marketplace, file sizes, hygiene, the bundle check) and then `claude plugin test plugins/doc-editor`, and ends with a line naming any gate that could not run; pre-commit and pre-push run it with the type check and the validate checks. The safety floor reads both `claude plugin validate --json` and the hooks sources: no `tool.check` hook, a `tool.call` hook only for Claude's `Write` and `Edit` that returns `next`'s result untouched, no model or network call, and `$.process.run` only for `node` on the plugin's own `bin/` scripts.
+
+What the Phase 0 spike settled, on 2.1.306 inside tmux ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md)): the `Markdown` element draws task markers as literal `[ ]` and `[x]` and shows HTML, CriticMarkup and `%%` comments as text, so the core rewrites the markers and drops HTML comments; a terminal `Link` hyperlinks any non-blank `href`, so only in-repository, `https:` and `http:` links are drawn as links; a tree over 100,000 characters is cut, not refused; a focused `Client` receives Tab, capitals and `/`; `$.ui.selection()` returns a pane selection in fullscreen; all four candidate libraries load; and a symlink to a file outside the plugin directory does not load.
+
+Out of scope and not built: HTML and PDF routes, the `Client` caret editor and the `less` key map (Phase 2); notebooks, CSV, EPUB and pandoc formats, the web app and the MCP App (Phase 3); comments, backlinks, transclusion and authorship colour (Phase 4).
 
 ## Product Requirements
 
