@@ -342,7 +342,7 @@ Every recommendation above is an inference from the evidence in sections 1 to 5 
 ## Appendix: Research Prompt
 
 **Registry ID:** none (orchestrated `/orchestrate` plus `/auto-flow` run on a Linux development host; no ai-core registry on this host)
-**Model:** `us.anthropic.claude-fable-5-1` (coordinator: decomposition, briefs, synthesis and authorship of this doc); three research leaves launched through the Claude Code Agent tool as the `researcher` persona at tier opus, model `us.anthropic.claude-opus-5-5`, effort high, `isolation: worktree`
+**Model:** `claude-fable-5-1` (coordinator: decomposition, briefs, synthesis and authorship of this doc); three research leaves launched through the Claude Code Agent tool as the `researcher` persona at tier opus, model `claude-opus-5-5`, effort high, `isolation: worktree`
 **Date:** 2026-10-15
 
 ```text
