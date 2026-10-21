@@ -109,7 +109,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     const hooks = notes.filter((note) => note.startsWith(`${MODULE} hooks: `));
     const calls = notes.filter((note) => note.startsWith(`${MODULE} calls: `));
     expect(hooks).toEqual([
-      `${MODULE} hooks: session.start, command.run{command=doc}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, turn.start, turn.complete, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
+      `${MODULE} hooks: session.start, command.run{command=doc|doc-editor}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, turn.start, turn.complete, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
     ]);
     expect(calls.join("\n")).not.toMatch(/\$\.(model\.|agent\.spawn|http\.|mcp\.)/);
     const result = runGate(pluginDir);

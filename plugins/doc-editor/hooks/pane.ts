@@ -65,6 +65,10 @@ export const EDIT_INPUT = "edit";
 export const LINE_INPUT = "edit-line";
 export const EMPTY_TEXT = "No document is open. Run /doc <path> to open one.";
 
+/** What the pane shows with no document, naming the command the session granted. */
+export const emptyText = (command: string | null): string =>
+  command === null ? "No document is open. Ask Claude to show a Markdown file." : `No document is open. Run /${command} <path> to open one.`;
+
 /** The keep, discard, refine and view-diff Buttons drawn under a changed block. */
 export const CHANGE_ACTIONS = { keep: "change:keep", discard: "change:discard", refine: "change:refine", diff: "change:diff" } as const;
 /** The Button of a task checkbox at line `n`, and of an editable line `n` when `e` asks which. */
@@ -272,6 +276,8 @@ export class DocPane {
   /** Which field the pane shows above the body, if any. */
   input: Field | null = null;
   isOpen = false;
+  /** The command the session granted the pane, `doc` or its fallback, or null when neither was. */
+  command: string | null = "doc";
   /** Claude's requests and changes this session. */
   readonly review = new Review();
   /** The open file's stamp as last read or saved: what a save checks the file against. */
@@ -339,7 +345,7 @@ export class DocPane {
     const host = this.host;
     if (host === undefined) return { ok: false, reason: "the doc-editor session has not started" };
     const trimmed = spec.trim();
-    if (trimmed === "") return this.refuse("give a path: /doc <path>[:line|#heading]");
+    if (trimmed === "") return this.refuse(`give a path: /${this.command ?? "doc"} <path>[:line|#heading]`);
     const place = parseLocation(trimmed);
     const loaded = await this.load(absoluteFrom(host.cwd, place.path));
     if (!loaded.ok) return this.refuse(loaded.reason);
@@ -365,7 +371,7 @@ export class DocPane {
   async present(focus: boolean): Promise<Opened> {
     const host = this.host;
     const doc = this.doc;
-    if (host === undefined || doc === undefined) return { ok: false, reason: EMPTY_TEXT };
+    if (host === undefined || doc === undefined) return { ok: false, reason: emptyText(this.command) };
     const opened = await host.open({ title: baseName(doc.path), focus });
     this.isOpen = true;
     host.invalidate();
@@ -1247,7 +1253,7 @@ export class DocPane {
     const doc = this.doc;
     const host = this.host;
     if (doc === undefined || host === undefined) {
-      return ui.Box({ flexDirection: "column", children: [ui.Text({ children: EMPTY_TEXT })] });
+      return ui.Box({ flexDirection: "column", children: [ui.Text({ children: emptyText(this.command) })] });
     }
     const bindings = bindingsFor(this.bindings, this.screen);
     const hints = hintRow(ui, bindings, (binding) => void this.press(binding), this.enterNote());

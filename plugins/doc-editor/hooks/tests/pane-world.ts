@@ -30,6 +30,8 @@ export interface PaneWorldOptions {
   dirs?: Record<string, { name: string; kind: "file" | "dir" | "other" }[]>;
   /** What the session state holds per file before the mod reads it, as after a reload of the mod. */
   state?: Record<string, unknown>;
+  /** Command names the engine refuses, with its reason, as for a name the person's own skill holds. */
+  refuse?: Record<string, string>;
 }
 
 const encoder = new TextEncoder();
@@ -71,6 +73,8 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
 
   on("session.start", (_engine, e) => ({ cwd: e.cwd }));
   on("command.register", (_engine, e) => {
+    const reason = options.refuse?.[e.name];
+    if (reason !== undefined) return { deny: reason };
     commands.push(e.name);
     return { value: { command: e.name } };
   });

@@ -12,6 +12,13 @@ can open a file with the plugin's `show` tool, and every `Read`, `Write` or `Edi
 a Markdown file gets an open link under it. A file that is missing, over 4 MiB or not UTF-8 text
 is refused with the reason in the plugin's status row.
 
+When the session already has a `/doc`, such as your own `doc` skill, the engine refuses the mod's,
+and the mod registers `/doc-editor` instead, with the same arguments, completion and behaviour. The
+status row says so: `doc-editor: /doc is taken by another command (<reason>); use /doc-editor`.
+Your own `/doc` keeps running as before. If `/doc-editor` is refused too, the status row says that,
+and Claude can still open a file with the `show` tool. Each registration at session start stands
+alone, so a refused command never stops the `show` tool, the watcher or the pane.
+
 The pane draws only the blocks in view, so a document of any size up to 4 MiB stays inside the
 engine's draw limits. Fences draw as highlighted code, callouts as bordered boxes with their
 label, and a table too wide for the pane as one card per row. Images draw as their alt text and
@@ -92,11 +99,11 @@ list in the same commit.
 ```json
 {
   "./register.ts": {
-    "hooks": ["session.start", "command.run{command=doc}", "prompt.autocomplete", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "turn.start", "turn.complete", "ui.close{id=doc}", "ui.scroll{requestId=doc}", "ui.render{component=Pane}", "ui.render{component=ToolUse}", "ui.render{component=ToolGroup}"],
+    "hooks": ["session.start", "command.run{command=doc|doc-editor}", "prompt.autocomplete", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "turn.start", "turn.complete", "ui.close{id=doc}", "ui.scroll{requestId=doc}", "ui.render{component=Pane}", "ui.render{component=ToolUse}", "ui.render{component=ToolGroup}"],
     "calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.prompt.submit", "$.state.get", "$.state.set", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],
     "state reads": ["doc-editor.changes"],
     "state writes": ["doc-editor.changes"],
-    "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "ui.close{id=doc}", "ui.scroll{requestId=doc}"]
+    "gating hook with .catch": ["command.run{command=doc|doc-editor}", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "ui.close{id=doc}", "ui.scroll{requestId=doc}"]
   }
 }
 ```

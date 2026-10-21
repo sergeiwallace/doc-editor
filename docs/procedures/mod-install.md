@@ -2,7 +2,8 @@
 
 Load the mod for one session from a clone with `claude --plugin-dir plugins/doc-editor`, or install
 it from this repository's marketplace with `claude plugin install doc-editor@doc-editor` after
-adding the marketplace. Then run `/doc`.
+adding the marketplace. Then run `/doc`, or `/doc-editor` when your own skill or command already
+holds `/doc`; the status row names the one the session granted.
 
 ## What it does today
 

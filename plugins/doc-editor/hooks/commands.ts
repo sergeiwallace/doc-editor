@@ -3,16 +3,25 @@
 import { absoluteFrom, type DocPane } from "./pane.ts";
 
 export const COMMAND_NAME = "doc";
+/** The command registered instead when the session already has a `/doc` (a user's own skill or command). */
+export const FALLBACK_COMMAND_NAME = "doc-editor";
 
-export const COMMAND_SPEC = {
-  name: COMMAND_NAME,
-  description: "Open a Markdown file as a document in a pane",
-  argumentHint: "<path>[:line|#heading]",
-} as const;
+const DESCRIPTION = "Open a Markdown file as a document in a pane";
+const ARGUMENT_HINT = "<path>[:line|#heading]";
+
+export const COMMAND_SPEC = { name: "doc", description: DESCRIPTION, argumentHint: ARGUMENT_HINT } as const;
+export const FALLBACK_COMMAND_SPEC = { name: "doc-editor", description: DESCRIPTION, argumentHint: ARGUMENT_HINT } as const;
+
+/** The status row when `/doc` was refused and `/doc-editor` stands in for it. */
+export const takenText = (reason: string): string =>
+  `doc-editor: /${COMMAND_NAME} is taken by another command (${reason}); use /${FALLBACK_COMMAND_NAME}`;
+
+/** The status row when neither name could be registered: the show tool still opens files. */
+export const noCommandText = (reason: string): string =>
+  `doc-editor: neither /${COMMAND_NAME} nor /${FALLBACK_COMMAND_NAME} could be registered (${reason}); ask Claude to show a file instead`;
 
 const MAX_SUGGESTIONS = 20;
 const MARKDOWN = /\.(md|markdown)$/i;
-const AFTER_COMMAND = new RegExp(`^\\s*/${COMMAND_NAME}\\s+$`);
 
 /**
  * Runs `/doc`: opens the pane on the path, or, with no path and a document already read this
@@ -43,16 +52,17 @@ export interface Suggestion {
 }
 
 /**
- * Path suggestions for the token after `/doc `: the directories and Markdown files in the
- * token's directory, read from the session's directory, whose names start with its last part.
- * Nothing for any other token.
+ * Path suggestions for the token after `/<command> `, the command the session granted: the
+ * directories and Markdown files in the token's directory, read from the session's directory,
+ * whose names start with its last part. Nothing for any other token, or with no command granted.
  */
 export async function completePath(
   list: ListDir,
   cwd: string,
   draft: { text: string; token: string; start: number },
+  command: string | null,
 ): Promise<Suggestion[]> {
-  if (!AFTER_COMMAND.test(draft.text.slice(0, draft.start))) return [];
+  if (command === null || !new RegExp(`^\\s*/${command}\\s+$`).test(draft.text.slice(0, draft.start))) return [];
   const cut = draft.token.lastIndexOf("/");
   const dir = cut < 0 ? "" : draft.token.slice(0, cut + 1);
   const prefix = draft.token.slice(cut + 1);
