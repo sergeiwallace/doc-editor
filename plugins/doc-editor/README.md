@@ -28,20 +28,26 @@ path. The header shows the path, the heading path, the mode, the read time and t
 | --- | --- |
 | Up, Down | Previous or next block |
 | PageUp, PageDown, wheel | Scroll |
-| `o` | Outline; Enter on an entry jumps to it |
+| `o` | Outline; Up and Down (or Tab and Shift-Tab) move between entries, Enter jumps to one |
 | `z`, `a` | Fold the current heading; fold or unfold every heading |
 | `d`, `u` | Show only the current section; back up one level |
 | `f` | Find; Enter goes to the next match, `b` to the previous |
-| Enter on a link | Open a file or heading in the repository in place; `b` goes back |
+| Tab, then Enter on a link | Open a file or heading in the repository in place; `b` goes back |
 | `g` | Go to a path, `:line` or `#heading` |
 | `t`, `q` | Top; close |
 | `j`, `h` | Next or previous heading |
 | `c` | Ask Claude to change the focused block |
 | `e` | Edit the focused heading, list item or table row on one line; Enter saves |
-| Enter on a checkbox | Tick or untick that task and save |
+| Tab, then Enter on a checkbox | Tick or untick that task and save |
 | `n`, `p` | Next or previous block Claude changed |
 | `v` | The turn's diff; `n` and `p` step turns, `v` or `q` go back |
 | `k`, `x`, `r` | Keep, discard or refine Claude's change to the focused block |
+| ctrl+x tab | Give the keyboard back to the pane after Escape handed it to the prompt |
+
+The pane's keys work while the pane holds the keyboard. Escape hands it back to the prompt, so the
+next letter is typed there; ctrl+x tab (the engine's pane focus chord) or a click on the pane gives
+it back, and so does running `/doc` with no path, which shows the open document again with the
+keyboard on it.
 
 When the open file changes on disk, or after Claude's `Write` or `Edit`, the pane re-reads it and
 keeps the focused block, the folds and the open section. The design is in
@@ -53,8 +59,8 @@ keeps the focused block, the folds and the open section. The design is in
 <instruction>` as your own prompt. The section heading and the block's first words follow on their
 own lines, each quoted as text from the file: on one line, at most 120 characters, inside a code
 span nothing in it can close, and marked as not an instruction, so a document cannot write words
-that read as yours. A status line under the block says Claude is editing it, or that the request is queued while a turn runs.
-When the file changes during that turn, every block it changed gets a marker in the margin, and the
+that read as yours. A status line under the block says Claude is editing it, or that the request
+is queued while a turn runs. When the file changes during that turn, every block it changed gets a marker in the margin, and the
 focused one shows keep, discard, refine and view-diff actions. `v` shows the turn's unified diff,
 one turn at a time. `x` writes the block's text from before the turn back as a new edit, and
 refuses when the block changed again since. A change is found again after a reload by its lines
@@ -67,8 +73,9 @@ them, at most 50, the newest kept. A kept, discarded or since-edited change leav
 `e` opens a one-line field on a heading, a list item or a table row; Enter saves it. A text with a
 line break is refused, since the field edits one line. A list's task checkboxes are buttons under
 the focused block, beside its link buttons: Enter on a checkbox ticks or unticks it and saves, and
-Enter on a link follows it. While the focused block has such buttons the hint row says
-"Enter: open or tick the focused button". Every save goes through the safe-write path below.
+Enter on a link follows it. Tab moves the engine's focus ring onto those buttons, and while the
+focused block has any the hint row says "Tab: next button · Enter: open or tick it". Every save
+goes through the safe-write path below.
 
 ## Load it
 

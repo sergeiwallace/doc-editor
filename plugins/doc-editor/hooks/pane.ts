@@ -78,7 +78,9 @@ const MAX_LINE_BUTTONS = 12;
 /** The most changes the session's state keeps for one file; the newest are kept. */
 export const MAX_KEPT_CHANGES = 50;
 /** The hint the hint row adds while the focused block carries link or checkbox Buttons. */
-export const ENTER_HINT = "Enter: open or tick the focused button";
+export const ENTER_HINT = "Tab: next button · Enter: open or tick it";
+/** The hint the hint row adds on the outline. */
+export const OUTLINE_HINT = "Up, Down or Tab: move · Enter: jump";
 
 type Field = typeof FIND_INPUT | typeof GOTO_INPUT | typeof ASK_INPUT | typeof EDIT_INPUT | typeof LINE_INPUT;
 
@@ -293,6 +295,8 @@ export class DocPane {
   skip = 0;
   /** The first outline entry the outline view shows. */
   outlineAt = 0;
+  /** The outline entry Up and Down have reached: the one the focus ring is put on. */
+  outlineCursor = 0;
   /** The keys the pane answers; a later mode appends its own. */
   bindings: KeyBinding<DocPane>[] = [...READ_KEYS, ...EDIT_KEYS];
   /** The drill-in sections entered before the current one, innermost last (null: the whole document). */
@@ -523,8 +527,12 @@ export class DocPane {
     return [...new Set(hrefs)];
   }
 
-  /** ENTER_HINT while the document shows and the focused block carries link or checkbox Buttons. */
+  /**
+   * OUTLINE_HINT on the outline; ENTER_HINT while the document shows and the focused block carries
+   * link or checkbox Buttons, which Tab moves the focus ring onto.
+   */
   private enterNote(): string | undefined {
+    if (this.screen === "outline") return OUTLINE_HINT;
     const focus = this.view.focus;
     if (this.screen !== "document" || focus === null) return undefined;
     return this.linkHrefs(focus).length > 0 || this.tasksOf(focus).length > 0 ? ENTER_HINT : undefined;
@@ -626,10 +634,17 @@ export class DocPane {
       return;
     }
     if (this.screen === "outline") {
+      // Up and Down move between entries, a page key by a page; the list follows the entry and
+      // the focus ring is put on it, so Enter jumps to what is highlighted.
+      const entries = this.doc.outline;
       const rows = this.bodySize().bodyRows;
-      const last = Math.max(0, this.doc.outline.length - rows);
-      this.outlineAt = Math.min(last, Math.max(0, this.outlineAt + by));
+      const step = Math.abs(by) === 1 ? by : Math.sign(by) * rows;
+      this.outlineCursor = Math.min(Math.max(0, entries.length - 1), Math.max(0, this.outlineCursor + step));
+      if (this.outlineCursor < this.outlineAt) this.outlineAt = this.outlineCursor;
+      if (this.outlineCursor >= this.outlineAt + rows) this.outlineAt = this.outlineCursor - rows + 1;
       this.host?.invalidate();
+      const key = entries[this.outlineCursor]?.id;
+      if (key !== undefined) void this.host?.focus(`outline:${key}`).catch(() => undefined);
       return;
     }
     const pieces = this.pieces();
@@ -879,6 +894,7 @@ export class DocPane {
     const current = this.sectionHeading();
     const at = Math.max(0, entries.findIndex((entry) => entry.id === current));
     this.outlineAt = Math.max(0, at - 2);
+    this.outlineCursor = at;
     const key = entries[at]?.id;
     this.host?.invalidate();
     if (key !== undefined) void this.host?.focus(`outline:${key}`).catch(() => undefined);
@@ -1508,13 +1524,14 @@ export class DocPane {
     const rows = this.bodySize().bodyRows;
     const last = Math.max(0, entries.length - rows);
     this.outlineAt = Math.min(last, Math.max(0, this.outlineAt));
-    const current = this.sectionHeading();
+    const cursor = entries[this.outlineCursor]?.id;
     const folded = new Set(this.view.folded);
     // A tall body holds thousands of entries; the outline stops at PAGE_BUDGET as a page does.
     const children: RenderElement[] = [];
     let bytes = 0;
     for (const entry of entries.slice(this.outlineAt, this.outlineAt + rows)) {
-      const mark = entry.id === current ? "› " : folded.has(entry.id) ? "▸ " : "  ";
+      // `›` marks the entry Up and Down reached (it opens on the current section).
+      const mark = entry.id === cursor ? "› " : folded.has(entry.id) ? "▸ " : "  ";
       const note = folded.has(entry.id) ? `  (folded, ${hiddenCount(this.blocks, entry.id)})` : "";
       const label = `${mark}${"  ".repeat(Math.max(0, entry.level - 1))}${entry.title}${note}`;
       bytes += JSON.stringify(label).length + JSON.stringify(entry.id).length + PIECE_FRAME_COST;
