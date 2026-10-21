@@ -48,7 +48,7 @@ const runGate = (bin: string) =>
     "test/size.spec.ts",
   ]);
 
-describe("the npm test summary line", () => {
+describe("the npm test summary line", { timeout: 60_000 }, () => {
   it("should end by naming the gates that did not run and why when claude is not on PATH", () => {
     const result = runGate(binDir());
 

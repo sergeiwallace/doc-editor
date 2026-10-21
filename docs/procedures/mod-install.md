@@ -2,21 +2,31 @@
 
 Load the mod for one session from a clone with `claude --plugin-dir plugins/doc-editor`, or install
 it from this repository's marketplace with `claude plugin install doc-editor@doc-editor` after
-adding the marketplace. Then run `/doc`.
+adding the marketplace. Then run `/doc`, or `/doc-editor` when your own skill or command already
+holds `/doc`; the status row names the one the session granted.
 
 ## What it does today
 
-This is the scaffold release. `/doc` is registered at session start and answers with one line
-saying the reader is not built yet. The Markdown reader replaces that line in the next release.
+This is the first reader release, for Markdown. `/doc <path>` opens the file in a pane beside the
+transcript, with an outline, folding, one section at a time, find, links followed in place and
+Back. `c` asks Claude to change the focused block, and the pane then marks what Claude changed
+and offers keep, discard, refine and the turn's diff. `e` edits one line in the pane, and Enter on
+a task checkbox ticks it. The keys are listed in the plugin's
+[README](../../plugins/doc-editor/README.md). HTML, PDF and other formats are not built yet.
 
 ## Requirements
 
 - Claude Code 2.1.299 or later. That is the first release that lets a hooks module's helpers live
   in other files, which the reader's layout needs. The gate was measured on 2.1.306. Check yours
   with `claude --version`.
-- `node` on your `PATH` from the reader release on. The mod saves a file through a small
-  write-then-rename helper it runs with `node`; without `node` it falls back to a direct write and
-  says so.
+- `node` on your `PATH` for saves, from the reader release on. The mod saves a file through
+  `plugins/doc-editor/bin/save.mjs`, a write-then-rename helper with no dependencies that it runs
+  with `node`. The helper renames its temporary file over yours only if your file's modification
+  time and size still match what the mod read, checked immediately before the rename. An edit made
+  elsewhere before that check makes the save fail, and the status line shows why; only a write
+  that lands in the moment between the check and the rename can still be lost. The mod checks for
+  `node` once per session by running `node --version`. Without it, saves still work, but through a
+  direct write that is not atomic, and the status line says so once per session.
 - For the test gate: Node.js 24 or later and npm.
 
 ## Load it from a clone
@@ -32,6 +42,8 @@ mod types into the plugin, and a tsconfig that extends them, so the hooks can be
 Both are gitignored, and `git status` stays clean.
 
 To load it with your own settings left out, add `--setting-sources project`; the mod still loads.
+Such a session also leaves out any login or model route your user settings carry, and on the host
+the build was measured on it answered "Not logged in", so `c` could not reach Claude there.
 
 ## Install it from the marketplace
 

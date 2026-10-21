@@ -1,15 +1,10 @@
 import type { On } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
-import { COMMAND_NAME, NOT_BUILT_TEXT } from "./register.ts";
+import { COMMAND_NAME } from "./register.ts";
+import { CWD, ENGINE_TEST, header, openDoc, START_MS } from "./tests/pane-world.ts";
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
-const DOC = {
-  command: COMMAND_NAME,
-  args: "README.md",
-  origin: { kind: "composer" },
-  presentation: { isFullscreen: false, columns: 120 },
-} as const;
 
 // The engine beneath the mod: it ends the session start and keeps each command the mod registers.
 function world(on: On) {
@@ -19,11 +14,12 @@ function world(on: On) {
     registered.push(e.name);
     return { value: { command: e.name } };
   });
+  on("tool.register", (_engine, e) => ({ value: { tool: `mcp__doc-editor__${e.name}` } }));
   return { registered };
 }
 
 describe("register", () => {
-  test("should register /doc when the session starts", async ($, on) => {
+  test("should register /doc when the session starts", ENGINE_TEST, async ($, on) => {
     const w = world(on);
 
     await $.session.start(SESSION);
@@ -31,10 +27,52 @@ describe("register", () => {
     expect(w.registered).toEqual([COMMAND_NAME]);
   });
 
-  test("should answer with one line saying the reader is not built when /doc runs", async ($, on) => {
-    world(on);
-    await $.session.start(SESSION);
+  // T-1.7: a Write or Edit re-reads the open file at once, without waiting for the clock.
+  for (const tool of ["Write", "Edit"] as const) {
+    test(`should re-read the open file and redraw the pane when Claude's ${tool} call on it returns`, ENGINE_TEST, async ($, on) => {
+      const doc = `${CWD}/notes.md`;
+      on("tool.call", { tool: ["Write", "Edit"] }, () => ({ result: { written: doc } }) as never);
+      const { w, ui } = await openDoc($, on, { files: { [doc]: "# Before\n" } }, "notes.md");
+      expect((await header(ui)).title).toBe("notes.md › Before");
 
-    expect(await $.command.run(DOC)).toEqual({ text: NOT_BUILT_TEXT });
-  });
+      w.edit(doc, "# After\n");
+      await $.tool.call({ tool, file_path: doc, content: "# After\n", old_string: "Before", new_string: "After" });
+      await w.clock.settle();
+
+      expect((await header(ui)).title).toBe("notes.md › After");
+      expect(w.clock.now()).toBe(START_MS);
+    });
+  }
+
+  // NFR-9: the mod observes Write and Edit to trigger a reload and never answers them.
+  for (const call of [
+    { tool: "Write", file_path: "/work/doc-editor/notes.md", content: "# Notes\n" },
+    { tool: "Edit", file_path: "/work/doc-editor/notes.md", old_string: "a", new_string: "b" },
+  ] as const) {
+    test(`should pass the ${call.tool} call on and return the tool's own result unchanged`, ENGINE_TEST, async ($, on) => {
+      world(on);
+      const ran: unknown[] = [];
+      const answer = { result: { written: call.file_path }, text: `${call.tool} ran` };
+      on("tool.call", { tool: ["Write", "Edit"] }, (_engine, e) => {
+        ran.push(e.file_path);
+        return answer as never;
+      });
+      await $.session.start(SESSION);
+
+      const result = await $.tool.call(call);
+
+      expect(ran).toEqual([call.file_path]);
+      expect(result).toEqual(expect.objectContaining(answer));
+    });
+
+    test(`should pass the ${call.tool} call's refusal on unchanged`, ENGINE_TEST, async ($, on) => {
+      world(on);
+      on("tool.call", { tool: ["Write", "Edit"] }, () => ({ deny: "refused beneath the mod" }));
+      await $.session.start(SESSION);
+
+      const result = await $.tool.call(call);
+
+      expect(result).toEqual(expect.objectContaining({ deny: "refused beneath the mod" }));
+    });
+  }
 });

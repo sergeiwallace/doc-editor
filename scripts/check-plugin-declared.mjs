@@ -2,11 +2,13 @@
 // Declared-list gate for the mod's hooks and calls (design D-11, task T-0.2).
 // Usage: node scripts/check-plugin-declared.mjs <plugin-dir>
 // Runs `claude plugin validate --strict --json <plugin-dir>` and compares every
-// "<module> <kind>: <values>" note it reports (hooks, calls, env reads, env writes,
-// surface modules, gating hooks) with the list <plugin-dir>/README.md declares, both ways:
+// "<module> <kind>: <values>" note it reports (hooks, calls, env reads, env writes, state reads,
+// state writes, surface modules, gating hooks) with the list <plugin-dir>/README.md declares, both ways:
 // a reported value the README does not declare fails, and so does a declared value validate
 // does not report. It prints one line per difference.
 // Adapted from the sibling beads-ui repository's allow-list gate, which reads a JSON file.
+// It also holds the safety floor (T-1.8, scripts/safety-floor.mjs), which a declaration cannot
+// lift, over both validate's report and the sources.
 // Then it scans the sources, because validate files every call under the module that reached
 // it, even one made in a helper the module handed `on` or `$` to, so the report alone cannot
 // show where a call sits. It fails naming the file and line of:
@@ -30,9 +32,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
 
 import { requireClaude } from "./claude-floor.mjs";
+import { registeredTools, reportBreaches, sourceBreaches } from "./safety-floor.mjs";
 
 const NOTE =
-  /^(\.\/\S+) (hooks|calls|env reads|env writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
+  /^(\.\/\S+) (hooks|calls|env reads|env writes|state reads|state writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
 const VIA = / \(via [\w$.]+\)$/;
 const ENGINE_CALL = /(?<![\w$])\$\.[A-Za-z_]/;
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
@@ -274,6 +277,22 @@ function engineHandedOut(code) {
   return found;
 }
 
+// Every source file of the plugin, as the safety floor reads it.
+function pluginSources(pluginDir) {
+  const hooksDir = join(pluginDir, "hooks");
+  const declared = JSON.parse(readFileSync(join(hooksDir, "hooks.json"), "utf8")).modules ?? [];
+  const modules = new Set(declared.map((module) => resolve(hooksDir, module)));
+  return sourceFiles(pluginDir).map((file) => {
+    const source = readFileSync(file, "utf8");
+    return {
+      path: relative(pluginDir, file),
+      source,
+      code: codeOnly(source),
+      isHooksModule: modules.has(file),
+    };
+  });
+}
+
 function engineEscapes(pluginDir) {
   const hooksDir = join(pluginDir, "hooks");
   const declared = JSON.parse(readFileSync(join(hooksDir, "hooks.json"), "utf8")).modules ?? [];
@@ -391,12 +410,20 @@ function main() {
     fail(problems, pluginDir, readmePath);
   }
 
-  compare(reportedOf(report, problems), declared, problems);
+  const reported = reportedOf(report, problems);
+  compare(reported, declared, problems);
+  const files = pluginSources(pluginDir);
+  const ownTools = registeredTools(files);
+  problems.push(...reportBreaches(reported, ownTools));
+  problems.push(...sourceBreaches(files, ownTools));
   problems.push(...engineEscapes(pluginDir));
 
   if (problems.length > 0) fail(problems, pluginDir, readmePath);
   console.log(
     `check-plugin-declared: ${shown(pluginDir)} matches the list ${shown(readmePath)} declares`,
+  );
+  console.log(
+    `check-plugin-declared: ${shown(pluginDir)} keeps the safety floor: no tool.check hook, no tool.call hook that can answer, no model call, no network call`,
   );
 }
 

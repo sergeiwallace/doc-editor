@@ -3,6 +3,8 @@
 //
 //   npm ci --prefix tools/vendor-bundle
 //   node scripts/bundle-vendor.mjs
+//   node scripts/bundle-vendor.mjs --out-dir <dir>   writes each bundle under <dir> at its
+//                                                    repository path instead, for a comparison
 //
 // The output is committed and must be reproduced byte for byte by this script (design D-3).
 // Each bundle is built unminified with the default export condition (never `browser`) and
@@ -16,6 +18,10 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TOOL_DIR = join(ROOT, "tools", "vendor-bundle");
+const outFlag = process.argv.indexOf("--out-dir");
+const outValue = outFlag < 0 ? undefined : process.argv[outFlag + 1];
+if (outFlag >= 0 && outValue === undefined) throw new Error("--out-dir needs a directory");
+const OUT_DIR = outValue === undefined ? ROOT : resolve(outValue);
 const MAX_BYTES = 500 * 1024;
 
 const require = createRequire(join(TOOL_DIR, "package.json"));
@@ -113,8 +119,8 @@ for (const bundle of BUNDLES) {
   if (bytes >= MAX_BYTES) {
     throw new Error(`${bundle.out} is ${bytes} bytes, over the ${MAX_BYTES}-byte cap`);
   }
-  const target = join(ROOT, bundle.out);
+  const target = join(OUT_DIR, bundle.out);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, code);
-  console.log(`${relative(ROOT, target)} ${statSync(target).size} bytes`);
+  console.log(`${relative(OUT_DIR, target)} ${statSync(target).size} bytes`);
 }

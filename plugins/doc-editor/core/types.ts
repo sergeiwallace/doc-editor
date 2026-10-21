@@ -23,6 +23,8 @@ export interface Block {
   end: number;
   /** List items and quote content. */
   children?: Block[];
+  /** The text the pane draws, present only where it differs from `text` (see core/blocks.ts). */
+  drawn?: string;
 }
 
 export interface OutlineEntry {
