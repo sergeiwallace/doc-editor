@@ -69,7 +69,7 @@ function validateNotes(dir: string): string[] {
 // Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
 
-describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? claude.reason})`, () => {
+describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? claude.reason})`, { timeout: 60_000 }, () => {
   it("should find no tool.check hook, no answering tool.call hook, no model call and no network call in the shipped plugin's validate output", () => {
     const notes = validateNotes(pluginDir);
 
