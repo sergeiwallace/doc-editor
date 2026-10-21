@@ -17,7 +17,7 @@
 import type { Block, BlockKind, Document, Link } from "./types.ts";
 import { parseMarkdown, splitLines } from "./parse.ts";
 import type { Node } from "./parse.ts";
-import { htmlToMarkdown, imageText } from "./html-subset.ts";
+import { decodeEntities, htmlToMarkdown, imageText } from "./html-subset.ts";
 import { classifyHref, isDrawableHref } from "./links.ts";
 import { outline } from "./outline.ts";
 
@@ -97,7 +97,10 @@ function rewrites(walk: Walk, node: Node, parent: Node | null, inCell: boolean, 
   switch (node.type) {
     case "html": {
       const context = inCell ? "cell" : parent !== null && PHRASING_PARENTS.has(parent.type) ? "inline" : "flow";
-      out.push({ from: startOf(node), to: endOf(node), text: htmlToMarkdown(node.value ?? "", context) });
+      const value = node.value ?? "";
+      for (const match of value.matchAll(ANCHOR_HREF)) href(match[1] ?? match[2] ?? match[3] ?? "");
+      const text = htmlToMarkdown(value, context, (url) => drawable(walk, url));
+      out.push({ from: startOf(node), to: endOf(node), text });
       return;
     }
     case "image":
@@ -146,9 +149,66 @@ function rewrites(walk: Walk, node: Node, parent: Node | null, inCell: boolean, 
     case "definition":
       return;
   }
-  for (const child of node.children ?? []) {
-    rewrites(walk, child, node, inCell || node.type === "tableCell", out);
+  const children = node.children ?? [];
+  const cell = inCell || node.type === "tableCell";
+  for (let k = 0; k < children.length; k++) {
+    const child = children[k];
+    if (child === undefined) continue;
+    const close = anchorClose(children, k);
+    if (close < 0) {
+      rewrites(walk, child, node, cell, out);
+      continue;
+    }
+    k = anchorRewrite(walk, node, children, k, close, cell, out);
   }
+}
+
+const ANCHOR_HREF = /<a\b[^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
+const ANCHOR_OPEN = /^<a\b[^>]*>$/i;
+const ANCHOR_CLOSE = /^<\/a\s*>$/i;
+
+// mdast hands inline HTML one tag at a time, so an anchor's open and close tags are separate html
+// siblings. The index of the sibling closing the anchor opened at `k`, or -1.
+function anchorClose(children: readonly Node[], k: number): number {
+  const open = children[k];
+  if (open?.type !== "html" || !ANCHOR_OPEN.test(open.value ?? "")) return -1;
+  for (let j = k + 1; j < children.length; j++) {
+    const next = children[j];
+    if (next?.type === "html" && ANCHOR_CLOSE.test(next.value ?? "")) return j;
+  }
+  return -1;
+}
+
+// Rewrites an inline anchor and its label as one link, its href checked like any other. Returns
+// the index of the closing tag.
+function anchorRewrite(
+  walk: Walk,
+  parent: Node,
+  children: readonly Node[],
+  open: number,
+  close: number,
+  cell: boolean,
+  out: Replacement[],
+): number {
+  const first = children[open];
+  const last = children[close];
+  if (first === undefined || last === undefined) return close;
+  const tag = first.value ?? "";
+  const match = new RegExp(ANCHOR_HREF.source, "i").exec(tag);
+  const url = match === null ? null : decodeEntities(match[1] ?? match[2] ?? match[3] ?? "");
+  const inner: Replacement[] = [];
+  for (let j = open + 1; j < close; j++) {
+    const child = children[j];
+    if (child !== undefined) rewrites(walk, child, parent, cell, inner);
+  }
+  const label = applyRewrites(walk.source.slice(endOf(first), startOf(last)), endOf(first), inner);
+  let text = label;
+  if (url !== null) {
+    walk.links.push({ href: url, offset: startOf(first) });
+    text = drawable(walk, url) ? `[${label}](${url})` : `${label} (\`${url.replaceAll("`", "")}\`)`;
+  }
+  out.push({ from: startOf(first), to: endOf(last), text });
+  return close;
 }
 
 function applyRewrites(text: string, base: number, edits: Replacement[]): string {

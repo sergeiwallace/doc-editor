@@ -4,9 +4,18 @@ import { decodeEntities, htmlToMarkdown, imageText } from "./html-subset.ts";
 
 describe("htmlToMarkdown", () => {
   test("should convert inline tags to Markdown emphasis, strikethrough, code and links", () => {
-    expect(htmlToMarkdown('<b>b</b> <em>i</em> <del>d</del> <code>c</code> <a href="x.md">l</a>')).toBe(
+    const drawable = (href: string) => href === "x.md";
+
+    expect(htmlToMarkdown('<b>b</b> <em>i</em> <del>d</del> <code>c</code> <a href="x.md">l</a>', "flow", drawable)).toBe(
       "**b** *i* ~~d~~ `c` [l](x.md)",
     );
+  });
+
+  test("should draw an anchor as its label and target when its href may not be a hyperlink or no check is given", () => {
+    expect(htmlToMarkdown('<a href="file:///x">l</a>', "flow", () => false)).toBe("l (`file:///x`)");
+    expect(htmlToMarkdown('<a href="x.md">l</a>')).toBe("l (`x.md`)");
+    expect(htmlToMarkdown("<a>plain</a>")).toBe("plain");
+    expect(htmlToMarkdown('<a href="x.md">', "inline", () => true)).toBe(" (`x.md`)");
   });
 
   test("should drop comments and the content of script and style", () => {

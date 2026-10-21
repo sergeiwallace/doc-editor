@@ -66,18 +66,38 @@ interface Table {
 /**
  * Converts one HTML fragment to Markdown text. `inline` converts a tag on its own, as mdast hands
  * inline HTML one tag at a time; `cell` is the same inside a table cell, where a line break would
- * end the row, so `<br>` becomes a space.
+ * end the row, so `<br>` becomes a space. An anchor becomes a Markdown link only when
+ * `isDrawable` passes its href; otherwise it is drawn as its label and its target as code.
  */
-export function htmlToMarkdown(html: string, context: HtmlContext = "flow"): string {
+export function htmlToMarkdown(
+  html: string,
+  context: HtmlContext = "flow",
+  isDrawable: (href: string) => boolean = () => false,
+): string {
   const out: string[] = [];
   const lists: { ordered: boolean; n: number }[] = [];
   const tables: Table[] = [];
   let href: string | null = null;
+  let drawn = false;
   let dropping: string | null = null;
   const emit = (text: string) => {
     const table = tables.at(-1);
-    if (table?.cell) table.cell.push(text);
-    else out.push(text);
+    const target = table?.cell ?? out;
+    target.push(text);
+    return { target, at: target.length - 1 };
+  };
+  // The slot an open anchor's `[` goes in once its close shows the link may be drawn.
+  let opened: { target: string[]; at: number } | null = null;
+  const closeAnchor = () => {
+    if (href === null) return;
+    if (drawn && opened !== null) {
+      opened.target[opened.at] = "[";
+      emit(`](${href})`);
+    } else {
+      emit(` (\`${href.replaceAll("`", "")}\`)`);
+    }
+    href = null;
+    opened = null;
   };
   const block = (text: string) => emit(context === "flow" ? `\n\n${text}` : text);
   for (const match of html.matchAll(TOKEN)) {
@@ -111,11 +131,12 @@ export function htmlToMarkdown(html: string, context: HtmlContext = "flow"): str
         break;
       case "a":
         if (closing) {
-          if (href !== null) emit(`](${href})`);
-          href = null;
+          closeAnchor();
         } else {
+          closeAnchor();
           href = attribute(token, "href");
-          if (href !== null) emit("[");
+          drawn = href !== null && isDrawable(href);
+          opened = href === null ? null : emit("");
         }
         break;
       case "summary":
@@ -186,6 +207,8 @@ export function htmlToMarkdown(html: string, context: HtmlContext = "flow"): str
         break;
     }
   }
+  drawn = false;
+  closeAnchor();
   const text = out.join("");
   return context === "flow" ? text.replace(/\n{3,}/g, "\n\n").trim() : text;
 }

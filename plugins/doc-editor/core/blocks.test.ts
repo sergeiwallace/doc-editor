@@ -115,6 +115,22 @@ describe("parseBlocks", () => {
     );
   });
 
+  test("should check the href of an inline HTML anchor like any other link and draw it whole", () => {
+    const [paragraph] = blocksOf(
+      'A <a href="file:///etc/passwd">x</a> and <a href="https://e.com">ok <b>b</b></a> and <a href="b.md">in</a>.\n',
+    );
+
+    expect(paragraph === undefined ? "" : drawnOf(paragraph)).toBe(
+      "A x (`file:///etc/passwd`) and [ok **b**](https://e.com) and [in](b.md).",
+    );
+  });
+
+  test("should check the href of an anchor inside an HTML block", () => {
+    const [html] = blocksOf('<p><a href="javascript:x()">j</a> <a href="b.md">b</a></p>\n');
+
+    expect(html === undefined ? "" : drawnOf(html)).toBe("j (`javascript:x()`) [b](b.md)");
+  });
+
   test("should resolve a reference link inline when its definition is in another block, and draw the definition as nothing", () => {
     const blocks = blocksOf("Read [the doc][ref].\n\n[ref]: other.md\n");
 
