@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
 import { PANE_ID } from "./register.ts";
-import { CWD, mountPane, paneWorld, SESSION } from "./tests/pane-world.ts";
+import { CWD, ENGINE_TEST, mountPane, paneWorld, SESSION } from "./tests/pane-world.ts";
 import { SHOW_TOOL_CALL } from "./tools.ts";
 
 // The `show` tool Claude calls, answered by the mod's own tool.call hook (FR-1, D-13, NFR-9).
@@ -10,7 +10,7 @@ const DOC = `${CWD}/doc.md`;
 const TEXT = "# Notes\n\nFirst paragraph.\n\n## Later\n\nSecond paragraph.\n";
 
 describe("show", () => {
-  test("should open the pane on the path when Claude calls show", async ($, on) => {
+  test("should open the pane on the path when Claude calls show", ENGINE_TEST, async ($, on) => {
     const w = paneWorld(on, { files: { [DOC]: TEXT } });
     await $.session.start(SESSION);
 
@@ -22,7 +22,7 @@ describe("show", () => {
     expect((await ui.findAll({ type: "Text" }))[0]?.text).toBe("doc.md › Notes › Later");
   });
 
-  test("should refuse the call with the reason and open no pane when the path does not exist", async ($, on) => {
+  test("should refuse the call with the reason and open no pane when the path does not exist", ENGINE_TEST, async ($, on) => {
     const w = paneWorld(on, { files: { [DOC]: TEXT } });
     await $.session.start(SESSION);
 
@@ -33,7 +33,7 @@ describe("show", () => {
     expect(w.statuses).toEqual(["no such file: missing.md"]);
   });
 
-  test("should refuse a call without a path string", async ($, on) => {
+  test("should refuse a call without a path string", ENGINE_TEST, async ($, on) => {
     const w = paneWorld(on, { files: { [DOC]: TEXT } });
     await $.session.start(SESSION);
 

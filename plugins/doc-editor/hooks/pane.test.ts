@@ -5,17 +5,7 @@ import { ELEMENT_LIMIT, TREE_LIMIT } from "../core/window.ts";
 import { keyButton } from "./hints.ts";
 import { FIND_INPUT, MAX_BYTES } from "./pane.ts";
 import { PANE_ID } from "./register.ts";
-import {
-  CWD,
-  elementsOf,
-  focusedKey,
-  header,
-  openDoc,
-  PANE_PROPS,
-  type PaneWorldOptions,
-  pieceKeys,
-  scrollPane,
-} from "./tests/pane-world.ts";
+import { CWD, elementsOf, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, type PaneWorldOptions, pieceKeys, scrollPane } from "./tests/pane-world.ts";
 
 // The reader pane through the mod's own hooks: /doc, the pane's ui.render and ui.scroll, its
 // Buttons' hotkeys and its fields, under the test kit (T-1.1 to T-1.3, and the redraw half of
@@ -48,7 +38,7 @@ const linkHeavy = (paragraphs: number) => {
 };
 
 describe("open and render (T-1.1)", () => {
-  test("should open the pane with the header row, the first blocks and the hint row within one render when /doc names a Markdown file", async ($, on) => {
+  test("should open the pane with the header row, the first blocks and the hint row within one render when /doc names a Markdown file", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md");
 
     expect(w.opened).toEqual([{ id: PANE_ID, title: "doc.md", focus: true }]);
@@ -58,7 +48,7 @@ describe("open and render (T-1.1)", () => {
     expect(w.statuses).toEqual([]);
   });
 
-  test("should focus the block holding line N when the path carries :N", async ($, on) => {
+  test("should focus the block holding line N when the path carries :N", ENGINE_TEST, async ($, on) => {
     const line = lineOf(SMALL, "# Chapter 2: topic 2");
     const { ui } = await openDoc($, on, files(), `doc.md:${line}`);
 
@@ -67,14 +57,14 @@ describe("open and render (T-1.1)", () => {
     expect((await header(ui)).title).toBe("doc.md › Chapter 2: topic 2");
   });
 
-  test("should focus the heading when the path carries #heading", async ($, on) => {
+  test("should focus the heading when the path carries #heading", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#lists-2");
 
     expect(await focusedKey(ui)).toBe("h2.1");
     expect((await header(ui)).title).toBe("doc.md › Chapter 2: topic 2 › Lists 2");
   });
 
-  test("should open at the top and name the missing place in the status row when :N or #heading is not in the file", async ($, on) => {
+  test("should open at the top and name the missing place in the status row when :N or #heading is not in the file", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md#no-such-heading");
 
     expect(w.statuses).toEqual(["no heading #no-such-heading"]);
@@ -87,7 +77,7 @@ describe("open and render (T-1.1)", () => {
     ["is not UTF-8 text", { [DOC]: { bytes: new Uint8Array([0x23, 0x20, 0xff, 0xfe, 0x0a]) } }, "doc.md is not UTF-8 text"],
     ["holds a NUL byte", { [DOC]: { bytes: new Uint8Array([0x23, 0x00, 0x0a]) } }, "doc.md is not UTF-8 text"],
   ] as const) {
-    test(`should show one status row naming the reason and open no pane when the file ${name}`, async ($, on) => {
+    test(`should show one status row naming the reason and open no pane when the file ${name}`, ENGINE_TEST, async ($, on) => {
       const { w } = await openDoc($, on, { files: spec }, "doc.md");
 
       expect(w.statuses).toEqual([reason]);
@@ -95,7 +85,7 @@ describe("open and render (T-1.1)", () => {
     });
   }
 
-  test("should draw a fence as Code with its language, a callout as a bordered Box with its label and a wide table as one card per row", async ($, on) => {
+  test("should draw a fence as Code with its language, a callout as a bordered Box with its label and a wide table as one card per row", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#code-1", { ...PANE_PROPS, bodyRows: 200, scroll: { offset: 0, bodyRows: 200 } } as never);
     const tree = elementsOf(await ui.drawn());
 
@@ -108,7 +98,7 @@ describe("open and render (T-1.1)", () => {
     expect((await ui.find({ key: "h1.1.1.1.1:1~r2" }))?.text).toMatch(/\*\*Element:\*\* Code 1/);
   });
 
-  test("should draw a table that fits the body as the engine's Markdown table", async ($, on) => {
+  test("should draw a table that fits the body as the engine's Markdown table", ENGINE_TEST, async ($, on) => {
     const wide = { ...PANE_PROPS, bodyColumns: 220, scroll: { offset: 0, bodyRows: 200 } };
     const { ui } = await openDoc($, on, files(), "doc.md#table-1", wide);
 
@@ -116,7 +106,7 @@ describe("open and render (T-1.1)", () => {
     expect((await ui.find({ key: "md:h1.1.1.1.1:1" }))?.text).toMatch(/^\| Element \| Cap/);
   });
 
-  test("should draw an image as its alt text and path", async ($, on) => {
+  test("should draw an image as its alt text and path", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#media-1");
 
     expect((await ui.find({ key: "md:h1.1.1.1.1.1:1" }))?.text).toContain("Figure 1");
@@ -157,7 +147,7 @@ describe("window and budget (T-1.2)", () => {
   });
   }
 
-  test("should list on each piece only the links its own text draws", async ($, on) => {
+  test("should list on each piece only the links its own text draws", ENGINE_TEST, async ($, on) => {
     const tall = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 2_000 } };
     const { ui } = await openDoc($, on, files(linkHeavy(60)), "doc.md", tall);
     const pieces = (await ui.findAll({ type: "Markdown" })).filter((node) => (node.key ?? "").startsWith("md:h1:1~p"));
@@ -170,7 +160,7 @@ describe("window and budget (T-1.2)", () => {
     }
   });
 
-  test("should rewrite its own offset, return without calling next and redraw the rows in view when the pane receives ui.scroll", async ($, on) => {
+  test("should rewrite its own offset, return without calling next and redraw the rows in view when the pane receives ui.scroll", ENGINE_TEST, async ($, on) => {
     const reached: number[] = [];
     on("ui.scroll", (_engine, e) => {
       reached.push(e.by);
@@ -189,7 +179,7 @@ describe("window and budget (T-1.2)", () => {
     expect(await pieceKeys(ui)).toEqual(before);
   });
 
-  test("should move the focus to the next block when the pane receives a one-row ui.scroll", async ($, on) => {
+  test("should move the focus to the next block when the pane receives a one-row ui.scroll", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md");
 
     await scrollPane($, 1);
@@ -198,7 +188,7 @@ describe("window and budget (T-1.2)", () => {
     expect(await focusedKey(ui)).toBe("h:1");
   });
 
-  test("should pass a ui.scroll for another site on to the engine", async ($, on) => {
+  test("should pass a ui.scroll for another site on to the engine", ENGINE_TEST, async ($, on) => {
     const reached: string[] = [];
     on("ui.scroll", (_engine, e) => {
       reached.push(e.requestId);
@@ -211,7 +201,7 @@ describe("window and budget (T-1.2)", () => {
     expect(reached).toEqual(["other"]);
   });
 
-  test("should split a block over 9,000 characters at its paragraph boundaries into keyed elements in order", async ($, on) => {
+  test("should split a block over 9,000 characters at its paragraph boundaries into keyed elements in order", ENGINE_TEST, async ($, on) => {
     const tall = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 2_000 } };
     const { ui } = await openDoc($, on, files(MEDIUM), "doc.md#long-blocks", tall);
     const keys = (await pieceKeys(ui)).filter((key) => key.startsWith("h1:1~"));
@@ -227,7 +217,7 @@ describe("window and budget (T-1.2)", () => {
     }
   });
 
-  test("should draw a fence over 9,000 characters as Code slices of at most 9,000 with a continuation marker on each, in order", async ($, on) => {
+  test("should draw a fence over 9,000 characters as Code slices of at most 9,000 with a continuation marker on each, in order", ENGINE_TEST, async ($, on) => {
     const tall = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 2_000 } };
     const { ui } = await openDoc($, on, files(MEDIUM), "doc.md#long-blocks", tall);
     const keys = (await pieceKeys(ui)).filter((key) => key.startsWith("h1:2"));
@@ -242,7 +232,7 @@ describe("window and budget (T-1.2)", () => {
     for (const code of codes) expect(String(code.props.source).length).toBeLessThanOrEqual(ELEMENT_LIMIT);
   });
 
-  test("should cut a piece that runs past the body to the rows left, so the hint row stays in view", async ($, on) => {
+  test("should cut a piece that runs past the body to the rows left, so the hint row stays in view", ENGINE_TEST, async ($, on) => {
     // 19 rows: the hint row, with the editor's keys, wraps to three rows at 100 columns, and a cut
     // piece holds a spare row; at 18 to 21 rows the list piece is the one cut.
     const short = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 19 } };
@@ -258,7 +248,7 @@ describe("window and budget (T-1.2)", () => {
     expect(await ui.find({ key: keyButton("q") })).toBeDefined();
   });
 
-  test("should draw a blank spacer of the body's height under the hint row, so the engine raises ui.scroll for the arrow keys", async ($, on) => {
+  test("should draw a blank spacer of the body's height under the hint row, so the engine raises ui.scroll for the arrow keys", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md");
     const tree = (await ui.drawn()) as { children?: { props?: { key?: string; height?: number } }[] };
 
@@ -266,7 +256,7 @@ describe("window and budget (T-1.2)", () => {
     expect(tree.children?.at(-2)?.props?.key).toBe("hints");
   });
 
-  test("should scroll a single long wrapped line row by row and show every row before the next piece", async ($, on) => {
+  test("should scroll a single long wrapped line row by row and show every row before the next piece", ENGINE_TEST, async ($, on) => {
     const narrow = { ...PANE_PROPS, bodyColumns: 62, scroll: { offset: 0, bodyRows: 20 } };
     const text = `# Long line\n\n${words(1_200)}\n\n## After\n`;
     const { ui } = await openDoc($, on, files(text), "doc.md", narrow);
@@ -283,7 +273,7 @@ describe("window and budget (T-1.2)", () => {
     expect(missing).toEqual([]);
   });
 
-  test("should scroll inside a piece taller than the body before moving to the next piece", async ($, on) => {
+  test("should scroll inside a piece taller than the body before moving to the next piece", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(MEDIUM), "doc.md#long-blocks");
     for (let k = 0; k < 400 && (await pieceKeys(ui))[0] !== "h1:2~c1"; k++) await scrollPane($, 1);
     expect((await pieceKeys(ui))[0]).toBe("h1:2~c1");
@@ -299,7 +289,7 @@ describe("window and budget (T-1.2)", () => {
 });
 
 describe("navigate (T-1.3)", () => {
-  test("should show the outline on o and focus a heading when Enter presses its entry", async ($, on) => {
+  test("should show the outline on o and focus a heading when Enter presses its entry", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md");
 
     await ui.press({ key: keyButton("o") });
@@ -312,7 +302,7 @@ describe("navigate (T-1.3)", () => {
     expect((await pieceKeys(ui))[0]).toBe("h2");
   });
 
-  test("should hide a heading's section on z and show it again on the next z", async ($, on) => {
+  test("should hide a heading's section on z and show it again on the next z", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
     const open = await pieceKeys(ui);
     expect(open).toContain("h1:1");
@@ -327,7 +317,7 @@ describe("navigate (T-1.3)", () => {
     expect(await pieceKeys(ui)).toEqual(open);
   });
 
-  test("should fold every heading on a and unfold them all on the next a", async ($, on) => {
+  test("should fold every heading on a and unfold them all on the next a", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
 
     await ui.press({ key: keyButton("a") });
@@ -339,7 +329,7 @@ describe("navigate (T-1.3)", () => {
     expect(await pieceKeys(ui)).toContain("h1:1");
   });
 
-  test("should name the reason in the status row when z is pressed with no heading above the focus", async ($, on) => {
+  test("should name the reason in the status row when z is pressed with no heading above the focus", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md");
 
     await ui.press({ key: keyButton("z") });
@@ -347,7 +337,7 @@ describe("navigate (T-1.3)", () => {
     expect(w.statuses).toEqual(["z folds a heading, and no heading is above this block"]);
   });
 
-  test("should draw only the section with its heading path on d and the whole document again on u", async ($, on) => {
+  test("should draw only the section with its heading path on d and the whole document again on u", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#lists-1");
 
     await ui.press({ key: keyButton("d") });
@@ -360,7 +350,7 @@ describe("navigate (T-1.3)", () => {
     expect((await header(ui)).status).toBe("READ · 4 min read");
   });
 
-  test("should go up one drill-in level on u from a section drilled into from another", async ($, on) => {
+  test("should go up one drill-in level on u from a section drilled into from another", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
     await ui.press({ key: keyButton("d") });
     await scrollPane($, 1);
@@ -378,7 +368,7 @@ describe("navigate (T-1.3)", () => {
     expect((await header(ui)).status).toBe("READ · 4 min read");
   });
 
-  test("should focus the next block holding the query with the hit count in the header on Enter, and the previous hit on b", async ($, on) => {
+  test("should focus the next block holding the query with the hit count in the header on Enter, and the previous hit on b", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md");
 
     await ui.press({ key: keyButton("f") });
@@ -396,7 +386,7 @@ describe("navigate (T-1.3)", () => {
     expect((await header(ui)).status).toMatch(/1 of \d+$/);
   });
 
-  test("should say so in the status row and the header when no block holds the query", async ($, on) => {
+  test("should say so in the status row and the header when no block holds the query", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md");
 
     await ui.press({ key: keyButton("f") });
@@ -407,7 +397,7 @@ describe("navigate (T-1.3)", () => {
     expect(await focusedKey(ui)).toBe("h:1");
   });
 
-  test("should open a file link in place on Enter, push the previous position and return to it on b", async ($, on) => {
+  test("should open a file link in place on Enter, push the previous position and return to it on b", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
     await scrollPane($, 1);
     expect(await focusedKey(ui)).toBe("h1:1");
@@ -421,7 +411,7 @@ describe("navigate (T-1.3)", () => {
     expect(await focusedKey(ui)).toBe("h1:1");
   });
 
-  test("should follow a heading link in the same file from the focused block's link row and come back on b", async ($, on) => {
+  test("should follow a heading link in the same file from the focused block's link row and come back on b", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
     await scrollPane($, 1);
 
@@ -438,7 +428,7 @@ describe("navigate (T-1.3)", () => {
     ["outside the repository", "link:0", "outside the repository: ../../../../outside.md"],
     ["to a missing file", "link:1", `missing file: ${CWD}/missing-file.md`],
   ] as const) {
-    test(`should show the reason in the status row and not navigate when a link points ${name}`, async ($, on) => {
+    test(`should show the reason in the status row and not navigate when a link points ${name}`, ENGINE_TEST, async ($, on) => {
       const { w, ui } = await openDoc($, on, files(), "doc.md");
       await scrollPane($, 1);
       await scrollPane($, 1);
@@ -452,7 +442,7 @@ describe("navigate (T-1.3)", () => {
     });
   }
 
-  test("should open a link whose path the drawn text percent-encodes when its drawn form is pressed", async ($, on) => {
+  test("should open a link whose path the drawn text percent-encodes when its drawn form is pressed", ENGINE_TEST, async ($, on) => {
     const text = "# Start\n\nSee [the spaced doc](<my notes.md>).\n";
     const { ui } = await openDoc($, on, { files: { [DOC]: text, [`${CWD}/my notes.md`]: "# Spaced\n" } }, "doc.md");
     const link = await ui.find({ key: "md:h1:1" });
@@ -463,7 +453,7 @@ describe("navigate (T-1.3)", () => {
     expect((await header(ui)).title).toBe("my notes.md › Spaced");
   });
 
-  test("should refuse a link whose symlink leads outside the repository", async ($, on) => {
+  test("should refuse a link whose symlink leads outside the repository", ENGINE_TEST, async ($, on) => {
     const text = "# Start\n\nSee [the escape](escape.md).\n";
     const { w, ui } = await openDoc(
       $,
@@ -480,7 +470,7 @@ describe("navigate (T-1.3)", () => {
 });
 
 describe("reload (T-1.7, the pane's half)", () => {
-  test("should redraw after the file changes and keep the focused block and the folds across renumbered ids", async ($, on) => {
+  test("should redraw after the file changes and keep the focused block and the folds across renumbered ids", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md#chapter-1-topic-1");
     await ui.press({ key: keyButton("z") });
     await ui.press({ key: "outline:h2" }).catch(() => undefined);
@@ -499,7 +489,7 @@ describe("reload (T-1.7, the pane's half)", () => {
     expect(keys).not.toContain("h2:1");
   });
 
-  test("should keep drawing the last text and name the reason in the status row when the file cannot be read", async ($, on) => {
+  test("should keep drawing the last text and name the reason in the status row when the file cannot be read", ENGINE_TEST, async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md");
     const before = await pieceKeys(ui);
 

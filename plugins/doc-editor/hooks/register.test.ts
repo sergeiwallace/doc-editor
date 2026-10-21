@@ -2,7 +2,7 @@ import type { On } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
 import { COMMAND_NAME } from "./register.ts";
-import { CWD, header, openDoc, START_MS } from "./tests/pane-world.ts";
+import { CWD, ENGINE_TEST, header, openDoc, START_MS } from "./tests/pane-world.ts";
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
 
@@ -19,7 +19,7 @@ function world(on: On) {
 }
 
 describe("register", () => {
-  test("should register /doc when the session starts", async ($, on) => {
+  test("should register /doc when the session starts", ENGINE_TEST, async ($, on) => {
     const w = world(on);
 
     await $.session.start(SESSION);
@@ -29,7 +29,7 @@ describe("register", () => {
 
   // T-1.7: a Write or Edit re-reads the open file at once, without waiting for the clock.
   for (const tool of ["Write", "Edit"] as const) {
-    test(`should re-read the open file and redraw the pane when Claude's ${tool} call on it returns`, async ($, on) => {
+    test(`should re-read the open file and redraw the pane when Claude's ${tool} call on it returns`, ENGINE_TEST, async ($, on) => {
       const doc = `${CWD}/notes.md`;
       on("tool.call", { tool: ["Write", "Edit"] }, () => ({ result: { written: doc } }) as never);
       const { w, ui } = await openDoc($, on, { files: { [doc]: "# Before\n" } }, "notes.md");
@@ -49,7 +49,7 @@ describe("register", () => {
     { tool: "Write", file_path: "/work/doc-editor/notes.md", content: "# Notes\n" },
     { tool: "Edit", file_path: "/work/doc-editor/notes.md", old_string: "a", new_string: "b" },
   ] as const) {
-    test(`should pass the ${call.tool} call on and return the tool's own result unchanged`, async ($, on) => {
+    test(`should pass the ${call.tool} call on and return the tool's own result unchanged`, ENGINE_TEST, async ($, on) => {
       world(on);
       const ran: unknown[] = [];
       const answer = { result: { written: call.file_path }, text: `${call.tool} ran` };
@@ -65,7 +65,7 @@ describe("register", () => {
       expect(result).toEqual(expect.objectContaining(answer));
     });
 
-    test(`should pass the ${call.tool} call's refusal on unchanged`, async ($, on) => {
+    test(`should pass the ${call.tool} call's refusal on unchanged`, ENGINE_TEST, async ($, on) => {
       world(on);
       on("tool.call", { tool: ["Write", "Edit"] }, () => ({ deny: "refused beneath the mod" }));
       await $.session.start(SESSION);

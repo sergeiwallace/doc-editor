@@ -8,6 +8,12 @@ import { PANE_ID, PLUGIN_NAME } from "../register.ts";
 // memory, an engine that keeps what the mod asked of it (the panes opened, the status rows, the
 // focus moves, the commands and tools registered), and a clock that moves only when a test moves it.
 
+/**
+ * The time limit of a test that starts the engine: starting it dominates such a test and, on a
+ * loaded host, took over the kit's default 5,000 ms (5,013 ms measured for registering /doc).
+ */
+export const ENGINE_TEST = { timeoutMs: 30_000 } as const;
+
 export const CWD = "/work/doc-editor";
 export const SESSION = { surface: "terminal", isInteractive: true, cwd: CWD } as const;
 export const START_MS = 1_800_000_000_000;

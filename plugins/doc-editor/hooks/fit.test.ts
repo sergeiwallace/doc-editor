@@ -3,7 +3,7 @@ import { describe, expect, test } from "claude-code/testing";
 import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
 import { keyButton } from "./hints.ts";
 import { CARD_CONTINUES, OUTLINE_HINT } from "./pane.ts";
-import { CWD, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world.ts";
+import { CWD, ENGINE_TEST, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world.ts";
 
 // What the pane draws fits its rows (T-1.4's and T-1.7's "keep the focused block in view"), counted
 // from the drawn tree by the kit-side layout model, not by the pane's own estimate.
@@ -12,7 +12,7 @@ const DOC = `${CWD}/doc.md`;
 const files = (text: string) => ({ files: { [DOC]: text, [`${CWD}/${LINKED_FILE}`]: linkedDoc() } });
 
 describe("the page fits the pane", () => {
-  test("should keep the hint row and the focused block inside the pane's rows while a table drawn as cards is in view", async ($, on) => {
+  test("should keep the hint row and the focused block inside the pane's rows while a table drawn as cards is in view", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(fixtureDoc(200)), "doc.md#quotes-1");
     let sawCards = false;
     const misfits: unknown[] = [];
@@ -40,7 +40,7 @@ async function cursorEntry(ui: MountedPane): Promise<string | undefined> {
 }
 
 describe("the outline with keys alone", () => {
-  test("should move the cursor entry by entry on Down through an outline longer than the pane, keep it in view and jump on Enter", async ($, on) => {
+  test("should move the cursor entry by entry on Down through an outline longer than the pane, keep it in view and jump on Enter", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md");
     await ui.press({ key: keyButton("o") });
     const drawn = (await ui.findAll({ type: "Button" })).filter((node) => (node.key ?? "").startsWith("outline:"));
@@ -73,7 +73,7 @@ describe("the outline with keys alone", () => {
 // The engine sums arrows that arrive together into one ui.scroll: a `by` of 5 is five Downs, not
 // a page key, which moves the window's rows.
 describe("summed arrow keys", () => {
-  test("should move five outline entries on a summed scroll of 5, as five Downs do", async ($, on) => {
+  test("should move five outline entries on a summed scroll of 5, as five Downs do", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md");
     await ui.press({ key: keyButton("o") });
     for (let k = 0; k < 5; k++) await scrollPane($, 1);
@@ -87,7 +87,7 @@ describe("summed arrow keys", () => {
     expect(stepped).not.toBe(undefined);
   });
 
-  test("should move the focus five blocks on a summed scroll of 5, as five Downs do", async ($, on) => {
+  test("should move the focus five blocks on a summed scroll of 5, as five Downs do", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(fixtureDoc(200)), "doc.md");
     const start = await focusedKey(ui);
     for (let k = 0; k < 5; k++) await scrollPane($, 1);
@@ -110,7 +110,7 @@ describe("the hint row on a page that ends on a cut piece", () => {
     [100, 40],
     [76, 46],
   ] as const) {
-    test(`should draw the opening page of the 1,000-line fixture with every hint row inside a ${columns} by ${rows} pane`, async ($, on) => {
+    test(`should draw the opening page of the 1,000-line fixture with every hint row inside a ${columns} by ${rows} pane`, ENGINE_TEST, async ($, on) => {
       const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
       const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md", props);
       const misfits: unknown[] = [];
@@ -127,7 +127,7 @@ describe("the hint row on a page that ends on a cut piece", () => {
   }
 
   for (const rows of [18, 22, 26, 30, 34, 38]) {
-    test(`should draw a table too wide for a 76 by ${rows} pane as cards, never as a grid, when it is cut as the page's last piece`, async ($, on) => {
+    test(`should draw a table too wide for a 76 by ${rows} pane as cards, never as a grid, when it is cut as the page's last piece`, ENGINE_TEST, async ($, on) => {
       const props = { ...PANE_PROPS, bodyColumns: 76, scroll: { offset: 0, bodyRows: rows } };
       const { ui } = await openDoc($, on, files(fixtureDoc(200)), "doc.md#code-1", props);
       const grids: unknown[] = [];
@@ -162,7 +162,7 @@ describe("a table card taller than the pane", () => {
     "",
   ].join("\n");
 
-  test("should keep every hint row and the focused block inside a 76 by 18 pane and reach the rest of the card by scrolling", async ($, on) => {
+  test("should keep every hint row and the focused block inside a 76 by 18 pane and reach the rest of the card by scrolling", ENGINE_TEST, async ($, on) => {
     const props = { ...PANE_PROPS, bodyColumns: 76, scroll: { offset: 0, bodyRows: 18 } };
     const { ui } = await openDoc($, on, files(text), "doc.md", props);
     const seen = new Set<string>();
@@ -200,7 +200,7 @@ describe("a cut table card scrolled to its end", () => {
     [98, 12],
     [98, 14],
   ] as const) {
-    test(`should keep every hint row inside a ${columns} by ${rows} pane on every frame through a card-drawn table`, async ($, on) => {
+    test(`should keep every hint row inside a ${columns} by ${rows} pane on every frame through a card-drawn table`, ENGINE_TEST, async ($, on) => {
       const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
       const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md#table-14", props);
       const misfits: unknown[] = [];
@@ -227,7 +227,7 @@ describe("every Down moves the screen", () => {
     [98, 12],
     [98, 14],
   ] as const) {
-    test(`should change the drawn tree on every Down through a card-drawn table in a ${columns} by ${rows} pane`, async ($, on) => {
+    test(`should change the drawn tree on every Down through a card-drawn table in a ${columns} by ${rows} pane`, ENGINE_TEST, async ($, on) => {
       const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
       const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md#table-14", props);
       const stalls: unknown[] = [];

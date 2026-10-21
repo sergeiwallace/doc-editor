@@ -3,7 +3,7 @@ import { describe, expect, test } from "claude-code/testing";
 
 import { PANE_ID, PLUGIN_NAME } from "./register.ts";
 import { openLinkKey } from "./rows.ts";
-import { CWD, paneWorld, SESSION } from "./tests/pane-world.ts";
+import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world.ts";
 
 // The open link under Claude's Read, Write and Edit rows (FR-1, D-13). The row beneath is the
 // test's own hook, standing for the engine or any other mod: the link is added under it, so it
@@ -25,7 +25,7 @@ const call = (tool: string, file_path: string, extra: Partial<RenderPropsOf["Too
 
 describe("open link under tool rows", () => {
   for (const tool of ["Read", "Write", "Edit"]) {
-    test(`should draw an open link under a ${tool} row that names a .md file, and open the pane on it when pressed`, async ($, on) => {
+    test(`should draw an open link under a ${tool} row that names a .md file, and open the pane on it when pressed`, ENGINE_TEST, async ($, on) => {
       const w = paneWorld(on, { files: { [DOC]: TEXT } });
       on("ui.render", { component: "ToolUse" }, ($$, e) => ({ type: "Text", props: {}, children: [`${e.props.tool}(row beneath)`] }) as never);
       await $.session.start(SESSION);
@@ -46,7 +46,7 @@ describe("open link under tool rows", () => {
     ["a row whose call errored", call("Read", DOC, { isErrored: true })],
     ["a row whose call still runs", call("Write", DOC, { isRunning: true })],
   ] as const) {
-    test(`should draw only the row beneath for ${name}`, async ($, on) => {
+    test(`should draw only the row beneath for ${name}`, ENGINE_TEST, async ($, on) => {
       paneWorld(on, { files: { [DOC]: TEXT } });
       on("ui.render", { component: "ToolUse" }, () => ({ type: "Text", props: {}, children: ["row beneath"] }) as never);
       await $.session.start(SESSION);
@@ -57,7 +57,7 @@ describe("open link under tool rows", () => {
     });
   }
 
-  test("should draw one open link per Markdown file under a folded group of reads", async ($, on) => {
+  test("should draw one open link per Markdown file under a folded group of reads", ENGINE_TEST, async ($, on) => {
     paneWorld(on, { files: { [DOC]: TEXT } });
     on("ui.render", { component: "ToolGroup" }, () => ({ type: "Text", props: {}, children: ["Read 3 files"] }) as never);
     await $.session.start(SESSION);
