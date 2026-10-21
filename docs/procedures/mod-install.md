@@ -74,4 +74,6 @@ load writes. The pre-commit and pre-push hooks run both, plus
 
 When `claude` is missing or older than 2.1.299, each claude-backed step prints a line saying it
 did not run and why, and the Vitest cases that call `claude` show as skipped. Before the first
-session load, the hooks type check says the same. None of them prints a pass.
+session load, the hooks type check says the same. None of them prints a pass. `npm test` ends with
+one summary line: `npm test: every gate ran`, or the gates that did not run and why. The hooks
+that can skip are verbose, so their lines show at commit and push even though they exit 0.

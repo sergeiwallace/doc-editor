@@ -44,8 +44,10 @@ that list with what `claude plugin validate --json` reports and names each diffe
 ## The shared core
 
 Code under `plugins/doc-editor/core` runs inside a Claude Code mod and, later, in a browser. It
-must not reference `document`, `window`, `process` or `setTimeout`, must not use `$` anywhere, and
-may import only relative paths. A test file there may also import `claude-code/testing`. The core
+must not reference `document`, `window`, `process` or `setTimeout`, directly or through
+`globalThis`, `self` or `window`, must not alias `globalThis` or `self` or call `require`, must
+not use `$` anywhere, and may import only relative paths. A name the code declares itself, in a
+scope around the use, is fine. A test file there may also import `claude-code/testing`. The core
 purity lint in `npm test` fails naming the file, the line and the import or name. Every call to
 the mods API stays in `plugins/doc-editor/hooks/register.ts`.
 

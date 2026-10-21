@@ -93,10 +93,13 @@ repos:
       # `claude plugin test plugins/doc-editor`. The validate and size gates also run on their
       # own, so a failure names its gate. All need `npm ci` first and fail loudly without it.
       # Without a usable `claude` (not on PATH, or below the floor in scripts/claude-floor.mjs)
-      # a claude-backed gate prints that it did NOT run and why, and never prints a pass.
+      # a claude-backed gate prints that it did NOT run and why, and never prints a pass;
+      # `verbose: true` shows that line even though the hook exits 0, and `npm test` ends
+      # with one summary line naming each gate that did not run.
       - id: npm-test
         name: npm test (Vitest repository checks, then claude plugin test plugins/doc-editor)
         entry: npm test
+        verbose: true
         language: system
         stages: [pre-commit, pre-push]
         pass_filenames: false
@@ -104,6 +107,7 @@ repos:
       - id: typecheck
         name: npm run typecheck (the repository, the core with no DOM or Node types, the hooks)
         entry: npm run typecheck
+        verbose: true
         language: system
         stages: [pre-commit, pre-push]
         pass_filenames: false
@@ -111,6 +115,7 @@ repos:
       - id: plugin-declared
         name: claude plugin validate --json plugins/doc-editor matches the README's declared list
         entry: node scripts/check-plugin-declared.mjs plugins/doc-editor
+        verbose: true
         language: system
         stages: [pre-commit, pre-push]
         pass_filenames: false
@@ -118,6 +123,7 @@ repos:
       - id: marketplace-validate
         name: claude plugin validate . (the marketplace lists ./plugins/doc-editor)
         entry: node scripts/check-marketplace.mjs . ./plugins/doc-editor
+        verbose: true
         language: system
         stages: [pre-commit, pre-push]
         pass_filenames: false
