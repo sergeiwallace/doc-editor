@@ -28,7 +28,7 @@ repeat what they settled:
 ## Method
 
 Read dates: 2026-10-15 00:06Z to 00:41Z (UTC, measured with `date -u`). Host:
-sem-kg-ec2, Claude Code 2.1.296 per the brief (not re-measured). Nothing was installed, built,
+a Linux development host, Claude Code 2.1.296 per the brief (not re-measured). Nothing was installed, built,
 tested or launched. No mod and no browser ran.
 
 What was fetched and read this run:
@@ -810,7 +810,7 @@ imported function. A design built against 2.1.296 has to read the types the host
   unrelated name and a long description can be missed. [INFERENCE]
 - Not researched: pdfium, Typst, Browsh's text mode beyond the browser survey, and any in-process
   reader for RTF, ODT, reStructuredText or LaTeX. [NO SOURCE]
-- Drawing on Bedrock is still unmeasured (the mods survey, Gaps), and so is every drawing claim
+- Drawing through a third-party model provider is still unmeasured (the mods survey, Gaps), and so is every drawing claim
   here. [INFERENCE]
 
 ### Contrarian evidence
@@ -1182,7 +1182,7 @@ emphasis marks and link targets from the source text.
 
 ## Appendix: Research Prompt
 
-**Registry ID:** none (delegated researcher leaf on sem-kg-ec2; no ai-core DB on this host)
+**Registry ID:** none (delegated researcher leaf on a Linux development host; no ai-core DB on this host)
 **Model:** `us.anthropic.claude-opus-5-5[1m]` (Claude Code Agent tool, researcher persona, effort high)
 **Date:** 2026-10-14
 

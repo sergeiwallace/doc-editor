@@ -1,6 +1,21 @@
 {
+  "name": "doc-editor-monorepo",
   "private": true,
+  "type": "module",
+  "packageManager": "npm@11.19.0",
+  "workspaces": [
+    "plugins/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "node scripts/run-gate.mjs plugins/doc-editor",
+    "typecheck": "tsc --noEmit && tsc -p plugins/doc-editor/core && node scripts/typecheck-hooks.mjs plugins/doc-editor"
+  },
   "devDependencies": {
-    "markdownlint-cli2": "^0.21.0"
+    "@types/node": "^24.19.2",
+    "markdownlint-cli2": "^0.21.0",
+    "rolldown": "^1.2.14",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
   }
 }

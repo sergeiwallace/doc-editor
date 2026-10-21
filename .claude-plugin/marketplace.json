@@ -1,0 +1,17 @@
+{
+  "name": "doc-editor",
+  "owner": {
+    "name": "Sergei Wallace"
+  },
+  "metadata": {
+    "description": "doc-editor: a document viewer and editor for the Claude Code TUI."
+  },
+  "plugins": [
+    {
+      "name": "doc-editor",
+      "source": "./plugins/doc-editor",
+      "description": "A document viewer and editor for the Claude Code TUI: /doc opens a Markdown file as a navigable document in a pane.",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -654,7 +654,7 @@ COMMIT DISCIPLINE + WORKTREE CONSOLIDATION (applies to YOU and to EVERY sub-agen
     reads as "not installed" until that script reaches `main` (AIH-83dw3). When your brief WITHHOLDS
     integration (the launcher must say so explicitly), you stop at a pushed branch plus an open PR
     for the launcher to merge (AIH-i73jt), and you never delete the worktree you are standing in.
-    Shared repos (`bms-corp/*`) keep every gate they have under either setting:
+    Shared repos (an employer organisation's repositories) keep every gate they have under either setting:
     "land on the target" there means the PR branch pushed and the PR opened, and the standing
     bot-findings and UAT gates decide the rest. Verify each child per WORKTREE ISOLATION
     VERIFICATION above BEFORE you merge it, and clean up the child's worktree after a successful

@@ -1,0 +1,10 @@
+{
+  "name": "doc-editor",
+  "version": "0.1.0",
+  "description": "A document viewer and editor for the Claude Code TUI: /doc opens a Markdown file as a navigable document in a pane.",
+  "author": {
+    "name": "Sergei Wallace"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/sergeiwallace/doc-editor"
+}

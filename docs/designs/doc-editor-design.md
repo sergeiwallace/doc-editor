@@ -2,7 +2,7 @@
 title: "doc-editor: a document viewer and editor inside the Claude Code TUI as a mod"
 category: design
 tags: [design, claude-code, mods, tui, markdown, html, pdf, doc-editor, mcp-apps]
-status: draft
+status: approved
 source: "claude-fable-5-1-orchestrated-2026-10-15"
 template_version: "design-1.0.0"
 delegation_provenance:
@@ -32,7 +32,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
 | A003 | FOLLOW-UP, 2026-10-14T23:46:39Z. "the doc viewer will be doc-editor" names this repo. The shared-components question raised for beads-ui is answered for doc-editor by D-9 and D-15: logic, types and design tokens are shared across the mod, the web app and the MCP App; UI components are shared between the web app and the MCP App only. |
 | A004 | FOLLOW-UP, 2026-10-14T23:46:39Z. Repo creation, Copier configuration, README and GitHub metadata were done by the launching session (PR #1). D-10 keeps that scaffold and adds the plugin and package layout. The Copier template's visibility is D-16: keeping it private and saying so in the README was resolved and applied by the launching session (PR #7); making it public stays an outward-facing act for Sergei. |
 
-**Status:** DRAFT (awaiting Sergei's review; the run's natural end)
+**Status:** APPROVED (all 17 decisions resolved; a fully decided design is approved, Sergei, 2026-10-21). Phase 0 and Phase 1 are in build.
 
 **Created:** 2026-10-15
 
@@ -73,6 +73,7 @@ The raw record is [docs/asks/DED-epic-doc-editor-view-edit-b3p.md](../asks/DED-e
   - [Phase 4: Enhancements](#phase-4-enhancements)
 - [Implementation Audit](#implementation-audit)
 - [Risks and Mitigations](#risks-and-mitigations)
+- [Run Ledger](#run-ledger)
 - [Design Decisions](#design-decisions)
   - [Decision Summary](#decision-summary)
   - [Decision Details](#decision-details)
@@ -370,7 +371,7 @@ The source text with line ranges is the canonical document. Edits are source-ran
 - Replacement/refactor tasks: inventory the existing behaviors, then a parity AC for each (preserved, or intentionally dropped + reason).
 <!-- doc:ac-rules:mirror:end -->
 
-Implementation starts after Sergei's review of this doc. Each phase is filed as a child Beads issue of the epic with these ACs as its body; a phase is done when its exit gate is green. Tests run with `claude plugin test` (the core and the hooks module) and, from Phase 3, Vitest for the web packages (D-11).
+The design is approved as fully decided (Sergei, 2026-10-21), so implementation proceeds phase by phase. Each phase is filed as a child Beads issue of the epic with these ACs as its body; a phase is done when its exit gate is green. Tests run with `claude plugin test` (the core and the hooks module) and, from Phase 3, Vitest for the web packages (D-11).
 
 ### Phase 0: Spike and scaffold
 
@@ -381,21 +382,21 @@ Implementation starts after Sergei's review of this doc. Each phase is filed as 
   - Tests added: `plugins/doc-editor/hooks/register.test.ts` (loads, registers `/doc`), `plugins/doc-editor/core/vendor.test.ts` (each candidate library loads and parses)
 - **Tasks + acceptance criteria:**
   - **T-0.1 Spike the unknowns**, recorded verbatim in the evidence file:
-    - [ ] `When a gallery-style pane draws a task list, strikethrough, a tree of 110,000 characters and a terminal Link with a non-https href on this host's Claude Code, the evidence file shall record what each drew, quoted from the screen.`
-    - [ ] `When the same pane draws an HTML comment, a CriticMarkup comment and a %% comment inside a Markdown element, the evidence file shall record whether each is hidden, shown as text or breaks the block.`
-    - [ ] `When a focused Client receives Tab, a capital letter and a slash, the evidence file shall record which of the three reached onKey.`
-    - [ ] `When text is selected inside the pane in fullscreen, the evidence file shall record what $.ui.selection() returned.`
-    - [ ] `When claude plugin test imports a copied micromark with mdast-util-from-markdown (default export condition), @codemirror/state, prosemirror-model and yjs, the test shall record for each whether it loaded and parsed a sample.`
-    - [ ] `If a candidate library fails to load, then the evidence file shall record the refusal verbatim and D-3 shall be re-run with that result.`
+    - [x] `When a gallery-style pane draws a task list, strikethrough, a tree of 110,000 characters and a terminal Link with a non-https href on this host's Claude Code, the evidence file shall record what each drew, quoted from the screen.`
+    - [x] `When the same pane draws an HTML comment, a CriticMarkup comment and a %% comment inside a Markdown element, the evidence file shall record whether each is hidden, shown as text or breaks the block.`
+    - [x] `When a focused Client receives Tab, a capital letter and a slash, the evidence file shall record which of the three reached onKey.`
+    - [x] `When text is selected inside the pane in fullscreen, the evidence file shall record what $.ui.selection() returned.`
+    - [x] `When claude plugin test imports a copied micromark with mdast-util-from-markdown (default export condition), @codemirror/state, prosemirror-model and yjs, the test shall record for each whether it loaded and parsed a sample.`
+    - [x] `If a candidate library fails to load, then the evidence file shall record the refusal verbatim and D-3 shall be re-run with that result.`
   - **T-0.2 Marketplace, plugin and core skeleton**
-    - [ ] `When claude plugin validate . runs at the repository root, the system shall exit 0 and list the doc-editor plugin.`
-    - [ ] `When claude plugin validate plugins/doc-editor runs, the system shall exit 0 and list exactly the hooks and calls the plugin README declares.`
-    - [ ] `If a file under plugins/doc-editor/core/ imports anything but a relative path, then the core lint test shall fail naming the file and the import.`
-    - [ ] `If a file under plugins/doc-editor/core/ references document, window, process, setTimeout or $, then the core lint test shall fail naming the file and the token.`
+    - [x] `When claude plugin validate . runs at the repository root, the system shall exit 0 and list the doc-editor plugin.`
+    - [x] `When claude plugin validate plugins/doc-editor runs, the system shall exit 0 and list exactly the hooks and calls the plugin README declares.`
+    - [x] `If a file under plugins/doc-editor/core/ imports anything but a relative path, then the core lint test shall fail naming the file and the import.`
+    - [x] `If a file under plugins/doc-editor/core/ references document, window, process, setTimeout or $, then the core lint test shall fail naming the file and the token.`
   - **T-0.3 Repository hygiene**
-    - [ ] `When the repository is read, CONTRIBUTING.md, SECURITY.md and CODE_OF_CONDUCT.md shall exist and the README shall say the Copier template is private, or link it if D-16 made it public.`
-    - [ ] `When a plugin is loaded with --plugin-dir, git status shall report no untracked file under plugins/doc-editor.`
-    - [ ] `If any of CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md is missing, or the README neither states the template is private nor links a public template, then the hygiene test shall fail naming the file or sentence.`
+    - [x] `When the repository is read, CONTRIBUTING.md, SECURITY.md and CODE_OF_CONDUCT.md shall exist and the README shall say the Copier template is private, or link it if D-16 made it public.`
+    - [x] `When a plugin is loaded with --plugin-dir, git status shall report no untracked file under plugins/doc-editor.`
+    - [x] `If any of CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md is missing, or the README neither states the template is private nor links a public template, then the hygiene test shall fail naming the file or sentence.`
 - **Exit gate:** T-0.1's evidence file committed with every unknown answered or marked unanswerable with the reason; `claude plugin validate` green at the root and the plugin; `claude plugin test` green; D-3 and D-5 re-run on the spike's answers and their records updated.
 
 ### Phase 1: MVP reader with Claude-mediated editing
@@ -504,7 +505,7 @@ FR-13, each started once the MVP has been used: inline comments per D-17 (first 
 | # | Phase | Section / Decision | Verified | Notes |
 |---|-------|--------------------|---------|-------|
 | 1 | N/A | **Design Overview filled**: confirm the `## Design Overview` section above is filled in with concrete implementation knowledge, not left as a stub | - [ ] | |
-| 2 | Phase 0 | T-0.1 spike answers folded into D-3 and D-5; marketplace and core lint (D-9, D-10, D-11) | - [ ] | |
+| 2 | Phase 0 | T-0.1 spike answers folded into D-3 and D-5; marketplace and core lint (D-9, D-10, D-11) | - [x] | PASS 2026-10-21. Spike evidence `docs/research/evidence/ded-doc-editor/phase-0-spike.md` answers every unknown; D-3 and D-5 re-run, both unchanged. D-9: the core is `plugins/doc-editor/core/`, `$`-free and DOM-free, held there by the scope-aware `scripts/check-core-purity.mjs`. D-10: root `.claude-plugin/marketplace.json` over `plugins/doc-editor`, npm workspaces. D-11: `npm test` runs the Vitest repository checks then `claude plugin test`, and the validate, declared-list, size and type checks run at commit and push; without a usable `claude` they report not run. Codex review findings fixed or justified in the Run Ledger |
 | 3 | Phase 1 | D-1 scope, D-2 windowed renderer, D-4 Claude-mediated edit and review, D-12 safe write, D-13 transcript links, NFR-1 to NFR-9 | - [ ] | |
 | 4 | Phase 2 | D-6 HTML, D-7 PDF, D-14 pictures, the `Client` editor | - [ ] | |
 | 5 | Phase 3 | D-8 other formats, D-9 core home, D-15 web app and MCP App | - [ ] | |
@@ -526,6 +527,40 @@ FR-13, each started once the MVP has been used: inline comments per D-17 (first 
 | 9 | pandoc and MuPDF are GPL or AGPL | Licence contamination of an MIT repository | NFR-7: call them as binaries only after a licence review; vendor nothing from them |
 | 10 | The sibling beads-ui fixes a different package layout | Two public repos with incompatible cores | D-9 and D-10 name the layout; compare with beads-ui's design before Phase 3 fixes package names |
 | 11 | A document over 4 MiB cannot be read by `$.fs.read` | Large PDFs and notebooks fail | Converters read the file themselves and return page ranges; the mod reads only converted text |
+
+## Run Ledger
+
+`ledger-version`: 1
+
+The restart contract for the build runs that implement this design. One authority row per run; transition rows record each stage verdict.
+
+| Run ID | Contract | Decision classes | Push |
+|---|---|---|---|
+| `doc-editor-build-2026-10-21-aih-ec2-3` | `auto-flow/AIH-701#d-7` | `["adn:in-scope"]` | `true` |
+
+| Transition | Round | Verdict | Basis | Items | Recorded by | Commit |
+|---|---:|---|---|---|---|---|
+| `entry->implement` | 0 | `advance` | `explicit` | Sergei, 2026-10-21: "it appears all the doc editor design doc decisions are already made. if they're already made, then why aren't you bilding them". All 17 decisions are resolved and no Open Question blocks Phase 0 or Phase 1. | `session` | `53b303b` |
+
+Resolved plan for this run: stages Phase 0 (T-0.1 to T-0.3) then Phase 1 (T-1.1 to T-1.8); implementation by Claude engineer children on Opus (the machine profile's default delegation family); cross-family review of each merged child and each phase diff by Codex (`cx review`, read-only); integration mode `parent` with integration ownership; at most 2 concurrent children. Target: doc-editor `main` at `53b303b`; integration worktree `.worktrees/aih-ec2-3-agents/ded-build` on branch `wt/aih-ec2-3/ded-build`. Stage cursor: Phase 0. Last completed integration boundary: none.
+
+Expression repairs this run made (Authority test Gate C, `✅ Resolved by Opus orchestrator (doc-editor build coordinator)`, model `claude-opus-5-5`):
+
+1. D-11's mitigation sentence. Before: "the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green". After: "when the binary is absent or below the floor, the script reports the plugin tests as not run and prints the runner's verbatim reason, never a false green". The ratified intent is that same sentence: no plugin-test run without the binary, the runner's reason printed, no false green. The fleet's lexical founding-ask check read the old verb as a requirement being given up; the new wording says the same thing affirmatively. Not changed: what the gate does when `claude` is missing or too old.
+
+Phase 0 children (each Claude engineer on Opus, model `us.anthropic.claude-opus-5-5[1m]`, effort medium, in its own worktree): T-0.1 the spike (branch `wt/aih-ec2-3/ded-t-0-1-spike-five-qexn`); T-0.2 and T-0.3 the scaffold, gate and hygiene (branch `wt/aih-ec2-3/ded-t-0-2-marketplace-rngv`, which also carried the review fixes below).
+
+Phase 0 cross-family review (Codex `review` role, model `gpt-5.6-sol`, effort medium, read-only), findings and dispositions:
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | The spike's tree case is 110,055 characters, not 110,000 | Justified. The criterion tests a tree over the 100,000 budget. `big1` holds 110,000 characters in one element and `big` 110,000 in eleven, each plus the 55-character header every pane draws; both are over budget, which is what was measured |
+| 2 | Beads task ids and session names appear in public files | Justified by the owner's own words for this repository (A001): "its fine to have the beads store etc in the repo for that one. no need to scrub beads task ids or whatever. and no need to scrube any private repo names either." Host and employer names, which that sentence does not cover, were removed from every committed doc |
+| 3 | A gate that cannot run exits 0, and pre-commit hides its "did NOT run" line behind `Passed` | Fixed: the skipping hooks print their output, and `npm test` ends with a line naming any gate that did not run (D-11's "never a false green") |
+| 4 | The core purity lint resolved bindings per file, so a name bound in one scope hid a free use in another; it also missed `self.document`, aliases of `globalThis`, computed access and an aliased `require` | Fixed: scope-aware resolution, with a fixture for each case in both directions |
+| 5 | The spike's vendor test never ran inside the finished plugin | Fixed: it ran in the tree after both branches merged (6 tests, 2 files, all pass), recorded in the spike's Gaps |
+| 6 | The hygiene test checks a fixed list of files a load writes, not a live load | Justified: a commit hook cannot start a Claude Code session. The list is what a load was measured to write on 2.1.306, a live load at the integration tip left `git status` clean under the plugin, and the Phase 1 live check repeats that |
+| 7 | T-0.1's screen findings have no regression assertions | Justified: T-0.1's criteria are measurements of the engine, recorded in the evidence file. The behaviours they call for (task-marker glyphs, dropped comments, link validation) are Phase 1 core work with their own tests |
 
 <!-- /doc:region name="overview" -->
 
@@ -687,6 +722,11 @@ Criterion 2 resolves it: the renderer is the foundation every other feature draw
 
 Criterion 1 resolves it: the document model is what every surface and every edit depends on, so the parser is a one-way door once positions and block ids are in use. Mitigations for (b)'s cons: the bundle step is a script in the repository with its output committed and a pre-commit check that each chunk is under 1 MB and matches the script's output; the bundle is built with the default export condition and a core lint test fails on `document`; T-0.1 load-tests the bundle before Phase 1 and the hand-rolled splitter from the shipped mods is the recorded fallback. Confidence: medium, pending T-0.1.
 
+> **Decision (re-run on the T-0.1 spike, 2026-10-21):** ✅ Resolved by Opus orchestrator (doc-editor build coordinator) — (b) stands: the vendored micromark plus mdast-util-from-markdown bundle, with the GFM extensions, as one committed chunk under 500 KB
+<!-- decision-record: chosen-option=(b); ai-family=claude; ai-model=claude-opus-5-5; ai-effort=medium; ai-profile=architect -->
+
+The spike ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), section "Vendored libraries under claude plugin test") measured the bundle loading and parsing GFM with positions under `claude plugin test` on 2.1.306, and loading in a live hooks module. No library failed, so option (a) is not triggered and stays recorded as the fallback. The bundle is 297,031 bytes in one chunk, built by `scripts/bundle-vendor.mjs` with the default export condition, and a rebuild reproduces it byte for byte. Its nine `document` matches are micromark's own local binding, property names and strings; none reaches the DOM global, and the core purity lint resolves identifiers rather than words, so it passes the bundle and still fails on a free `document`. One finding changes how the core feeds the engine rather than which parser it uses: the `Markdown` element draws task markers `[ ]` and `[x]` as literal text and shows HTML, CriticMarkup and `%%` comments as text, so the core rewrites task markers to glyphs and drops comments from the text it hands the element (D-2's named fallback). The repository's 500 KB file limit is stricter than the 1 MB chunk rule and satisfies it. Same conclusion as the original call. Confidence: high.
+
 ---
 
 <a id="d-4"></a>
@@ -768,6 +808,11 @@ Criterion 2 resolves it: the edit pipeline crosses the boundary between the pane
 <!-- decision-lineage: decision-id=DED-b3p/D-5; decision-topic=doc-editor-key-map; governs=component:doc-editor/plugins/doc-editor/hooks/hints; normalized-proposition=the-mvp-key-map-uses-lowercase-hotkeys-and-arrow-keys-and-a-less-style-client-map-follows-if-the-spike-permits; applicability=repo:doc-editor; outcome-id=key-map; relation=different-question; related-decision-id=DED-b3p/D-4; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
 Criterion 1 resolves it: a key map is a two-way door with low decay, so the simple option that works everywhere ships first. Mitigation for (a)'s con: the hint row names every key, and T-2.4 adds the `less` map once measured. Confidence: high.
+
+> **Decision (re-run on the T-0.1 spike, 2026-10-21):** ✅ Resolved by Opus orchestrator (doc-editor build coordinator) — (a) stands for the MVP; the condition this decision set for (b) in Phase 2 is met
+<!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-opus-5-5; ai-effort=medium; ai-profile=architect -->
+
+The spike ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), section "Client: Tab, a capital letter and a slash") measured that a focused `Client` receives Tab, a capital letter and `/` at `onKey` after one click in fullscreen, and Shift-Tab and the arrows as well. That meets the condition for adding the `less` map in Phase 2 (T-2.4). It does not change the MVP: a `Client` still needs fullscreen and a click before it gets keys, and every MVP feature must work with the keyboard alone on the main screen (NFR-2), so the pane's lowercase hotkeys ship first. The spike also found fullscreen rendering on by default inside tmux under `--setting-sources project`, which puts the Phase 2 map within reach of more sessions than the research expected. Same conclusion as the original call. Confidence: high.
 
 ---
 
@@ -998,7 +1043,9 @@ Criterion 1 resolves it: install paths and package names decay into one-way door
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-11; decision-topic=doc-editor-test-gate; governs=gate:doc-editor/pre-commit; normalized-proposition=the-plugin-is-gated-by-claude-plugin-validate-and-claude-plugin-test-and-the-web-packages-by-vitest; applicability=repo:doc-editor; outcome-id=test-gate; relation=different-question; related-decision-id=DED-b3p/D-9; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigations for (a)'s cons: one `npm test` script runs both runners in order, so the gate stays one command for a contributor and for the pre-push hook; the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green, as the fleet's mods design does. Door type: two-way; blast radius: the repository's gate, shared by every phase. Confidence: high.
+Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigations for (a)'s cons: one `npm test` script runs both runners in order, so the gate stays one command for a contributor and for the pre-push hook; when the binary is absent or below the floor, the script reports the plugin tests as not run and prints the runner's verbatim reason, never a false green, as the fleet's mods design does. Door type: two-way; blast radius: the repository's gate, shared by every phase. Confidence: high.
+
+The mitigation sentence above was reworded on 2026-10-21 as an expression repair; the record is in the [Run Ledger](#run-ledger).
 
 ---
 
@@ -1246,10 +1293,14 @@ Criteria 2 and 5 resolve it: the store is a contract the mod, the web app and th
 
 ## Open Questions
 
-1. Does a focused `Client` receive Tab, capital letters and `/`? Decides T-2.4 and whether D-5's `less` map is possible. Measured by T-0.1.
-2. Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
-3. What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
-4. Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
+1. **[RESOLVED]** Does a focused `Client` receive Tab, capital letters and `/`? Decides T-2.4 and whether D-5's `less` map is possible. Measured by T-0.1.
+   - **Resolution:** yes. After one click in fullscreen, Tab, `A` (with `shift`) and `/` all reached `onKey`, as did Shift-Tab and the arrows ([phase-0-spike.md](../research/evidence/ded-doc-editor/phase-0-spike.md), "Client: Tab, a capital letter and a slash"). D-5 was re-run: the MVP map stands and T-2.4 is unblocked.
+2. **[RESOLVED]** Does `$.ui.selection()` return a selection made inside a mod's pane? Decides whether "ask Claude about this selection" can be a Phase 2 action. Measured by T-0.1.
+   - **Resolution:** yes in fullscreen: a drag inside the pane returned `{"text":"SELECTME alpha bravo"}` with no `requestId`; on the main screen it returned `undefined`. No position comes with the text, so the mod maps it back to a block itself (spike, "$.ui.selection() for a selection inside the pane").
+3. **[RESOLVED]** What does the `Markdown` element draw for task lists, strikethrough, an over-budget tree and a terminal `Link` with a non-`https` `href` on 2.1.296? Decides the core's glyph rewrite and the renderer's budget. Measured by T-0.1.
+   - **Resolution (measured on 2.1.306):** task markers draw as literal `[ ]` and `[x]`, so the core rewrites them; `~~x~~` draws struck through; a 110,000-character tree is drawn to its first 100,000 characters with a "more characters, not drawn" row, not refused; a terminal `Link` writes any non-blank `href` into an OSC 8 hyperlink, `javascript:` included, so the mod validates every link before it draws one. HTML, CriticMarkup and `%%` comments show as text, so the core drops them. The 9,000-per-element and 60,000-per-tree budget stands.
+4. **[RESOLVED]** Do the vendored micromark bundle, `@codemirror/state`, `prosemirror-model` and `yjs` load in the mod environment? Decides D-3's fallback and the Phase 2 editor's state model. Measured by T-0.1.
+   - **Resolution:** all four loaded and parsed a sample under `claude plugin test`, and the micromark bundle loaded in a live hooks module. D-3 was re-run: (b) stands. A symlink whose target is outside the plugin directory is refused at load, so D-9's option (c) does not work for an in-place load; Phase 3 re-runs D-9 with that result.
 5. **[RESOLVED]** Where should inline comments on a Markdown file live? Three options exist, so this is a decision, recorded as D-17.
    - **Resolution:** D-17 chose a repository sidecar in MRSF's shape with quote re-anchoring, on the comments spike's evidence (`docs/research/evidence/ded-doc-editor/comment-storage-for-markdown.md`). What stays open is whether the owner wants persistent comments at all, which only use of the MVP shows; the Phase 4 build waits on that.
 6. Will Claude Code wrap kitty graphics for tmux passthrough? If it does, `Image` opens to every tmux session and D-14 is revisited. Upstream.
