@@ -115,6 +115,22 @@ describe("parseBlocks", () => {
     );
   });
 
+  test("should check the href of an inline HTML anchor like any other link and draw it whole", () => {
+    const [paragraph] = blocksOf(
+      'A <a href="file:///etc/passwd">x</a> and <a href="https://e.com">ok <b>b</b></a> and <a href="b.md">in</a>.\n',
+    );
+
+    expect(paragraph === undefined ? "" : drawnOf(paragraph)).toBe(
+      "A x (`file:///etc/passwd`) and [ok **b**](https://e.com) and [in](b.md).",
+    );
+  });
+
+  test("should check the href of an anchor inside an HTML block", () => {
+    const [html] = blocksOf('<p><a href="javascript:x()">j</a> <a href="b.md">b</a></p>\n');
+
+    expect(html === undefined ? "" : drawnOf(html)).toBe("j (`javascript:x()`) [b](b.md)");
+  });
+
   test("should resolve a reference link inline when its definition is in another block, and draw the definition as nothing", () => {
     const blocks = blocksOf("Read [the doc][ref].\n\n[ref]: other.md\n");
 
@@ -161,6 +177,30 @@ describe("parseBlocks", () => {
     const [paragraph] = parseBlocks("[d](b.md) [c](https://e.com)\n").blocks;
 
     expect(paragraph === undefined ? "" : drawnOf(paragraph)).toBe("d (`b.md`) [c](https://e.com)");
+  });
+});
+
+describe("CRLF line endings", () => {
+  const lf = fixtureDoc(1000);
+  const crlf = lf.replaceAll("\n", "\r\n");
+  const strip = (text: string) => text.replaceAll("\r", "");
+
+  test("should give the CRLF fixture the same blocks, ids, kinds, lines and drawn text as the LF one", () => {
+    const a = parseBlocks(lf, ORIGIN).blocks;
+    const b = parseBlocks(crlf, ORIGIN).blocks;
+
+    expect(b.map((x) => `${x.id} ${x.kind}${x.level ?? ""} ${x.start}-${x.end}`)).toEqual(
+      a.map((x) => `${x.id} ${x.kind}${x.level ?? ""} ${x.start}-${x.end}`),
+    );
+    expect(b.map((x) => strip(drawnOf(x)))).toEqual(a.map(drawnOf));
+    expect(b[0]?.kind).toBe("raw");
+  });
+
+  test("should give a CRLF callout's label and fence language with no carriage return", () => {
+    const blocks = blocksOf("> [!WARNING] Careful\r\n> body\r\n\r\n```ts\r\nx\r\n```\r\n");
+
+    expect(blocks[0] === undefined ? null : calloutLabel(blocks[0])).toBe("WARNING: Careful");
+    expect(blocks[1] === undefined ? null : fenceLanguage(blocks[1])).toBe("ts");
   });
 });
 

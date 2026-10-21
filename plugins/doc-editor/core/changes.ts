@@ -3,7 +3,6 @@
 // and the check that keeps a discard from writing over text that changed again.
 
 import type { Block, Change } from "./types.ts";
-import { splitLines } from "./parse.ts";
 
 /** Pairs of old and new block indices whose source text is equal, in order (a longest common run). */
 export function alignBlocks(before: readonly Block[], after: readonly Block[]): [number, number][] {
@@ -80,44 +79,86 @@ export function changedBlockIds(before: readonly Block[], after: readonly Block[
   return after.filter((_, j) => !kept.has(j)).map((block) => block.id);
 }
 
-const lineRange = (lines: readonly string[], start: number, end: number): string =>
-  lines.slice(start - 1, end).join("\n");
 
 /**
- * The changes one turn made, one per run of changed blocks between unchanged ones. `start` and
- * `end` are the run's lines in the new source (`end` is `start - 1` when the run only removed
- * text); `before` and `after` are the old and new text of those lines.
+ * Old block id to new block id for every block the alignment keeps, so focus, folds and drill-in
+ * can follow a block across a reload even when an earlier insertion renumbered it. A block whose
+ * text changed has no entry.
+ */
+export function mapBlockIds(before: readonly Block[], after: readonly Block[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [i, j] of alignBlocks(before, after)) {
+    const from = before[i];
+    const to = after[j];
+    if (from !== undefined && to !== undefined) map[from.id] = to.id;
+  }
+  return map;
+}
+
+/**
+ * The source as lines that each keep their own line ending, so that joining them gives the source
+ * back byte for byte and a change to a line ending (the final newline included) is a changed line.
+ */
+export function sourceLines(source: string): string[] {
+  return source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+}
+
+const lineRange = (lines: readonly string[], start: number, end: number): string =>
+  end < start ? "" : lines.slice(start - 1, end).join("");
+
+const blockText = (lines: readonly string[], block: Block): string => lineRange(lines, block.start, block.end);
+
+/**
+ * The changes one turn made, one per changed run between unchanged blocks, the blank lines between
+ * blocks and the final newline included. `start` and `end` are the run's lines in the new source
+ * (`end` is `start - 1` when the run only removed text); `before` and `after` are the old and new
+ * text of those lines, each line with its line ending. A run that leaves no block of its own in
+ * the new source (a deletion, or a change only to blank lines) marks the surviving block after
+ * it, or the one before it at the end of the file, so it can still be reviewed and discarded.
  */
 export function recordChanges(
   turn: string,
   before: { source: string; blocks: readonly Block[] },
   after: { source: string; blocks: readonly Block[] },
 ): Change[] {
-  const oldLines = splitLines(before.source);
-  const newLines = splitLines(after.source);
-  const pairs = alignBlocks(before.blocks, after.blocks);
+  const oldLines = sourceLines(before.source);
+  const newLines = sourceLines(after.source);
+  // A block whose text is equal but whose last line ending changed is a changed block.
+  const pairs = alignBlocks(before.blocks, after.blocks).filter(([i, j]) => {
+    const a = before.blocks[i];
+    const b = after.blocks[j];
+    return a !== undefined && b !== undefined && blockText(oldLines, a) === blockText(newLines, b);
+  });
   const anchors: [number, number][] = [[-1, -1], ...pairs, [before.blocks.length, after.blocks.length]];
   const changes: Change[] = [];
   for (let k = 1; k < anchors.length; k++) {
     const [i0, j0] = anchors[k - 1] ?? [-1, -1];
     const [i1, j1] = anchors[k] ?? [0, 0];
-    if (i1 - i0 <= 1 && j1 - j0 <= 1) continue;
     const oldStart = (before.blocks[i0]?.end ?? 0) + 1;
     const oldEnd = (before.blocks[i1]?.start ?? oldLines.length + 1) - 1;
     const newStart = (after.blocks[j0]?.end ?? 0) + 1;
     const newEnd = (after.blocks[j1]?.start ?? newLines.length + 1) - 1;
-    const blockIds = after.blocks.slice(j0 + 1, j1).map((block) => block.id);
     const [from, to, start, end] = trimCommon(oldLines, oldStart, oldEnd, newLines, newStart, newEnd);
+    if (to < from && end < start) continue;
+    let blockIds = after.blocks.slice(j0 + 1, j1).map((block) => block.id);
+    if (blockIds.length === 0) blockIds = neighbour(after.blocks, j0, j1);
     changes.push({
       turn,
       blockIds,
-      before: to < from ? "" : lineRange(oldLines, from, to),
-      after: end < start ? "" : lineRange(newLines, start, end),
+      before: lineRange(oldLines, from, to),
+      after: lineRange(newLines, start, end),
       start,
       end,
     });
   }
   return changes;
+}
+
+// The block a run that changed no new block is marked on: the one after it, or the one before it
+// at the end of the file.
+function neighbour(blocks: readonly Block[], before: number, after: number): string[] {
+  const block = blocks[after] ?? blocks[before];
+  return block === undefined ? [] : [block.id];
 }
 
 // Narrows an old and a new line range by the equal lines they open and close with, such as the
@@ -147,7 +188,12 @@ export function markedBlockIds(changes: readonly Change[]): string[] {
   return [...new Set(changes.flatMap((change) => change.blockIds))];
 }
 
-const hunkLines = (text: string): string[] => (text === "" ? [] : text.split("\n"));
+const hunk = (sign: string, text: string): string[] =>
+  sourceLines(text).flatMap((line) =>
+    line.endsWith("\n")
+      ? [`${sign}${line.slice(0, -1).replace(/\r$/, "")}`]
+      : [`${sign}${line.replace(/\r$/, "")}`, "\\ No newline at end of file"],
+  );
 
 /**
  * One turn's unified diff, for a `Code` element with format `diff`. The changes must be one turn's
@@ -158,13 +204,13 @@ export function turnDiff(path: string, changes: readonly Change[]): string {
   const out = [`--- a/${path}`, `+++ b/${path}`];
   let shift = 0;
   for (const change of changes) {
-    const removed = hunkLines(change.before);
-    const added = change.end < change.start ? [] : change.after.split("\n");
-    const newStart = added.length === 0 ? change.start - 1 : change.start;
-    const oldStart = removed.length === 0 ? change.start - 1 - shift : change.start - shift;
-    out.push(`@@ -${oldStart},${removed.length} +${newStart},${added.length} @@`);
-    out.push(...removed.map((line) => `-${line}`), ...added.map((line) => `+${line}`));
-    shift += added.length - removed.length;
+    const removed = sourceLines(change.before).length;
+    const added = sourceLines(change.after).length;
+    const newStart = added === 0 ? change.start - 1 : change.start;
+    const oldStart = removed === 0 ? change.start - 1 - shift : change.start - shift;
+    out.push(`@@ -${oldStart},${removed} +${newStart},${added} @@`);
+    out.push(...hunk("-", change.before), ...hunk("+", change.after));
+    shift += added - removed;
   }
   return out.join("\n");
 }
@@ -183,13 +229,11 @@ export type Discard = { ok: true; source: string } | { ok: false; reason: string
  * the current text at those lines is no longer the text the turn left.
  */
 export function discardChange(change: Change, currentSource: string): Discard {
-  const lines = splitLines(currentSource);
-  const current = change.end < change.start ? "" : lineRange(lines, change.start, change.end);
-  const inRange = change.start >= 1 && change.end <= lines.length && change.start - 1 <= lines.length;
-  if (!inRange || current !== change.after) {
+  const lines = sourceLines(currentSource);
+  const inRange = change.start >= 1 && change.end >= change.start - 1 && change.end <= lines.length;
+  if (!inRange || lineRange(lines, change.start, change.end) !== change.after) {
     return { ok: false, reason: `lines ${change.start}-${change.end} changed again since the turn; nothing was discarded` };
   }
-  const restored = change.before === "" ? [] : change.before.split("\n");
-  const next = [...lines.slice(0, change.start - 1), ...restored, ...lines.slice(change.end)];
-  return { ok: true, source: next.join("\n") };
+  const next = [...lines.slice(0, change.start - 1), change.before, ...lines.slice(change.end)];
+  return { ok: true, source: next.join("") };
 }

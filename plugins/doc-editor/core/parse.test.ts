@@ -22,6 +22,13 @@ describe("parseMarkdown", () => {
     expect(parsed.tree.children[0]?.position?.start.offset).toBe("---\ntitle: x\n---\n\n".length);
   });
 
+  test("should recognise front matter and keep positions when the lines end in CRLF", () => {
+    const parsed = parseMarkdown("---\r\ntitle: x\r\n---\r\n\r\n# Heading\r\n");
+
+    expect(parsed.frontMatter).toEqual({ start: 1, end: 3 });
+    expect(parsed.tree.children.map((node) => `${node.type}@${node.position?.start.line}`)).toEqual(["heading@5"]);
+  });
+
   test("should not treat a thematic break as front matter when no closing line follows", () => {
     expect(frontMatterRange(["---", "text"])).toBeNull();
     expect(parseMarkdown("---\ntext\n").frontMatter).toBeNull();

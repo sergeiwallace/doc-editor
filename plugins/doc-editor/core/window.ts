@@ -77,7 +77,7 @@ export function sliceText(text: string, limit: number = ELEMENT_LIMIT): string[]
 
 const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})/;
 
-const QUOTE_BLANK = /^(?: {0,3}>)+[ \t]*$/;
+const QUOTE_BLANK = /^(?: {0,3}>)+[ \t]*\r?$/;
 
 /**
  * Splits Markdown text at blank lines outside fences into its paragraphs, in order. In a quote a
