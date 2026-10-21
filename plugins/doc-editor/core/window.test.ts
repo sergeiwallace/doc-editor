@@ -72,6 +72,17 @@ describe("the 20,000-line document", () => {
     }
   });
 
+  test("should stop a page at the budget when the body has more rows than the budget can fill", () => {
+    const size = { bodyRows: 20_000, bodyColumns: 200 };
+    const pieces = viewPieces(big, view(), size.bodyColumns);
+    for (let offset = 0; offset < pieces.length; offset += 97) {
+      const page = pageAt(pieces, offset, size);
+
+      expect(JSON.stringify(page.pieces).length + CHROME).toBeLessThan(TREE_LIMIT);
+      expect(page.size).toBeLessThanOrEqual(PAGE_BUDGET);
+    }
+  });
+
   test("should draw every visible block in order across the pages from top to bottom", () => {
     const size = { bodyRows: 50, bodyColumns: 120 };
     const pieces = viewPieces(big, view(), size.bodyColumns);
