@@ -101,6 +101,8 @@ const LIST_MARK_COLUMNS = 4;
 const PIECE_MARGIN_ROWS = 1;
 /** A callout's round border, a row above and below, and its label row. */
 const CALLOUT_FRAME_ROWS = 3;
+/** The last drawn row of a table card cut at the page's end; scrolling on shows the rest. */
+export const CARD_CONTINUES = "… continues below";
 /** A row held under a piece cut to the rows left, for a cut that renders a row taller. */
 const CUT_SPARE_ROWS = 1;
 /** The focus marker's column beside every piece. */
@@ -1843,33 +1845,54 @@ export class DocPane {
   }
 
   /**
-   * A table wider than the body as one bordered card per row: whole cards only, those after the
-   * `skip` rows scrolled past and, for a piece cut to `keep` rows, as many as fit (one at least),
-   * so a cut table never falls back to a grid wider than the pane.
+   * A table wider than the body as one bordered card per row, counted in rows as the pane scrolls
+   * them: the `skip` rows scrolled past are left out (a card scrolled partly past starts at its
+   * first row in view), and for a piece cut to `keep` rows a card that does not fit the rows left
+   * is cut there with a continuation marker on its last drawn row, so the page never runs past the
+   * pane and scrolling on reaches the rest of the card. A table never falls back to a grid wider
+   * than the pane.
    */
   private drawCards(ui: PaneUi, piece: Piece, skip: number, keep: number | null): RenderElement {
     const table = parseTable(piece.text);
     const cards = table === null ? [] : tableCards(table);
     const rows = this.cardRows.get(piece.key) ?? [];
-    let first = 0;
-    for (let top = 0; first < cards.length && top < skip; first++) top += rows[first] ?? 1;
-    const shown: number[] = [];
+    const width = this.contentColumns() - CARD_FRAME_COLUMNS;
+    const children: RenderElement[] = [];
+    let top = 0;
     let used = 0;
-    for (let k = first; k < cards.length; k++) {
-      used += rows[k] ?? 1;
-      if (keep !== null && shown.length > 0 && used > keep) break;
-      shown.push(k);
+    for (let k = 0; k < cards.length; k++) {
+      const start = top;
+      top += rows[k] ?? 1;
+      if (top <= skip) continue;
+      const content = (rows[k] ?? CARD_BORDER_ROWS + 1) - CARD_BORDER_ROWS;
+      // Rows of this card's text scrolled past: its top border is the first row it takes.
+      const past = Math.min(content - 1, Math.max(0, skip - start - 1));
+      const left = content - past;
+      const room = keep === null ? Number.POSITIVE_INFINITY : keep - used;
+      if (left + CARD_BORDER_ROWS <= room) {
+        children.push(this.card(ui, piece, k, rowWindow(cards[k] ?? "", past, null, width), false));
+        used += left + CARD_BORDER_ROWS;
+        continue;
+      }
+      // Cut: the border, the marker row and at least one row of text, on the page's first card at least.
+      const fits = room - CARD_BORDER_ROWS - 1;
+      if (fits < 1 && children.length > 0) break;
+      children.push(this.card(ui, piece, k, rowWindow(cards[k] ?? "", past, Math.max(1, fits), width), true));
+      break;
     }
+    return ui.Box({ flexDirection: "column", children });
+  }
+
+  private card(ui: PaneUi, piece: Piece, k: number, text: string, isCut: boolean): RenderElement {
     return ui.Box({
+      key: `${piece.key}~r${k + 1}`,
+      borderStyle: "round",
+      paddingX: 1,
       flexDirection: "column",
-      children: shown.map((k) =>
-        ui.Box({
-          key: `${piece.key}~r${k + 1}`,
-          borderStyle: "round",
-          paddingX: 1,
-          children: [ui.Markdown({ text: cards[k] ?? "" })],
-        }),
-      ),
+      children: [
+        ui.Markdown({ text }),
+        ...(isCut ? [ui.Text({ dimColor: true, children: CARD_CONTINUES })] : []),
+      ],
     });
   }
 }

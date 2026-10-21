@@ -2,7 +2,7 @@ import { describe, expect, test } from "claude-code/testing";
 
 import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
 import { keyButton } from "./hints.ts";
-import { OUTLINE_HINT } from "./pane.ts";
+import { CARD_CONTINUES, OUTLINE_HINT } from "./pane.ts";
 import { CWD, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world.ts";
 
 // What the pane draws fits its rows (T-1.4's and T-1.7's "keep the focused block in view"), counted
@@ -141,4 +141,52 @@ describe("the hint row on a page that ends on a cut piece", () => {
       expect(grids).toEqual([]);
     });
   }
+});
+
+// One table row drawn as a card taller than the pane: the card is cut to the rows left with a
+// continuation marker and goes on as the pane scrolls.
+describe("a table card taller than the pane", () => {
+  const COLUMNS = 30;
+  const header = Array.from({ length: COLUMNS }, (_, k) => `Column ${k + 1}`);
+  const values = Array.from({ length: COLUMNS }, (_, k) => `value-${k + 1}`);
+  const text = [
+    "# Wide",
+    "",
+    `| ${header.join(" | ")} |`,
+    `| ${header.map(() => "---").join(" | ")} |`,
+    `| ${values.join(" | ")} |`,
+    "",
+    "## After",
+    "",
+    "The end.",
+    "",
+  ].join("\n");
+
+  test("should keep every hint row and the focused block inside a 76 by 18 pane and reach the rest of the card by scrolling", async ($, on) => {
+    const props = { ...PANE_PROPS, bodyColumns: 76, scroll: { offset: 0, bodyRows: 18 } };
+    const { ui } = await openDoc($, on, files(text), "doc.md", props);
+    const seen = new Set<string>();
+    const misfits: unknown[] = [];
+    let sawMarker = false;
+
+    for (let step = 0; step < 60; step++) {
+      const drawn = await frameRows(ui, 76);
+      const focus = await focusedKey(ui);
+      const keys = await pieceKeys(ui);
+      if (drawn > 18 || (await ui.find({ key: "hints" })) === undefined || focus === undefined || !keys.includes(focus)) {
+        misfits.push({ step, drawn, focus, keys });
+      }
+      for (const node of await ui.findAll({ type: "Markdown" })) {
+        for (const value of node.text.match(/value-\d+/g) ?? []) seen.add(value);
+      }
+      sawMarker ||= (await ui.find({ type: "Text", text: CARD_CONTINUES })) !== undefined;
+      if (keys.includes("h1.1")) break;
+      await scrollPane($, 1, 18);
+    }
+
+    expect(misfits).toEqual([]);
+    expect(sawMarker).toBe(true);
+    expect([...values].filter((value) => !seen.has(value))).toEqual([]);
+    expect(await pieceKeys(ui)).toContain("h1.1");
+  });
 });
