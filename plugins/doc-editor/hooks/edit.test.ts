@@ -4,7 +4,7 @@ import { describe, expect, test } from "claude-code/testing";
 
 import { LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
 import { keyButton } from "./hints.ts";
-import { ASK_INPUT, CHANGE_ACTIONS, EDIT_INPUT, ENTER_HINT, lineButton, MAX_KEPT_CHANGES, taskButton } from "./pane.ts";
+import { ASK_INPUT, CHANGE_ACTIONS, EDIT_INPUT, ENTER_HINT, GOTO_INPUT, lineButton, MAX_KEPT_CHANGES, taskButton } from "./pane.ts";
 import { CWD, elementsOf, endTurn, focusedKey, header, openDoc, PANE_PROPS, pieceKeys, START_MS, startTurn } from "./tests/pane-world.ts";
 
 // The editing half of the pane through the mod's own hooks (T-1.4 to T-1.6, and FR-3's next and
@@ -587,5 +587,57 @@ describe("next and previous heading (FR-3)", () => {
     await ui.press({ key: keyButton("h") });
     expect(w.statuses.at(-1)).toBe("no heading above this block");
     expect(await focusedKey(ui)).toBe("h1");
+  });
+});
+
+// The request keeps its own file: the pane closed, or showing another file, when the turn ends
+// still records the turn's changes in the requested file, there when it is shown again.
+describe("a request whose file is not on screen when its turn ends", () => {
+  const RUN = { origin: { kind: "composer" }, presentation: { isFullscreen: true, columns: 160 } } as const;
+  const marked = async (ui: Awaited<ReturnType<typeof open>>["ui"], key: string) =>
+    JSON.stringify((await ui.find({ key }))?.children?.[0] ?? "").includes("▌");
+
+  async function asked($: Engine, on: On) {
+    const opened = await open($, on);
+    await down($);
+    await opened.ui.press({ key: keyButton("c") });
+    await opened.ui.input({ key: ASK_INPUT, text: "name the /diff mod" });
+    await startTurn($, "turn-1", REQUEST);
+    return opened;
+  }
+
+  test("should mark the changed block and keep its diff when the pane was closed during the turn and is opened again", async ($, on) => {
+    const { w, ui } = await asked($, on);
+    await ui.press({ key: keyButton("q") });
+    expect(w.closed).toEqual(["doc"]);
+
+    w.edit(DOC, EDITED);
+    await endTurn($, "turn-1");
+    await w.clock.settle();
+    expect((w.stateOf(DOC) as { turn: string }[]).map((change) => change.turn)).toEqual(["turn-1"]);
+
+    await $.command.run({ command: "doc", args: "notes.md", ...RUN });
+    expect(await marked(ui, "h1:1")).toBe(true);
+    await $.ui.scroll({ component: "Pane", requestId: "doc", offset: 1, by: 1, bodyRows: 60, contentRows: 60, origin: { kind: "person" } });
+    await ui.press({ key: keyButton("p") });
+    expect(await focusedKey(ui)).toBe("h1:1");
+    await ui.press({ key: keyButton("v") });
+    expect(elementsOf(await ui.drawn()).find((node) => node.type === "Code")?.props.source).toContain("+The pane draws only the rows in view. A document is cut into blocks, as /diff cuts hunks.");
+  });
+
+  test("should mark the changed block when the pane showed another file during the turn and goes back", async ($, on) => {
+    const { w, ui } = await asked($, on);
+    await ui.press({ key: keyButton("g") });
+    await ui.input({ key: GOTO_INPUT, text: LINKED_FILE });
+    expect((await header(ui)).title).toMatch(new RegExp(`^${LINKED_FILE}`));
+
+    w.edit(DOC, EDITED);
+    await endTurn($, "turn-1");
+    await w.clock.settle();
+
+    await ui.press({ key: keyButton("b") });
+    expect((await header(ui)).title).toMatch(/^notes\.md/);
+    expect(await marked(ui, "h1:1")).toBe(true);
+    expect(w.statuses).toContain("Claude changed 1 block of notes.md: k keep, x discard, r refine, v view diff");
   });
 });

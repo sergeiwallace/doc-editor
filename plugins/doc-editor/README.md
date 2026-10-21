@@ -133,9 +133,13 @@ and the sources. It fails, naming the hook, call or line, on any of these:
 - a `tool.call` handler, or its `.catch` handler, that returns anything but the result of
   `next(...)`, or that does anything with that result but return it;
 - a model call (`$.model.*`, `$.agent.spawn`) or a network call (`$.http.*`, `$.mcp.*`);
-- a reference to `fetch`, `WebSocket`, `XMLHttpRequest` or `EventSource`, or an import of a
-  module that reaches the network or starts processes, such as `node:http`, `node:net` or
-  `node:child_process`, in any source the plugin ships, `bin/` included;
+- a reference to `fetch`, `WebSocket`, `XMLHttpRequest` or `EventSource`, free or read through
+  `globalThis`, `self` or `window` or a name bound to one of them (`const g = globalThis;
+  g.fetch`), resolved by scope so a local function named `fetch` passes; a use of a global
+  object that loses track of what it reaches (destructuring it, passing it on, a computed key
+  that is no string constant); or an import of a module that reaches the network or starts
+  processes, such as `node:http`, `node:net` or `node:child_process`, in any source the plugin
+  ships, `bin/` included;
 - a `$.process.run` other than `node --version` or `node` on a
   `${$.plugin.root}/bin/<name>.mjs` script the plugin ships, so no node flag such as `-e` or
   `--import`, and no argv that is not a literal array;

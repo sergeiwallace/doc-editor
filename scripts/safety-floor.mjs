@@ -9,21 +9,25 @@
 //     passes the call on or answers it: a tool.call handler (and its .catch handler) that returns
 //     anything but next(...)'s result; an mcp__doc-editor__<name> hook with no
 //     $.tool.register({ name: "<name>" }) for it; a use of next(...)'s result other than returning
-//     it; a reference to fetch, WebSocket, XMLHttpRequest or EventSource; an import of a module
+//     it; a reference to fetch, WebSocket, XMLHttpRequest or EventSource, free or read through
+//     globalThis, self or window, and any alias of those global objects (`const g = globalThis`,
+//     a destructuring, a computed key), resolved by scope as the core purity lint resolves it
+//     (scripts/js-scope.mjs), so a local named fetch passes; an import of a module
 //     that reaches the network or starts processes (node:http, node:net, node:child_process and
 //     the like); a $.process.run that is not node --version or node on one of the plugin's own
 //     bin/*.mjs scripts; and, over the report, any $.process.spawn.
 // A static pass reads the code as text, so it is strict rather than complete: a handler it
 // cannot read (one passed by name, a return it cannot parse) fails rather than passes.
 
+import { buildScopes, globalReferences, parseSource } from "./js-scope.mjs";
+
 const OBSERVED_TOOL_CALLS = new Set(["tool.call{tool=Write|Edit}"]);
 const OWN_PREFIX = "mcp__doc-editor__";
 const OWN_TOOL_CALL = /^tool\.call\{tool=(mcp__doc-editor__[\w-]+(?:\|mcp__doc-editor__[\w-]+)*)\}$/;
 const MODEL_CALL = /^\$\.(model\.\w+|agent\.spawn)$/;
 const NETWORK_CALL = /^\$\.(http|mcp)\.\w+$/;
-const NETWORK_API = /(?<![\w$.])(fetch|WebSocket|XMLHttpRequest|EventSource)(?![\w$])/g;
-const GLOBAL_NETWORK_API =
-  /(?<![\w$.])(?:globalThis|window|self)\s*\.\s*(fetch|WebSocket|XMLHttpRequest|EventSource)(?![\w$])/g;
+const NETWORK_APIS = new Set(["fetch", "WebSocket", "XMLHttpRequest", "EventSource"]);
+const GLOBAL_OBJECTS = new Set(["globalThis", "self", "window"]);
 const ON_TOOL_CALL = /(?<![\w$.])on\s*\(\s*(["'`])tool\.call\1/g;
 const PROCESS_RUN = /\$\s*\.\s*process\s*\.\s*run\s*\(/g;
 const TOOL_REGISTER = /\$\s*\.\s*tool\s*\.\s*register\s*\(\s*\{/g;
@@ -35,6 +39,32 @@ const ESCAPE_MODULE =
   /(?<![\w$.])(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)(["'`])((?:node:)?(?:http|https|http2|net|tls|dgram|dns|child_process|worker_threads|cluster|inspector)(?:\/[\w/]*)?)\1/g;
 
 const lineAt = (text, offset) => text.slice(0, offset).split("\n").length;
+
+// The network APIs a source reaches, resolved by scope: a free `fetch`, `globalThis.fetch` or
+// `self["fetch"]`, and any alias of a global object, through which one could be reached unseen.
+function networkBreaches(path, source) {
+  let program;
+  try {
+    program = parseSource(source, path);
+  } catch (error) {
+    const reason = String(error?.message ?? error).split("\n")[0];
+    return [`safety floor: ${path}: cannot be parsed to check for network APIs (${reason})`];
+  }
+  const hits = globalReferences(program, buildScopes(program), {
+    freeNames: NETWORK_APIS,
+    memberNames: NETWORK_APIS,
+    globalObjects: GLOBAL_OBJECTS,
+    aliasable: GLOBAL_OBJECTS,
+    resolveAliases: true,
+  });
+  return hits.map(({ node, finding }) => {
+    const at = `${path}:${lineAt(source, node.start)}`;
+    const name = finding.split(".").at(-1);
+    return NETWORK_APIS.has(name)
+      ? `safety floor: ${at}: references ${name}, a network API; the mod makes no network request`
+      : `safety floor: ${at}: ${finding}, through which a network API could be reached; the mod makes no network request`;
+  });
+}
 const eventOf = (hook) => hook.split("{")[0];
 
 function eventMatches(pattern, event) {
@@ -270,13 +300,7 @@ export function sourceBreaches(files, ownTools) {
   const problems = [];
   for (const { path, source, code, isHooksModule } of files) {
     const at = (offset) => `${path}:${lineAt(source, offset)}`;
-    for (const pattern of [NETWORK_API, GLOBAL_NETWORK_API]) {
-      for (const match of code.matchAll(pattern)) {
-        problems.push(
-          `safety floor: ${at(match.index ?? 0)}: references ${match[1]}, a network API; the mod makes no network request`,
-        );
-      }
-    }
+    problems.push(...networkBreaches(path, source));
     // A module name is a string, which `code` blanks, so the search runs on the source and keeps
     // only the matches that start in code.
     for (const match of source.matchAll(ESCAPE_MODULE)) {

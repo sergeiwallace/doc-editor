@@ -286,6 +286,41 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     expect(result.status).toBe(0);
   });
 
+  // The network check resolves the global object and its aliases by scope (scripts/js-scope.mjs),
+  // as the core purity lint does, so an alias cannot hide a network API.
+  const REACHES = "references fetch, a network API; the mod makes no network request";
+  const LOST = "aliased or indexed by a computed key, through which a network API could be reached";
+  for (const [name, body, expected] of [
+    ["globalThis.fetch", "export const get = (u: string) => globalThis.fetch(u);\n", REACHES],
+    ["self.fetch", "export const get = (u: string) => self.fetch(u);\n", REACHES],
+    ["an alias of globalThis read with a dot", "const g = globalThis;\nexport const get = (u: string) => g.fetch(u);\n", REACHES],
+    ["an alias of globalThis indexed by a string", 'const g = globalThis;\nexport const get = (u: string) => g["fetch"](u);\n', REACHES],
+    ["an alias chosen between global objects", 'const g = typeof globalThis !== "undefined" ? globalThis : self;\nexport const get = (u: string) => g.fetch(u);\n', REACHES],
+    ["an alias indexed by a string constant", 'const g = globalThis;\nconst key = "fetch";\nexport const get = (u: string) => g[key](u);\n', REACHES],
+    ["fetch destructured from globalThis", "const { fetch } = globalThis;\nexport const get = (u: string) => fetch(u);\n", `globalThis ${LOST}`],
+    ["an alias indexed by a key that changes", 'const g = globalThis;\nlet key = "x";\nkey = "fetch";\nexport const get = (u: string) => g[key](u);\n', `g ${LOST}`],
+    ["globalThis passed on", "const keep = (o: unknown) => o;\nexport const g = keep(globalThis);\n", `globalThis ${LOST}`],
+  ] as const) {
+    it(`should fail naming the line when a source reaches the network through ${name}`, () => {
+      const result = runGate(pluginWith({ files: { "hooks/net.ts": body } }));
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toMatch(new RegExp(`safety floor: hooks/net\\.ts:\\d+: .*${expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    });
+  }
+
+  for (const [name, body] of [
+    ["a local function named fetch", "const fetch = (u: string) => u.length;\nexport const n = fetch(\"a\");\n"],
+    ["an alias of globalThis indexed only by a constant that is no network API", 'const glo = typeof globalThis !== "undefined" ? globalThis : {};\nconst id = "__mark__";\nexport const seen = glo[id] === true;\n'],
+  ] as const) {
+    it(`should pass ${name}`, () => {
+      const result = runGate(pluginWith({ files: { "hooks/net.ts": body } }));
+
+      expect(result.stdout).not.toContain("check-plugin-declared: safety floor:");
+      expect(result.status).toBe(0);
+    });
+  }
+
   const RUN_REFUSED = "; the mod runs only node --version or node on one of its own bin/*.mjs scripts";
   const runFails = (body: string, reason: string, files: Record<string, string> = {}) => {
     const result = runGate(pluginWith({ ...probe(body), files }));
