@@ -1,6 +1,6 @@
 # doc-editor plugin
 
-A Claude Code plugin whose mod will open a Markdown file as a navigable document in a pane beside
+A Claude Code plugin whose mod opens a Markdown file as a navigable document in a pane beside
 the transcript: an outline, folding, find, links followed in place, and edits that go through
 Claude and show what changed.
 
