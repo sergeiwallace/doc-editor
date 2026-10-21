@@ -24,6 +24,7 @@ import {
 import type { Document, HistoryEntry, ViewState } from "../core/types.ts";
 import {
   ELEMENT_LIMIT,
+  PAGE_BUDGET,
   pageAt,
   type Piece,
   pieceIndex,
@@ -52,6 +53,8 @@ const HEADER_ROWS = 2;
 /** The focus marker's column beside every piece. */
 const MARGIN_COLUMNS = 2;
 const MAX_LINK_BUTTONS = 9;
+/** What one drawn frame (a piece's Box and margin, a card, a link Button) adds beside its text, serialized. */
+const PIECE_FRAME_COST = 400;
 const MAX_PRESSABLE = 256;
 
 /** The elements the pane draws with; mobile has no Input, so the find and go-to fields are left out there. */
@@ -141,25 +144,27 @@ export const absoluteFrom = (cwd: string, path: string): string =>
   normalizePath(path.startsWith("/") ? path : `${cwd}/${path}`);
 
 /**
- * The rows of `text` in view: whole lines from the top dropped until `skip` rows at `columns` are
- * gone, then, when `keep` is given, whole lines kept while they fit in `keep` rows (one at least).
+ * The rows of `text` in view, counting wrapped rows as the core's `rowsOf` does (each line cut
+ * every `columns` characters): `skip` rows dropped from the top, then `keep` rows kept when given
+ * (one at least). A line cut by the window keeps only its rows in view.
  */
 function rowWindow(text: string, skip: number, keep: number | null, columns: number): string {
-  const lines = text.split("\n");
-  let dropped = 0;
-  let k = 0;
-  while (skip > 0 && k < lines.length - 1 && dropped < skip) {
-    dropped += rowsOf(lines[k] ?? "", columns);
-    k++;
+  const width = Math.max(columns, 1);
+  const rows: { line: number; text: string }[] = [];
+  text.split("\n").forEach((line, k) => {
+    const count = Math.max(1, Math.ceil(line.length / width));
+    for (let r = 0; r < count; r++) rows.push({ line: k, text: line.slice(r * width, (r + 1) * width) });
+  });
+  const from = Math.min(Math.max(0, skip), rows.length - 1);
+  const shown = rows.slice(from, keep === null ? undefined : from + Math.max(1, keep));
+  const out: string[] = [];
+  let last = -1;
+  for (const row of shown) {
+    if (row.line === last) out[out.length - 1] += row.text;
+    else out.push(row.text);
+    last = row.line;
   }
-  if (keep === null) return lines.slice(k).join("\n");
-  let used = 0;
-  let end = k;
-  while (end < lines.length && (end === k || used + rowsOf(lines[end] ?? "", columns) <= keep)) {
-    used += rowsOf(lines[end] ?? "", columns);
-    end++;
-  }
-  return lines.slice(k, end).join("\n");
+  return out.join("\n");
 }
 
 /** The columns a piece's text wraps at inside its frame. */
@@ -443,7 +448,8 @@ export class DocPane {
       const order = this.order();
       const at = this.view.focus === null ? -1 : order.indexOf(this.view.focus);
       const next = order[Math.min(order.length - 1, Math.max(0, at + by))];
-      if (next !== undefined) this.focusBlock(next, "nearest");
+      const rows = pieces.filter((piece) => piece.blockId === next).reduce((sum, piece) => sum + piece.rows, 0);
+      if (next !== undefined) this.focusBlock(next, rows > size.bodyRows ? "start" : "nearest");
     } else {
       this.view.offset = scrollOffset(pieces, page.offset, by, size);
       this.skip = 0;
@@ -755,9 +761,13 @@ export class DocPane {
     const page = pageAt(pieces, this.view.offset, size);
     this.view.offset = page.offset;
     // The core's page may end on a piece that runs past the body; that piece is cut to the rows
-    // left, so the hint row under the body stays on screen.
+    // left, so the hint row under the body stays on screen. The core budgets a page by its pieces'
+    // text, but each piece draws inside a frame, a table may draw as cards, a Markdown lists its
+    // links and the focused block adds a link row; the page stops before what it draws, measured
+    // as serialized (pieceCost), would pass PAGE_BUDGET.
     const body: RenderElement[] = [];
     let used = 0;
+    let bytes = 0;
     for (const [k, piece] of page.pieces.entries()) {
       const skip = k === 0 ? this.skip : 0;
       const left = size.bodyRows - used;
@@ -767,13 +777,15 @@ export class DocPane {
         keep = left - overhead;
         if (k > 0 && keep < 2) break;
       }
-      body.push(this.drawPiece(ui, piece, skip, keep === null ? null : Math.max(1, keep), size.bodyColumns));
-      used += piece.rows - skip;
       const isLastOfFocus = piece.blockId === this.view.focus && page.pieces[k + 1]?.blockId !== piece.blockId;
-      if (isLastOfFocus) {
-        const links = this.drawLinks(ui, piece.blockId);
-        if (links !== null) body.push(links);
-      }
+      const links = isLastOfFocus ? this.linkHrefs(piece.blockId).slice(0, MAX_LINK_BUTTONS) : [];
+      const window = keep === null ? null : Math.max(1, keep);
+      const cost = this.pieceCost(piece, skip, window, size.bodyColumns, links);
+      if (k > 0 && bytes + cost > PAGE_BUDGET) break;
+      bytes += cost;
+      body.push(this.drawPiece(ui, piece, skip, window, size.bodyColumns));
+      if (links.length > 0) body.push(this.drawLinks(ui, piece.blockId, links));
+      used += piece.rows - skip;
       if (keep !== null) break;
     }
     const field = this.drawInput(ui);
@@ -844,9 +856,7 @@ export class DocPane {
     });
   }
 
-  private drawLinks(ui: PaneUi, blockId: string): RenderElement | null {
-    const hrefs = this.linkHrefs(blockId).slice(0, MAX_LINK_BUTTONS);
-    if (hrefs.length === 0) return null;
+  private drawLinks(ui: PaneUi, blockId: string, hrefs: readonly string[]): RenderElement {
     return ui.Box({
       key: `links:${blockId}`,
       flexDirection: "row",
@@ -873,20 +883,39 @@ export class DocPane {
     this.outlineAt = Math.min(last, Math.max(0, this.outlineAt));
     const current = this.sectionHeading();
     const folded = new Set(this.view.folded);
-    return ui.Box({
-      key: "outline",
-      flexDirection: "column",
-      children: entries.slice(this.outlineAt, this.outlineAt + rows).map((entry) => {
-        const mark = entry.id === current ? "› " : folded.has(entry.id) ? "▸ " : "  ";
-        const note = folded.has(entry.id) ? `  (folded, ${hiddenCount(this.blocks, entry.id)})` : "";
-        return ui.Button({
-          key: `outline:${entry.id}`,
-          label: `${mark}${"  ".repeat(Math.max(0, entry.level - 1))}${entry.title}${note}`,
-          plain: true,
-          onPress: () => this.jumpTo(entry.id),
-        });
-      }),
-    });
+    // A tall body holds thousands of entries; the outline stops at PAGE_BUDGET as a page does.
+    const children: RenderElement[] = [];
+    let bytes = 0;
+    for (const entry of entries.slice(this.outlineAt, this.outlineAt + rows)) {
+      const mark = entry.id === current ? "› " : folded.has(entry.id) ? "▸ " : "  ";
+      const note = folded.has(entry.id) ? `  (folded, ${hiddenCount(this.blocks, entry.id)})` : "";
+      const label = `${mark}${"  ".repeat(Math.max(0, entry.level - 1))}${entry.title}${note}`;
+      bytes += JSON.stringify(label).length + JSON.stringify(entry.id).length + PIECE_FRAME_COST;
+      if (children.length > 0 && bytes > PAGE_BUDGET) break;
+      children.push(ui.Button({ key: `outline:${entry.id}`, label, plain: true, onPress: () => this.jumpTo(entry.id) }));
+    }
+    return ui.Box({ key: "outline", flexDirection: "column", children });
+  }
+
+  /**
+   * The serialized characters a piece adds to the tree as drawPiece draws it: its text escaped as
+   * JSON, the frame around it, its pressable links, a table's cards and the focused block's link
+   * row. An element handle does not serialize as the tree the engine receives, so this is counted
+   * from the parts.
+   */
+  private pieceCost(piece: Piece, skip: number, keep: number | null, columns: number, links: readonly string[]): number {
+    const text = rowWindow(piece.text, skip, keep, textColumns(piece, columns));
+    let cost = JSON.stringify(text).length + PIECE_FRAME_COST;
+    for (const href of this.pressable(piece.blockId, text).keys()) cost += JSON.stringify(href).length + 1;
+    const block = this.blocks.find((entry) => entry.id === piece.blockId);
+    if (block?.kind === "table" && skip === 0 && keep === null) {
+      const table = parseTable(piece.text);
+      if (table !== null && naturalWidth(table) > columns) {
+        for (const card of tableCards(table)) cost += JSON.stringify(card).length + PIECE_FRAME_COST;
+      }
+    }
+    for (const href of links) cost += 2 * JSON.stringify(href).length + PIECE_FRAME_COST;
+    return cost;
   }
 
   private drawPiece(ui: PaneUi, piece: Piece, skip: number, keep: number | null, columns: number): RenderElement {
@@ -922,13 +951,21 @@ export class DocPane {
   }
 
   // The core writes each href into the drawn text through linkDestination, and a press names the
-  // href as drawn, so the pressable list holds the drawn form and a press maps back to the source's.
-  private markdown(ui: PaneUi, piece: Piece, text: string): RenderElement {
+  // href as drawn, so the pressable list holds the drawn form, only for the links `text` draws, and
+  // a press maps back to the source's href.
+  private pressable(blockId: string, text: string): Map<string, string> {
     const drawn = new Map<string, string>();
-    for (const href of this.linkHrefs(piece.blockId)) {
+    for (const href of this.linkHrefs(blockId)) {
       const destination = linkDestination(href);
-      if (!drawn.has(destination) && drawn.size < MAX_PRESSABLE) drawn.set(destination, href);
+      if (!drawn.has(destination) && drawn.size < MAX_PRESSABLE && text.includes(`](${destination}`)) {
+        drawn.set(destination, href);
+      }
     }
+    return drawn;
+  }
+
+  private markdown(ui: PaneUi, piece: Piece, text: string): RenderElement {
+    const drawn = this.pressable(piece.blockId, text);
     if (drawn.size === 0) return ui.Markdown({ key: `md:${piece.key}`, text });
     return ui.Markdown({
       key: `md:${piece.key}`,
