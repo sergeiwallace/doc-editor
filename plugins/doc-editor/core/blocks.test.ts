@@ -180,6 +180,30 @@ describe("parseBlocks", () => {
   });
 });
 
+describe("CRLF line endings", () => {
+  const lf = fixtureDoc(1000);
+  const crlf = lf.replaceAll("\n", "\r\n");
+  const strip = (text: string) => text.replaceAll("\r", "");
+
+  test("should give the CRLF fixture the same blocks, ids, kinds, lines and drawn text as the LF one", () => {
+    const a = parseBlocks(lf, ORIGIN).blocks;
+    const b = parseBlocks(crlf, ORIGIN).blocks;
+
+    expect(b.map((x) => `${x.id} ${x.kind}${x.level ?? ""} ${x.start}-${x.end}`)).toEqual(
+      a.map((x) => `${x.id} ${x.kind}${x.level ?? ""} ${x.start}-${x.end}`),
+    );
+    expect(b.map((x) => strip(drawnOf(x)))).toEqual(a.map(drawnOf));
+    expect(b[0]?.kind).toBe("raw");
+  });
+
+  test("should give a CRLF callout's label and fence language with no carriage return", () => {
+    const blocks = blocksOf("> [!WARNING] Careful\r\n> body\r\n\r\n```ts\r\nx\r\n```\r\n");
+
+    expect(blocks[0] === undefined ? null : calloutLabel(blocks[0])).toBe("WARNING: Careful");
+    expect(blocks[1] === undefined ? null : fenceLanguage(blocks[1])).toBe("ts");
+  });
+});
+
 describe("toDocument", () => {
   test("should index every link with its block and kind when the 1,000-line fixture is parsed", () => {
     const doc = toDocument("/repo/docs/test/fixtures/thousand-line-doc.md", 5, fixtureDoc(1000), "/repo");

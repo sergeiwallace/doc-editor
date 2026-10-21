@@ -12,8 +12,8 @@ export interface Parsed {
   frontMatter: { start: number; end: number } | null;
 }
 
-const FENCE = /^---[ \t]*$/;
-const CLOSE = /^(---|\.\.\.)[ \t]*$/;
+const FENCE = /^---[ \t]*\r?$/;
+const CLOSE = /^(---|\.\.\.)[ \t]*\r?$/;
 
 /**
  * Finds a front matter block: `---` on line 1 and a closing `---` or `...` line. Without one the

@@ -27,7 +27,7 @@ export interface Origin {
   repoRoot: string;
 }
 
-export const CALLOUT = /^ {0,3}>[ \t]*\[!([A-Za-z]+)\][+-]?[ \t]*(.*)$/;
+export const CALLOUT = /^ {0,3}>[ \t]*\[!([A-Za-z]+)\][+-]?[ \t]*(.*?)\r?$/;
 
 const kindOf = (node: Node, firstLine: string): BlockKind => {
   switch (node.type) {

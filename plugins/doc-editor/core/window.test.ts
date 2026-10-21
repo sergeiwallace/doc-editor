@@ -132,6 +132,10 @@ describe("splitting a long block", () => {
     expect(pieces.map((piece) => piece.type)).toEqual(["markdown", "markdown"]);
   });
 
+  test("should split a quote at its blank quote lines when the lines end in CRLF", () => {
+    expect(paragraphs("> a\r\n>\r\n> b\r\n", true)).toHaveLength(2);
+  });
+
   test("should keep a fence inside a long list whole when splitting at blank lines", () => {
     const fence = ["  ```", "  a", "", "  b", "  ```"].join("\n");
     const text = [`- ${words(900, "a")}`, fence, "", `- ${words(900, "b")}`].join("\n");

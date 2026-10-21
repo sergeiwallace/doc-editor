@@ -108,6 +108,19 @@ describe("marking changed blocks", () => {
   });
 });
 
+describe("CRLF line endings", () => {
+  test("should record, diff and discard a change in a CRLF file byte for byte", () => {
+    const before = BEFORE.replaceAll("\n", "\r\n");
+    const after = before.replace("Two.", "Two, edited.");
+    const changes = recordChanges("t", doc(before), doc(after));
+
+    expect(changes).toEqual([{ turn: "t", blockIds: ["h1:2"], before: "Two.\r\n", after: "Two, edited.\r\n", start: 5, end: 5 }]);
+    expect(turnDiff("a.md", changes).split("\n").slice(2)).toEqual(["@@ -5,1 +5,1 @@", "-Two.", "+Two, edited."]);
+    const [change] = changes;
+    expect(change === undefined ? null : discardChange(change, after)).toEqual({ ok: true, source: before });
+  });
+});
+
 describe("the turn's diff", () => {
   test("should give a unified diff of a turn, with old line numbers shifted by the hunks above", () => {
     const changes = recordChanges("t", doc(BEFORE), doc("# T\n\nOne,\nedited.\n\nTwo.\n\nThree!\n"));
