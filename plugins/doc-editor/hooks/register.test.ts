@@ -2,6 +2,7 @@ import type { On } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
 import { COMMAND_NAME } from "./register.ts";
+import { CWD, header, openDoc, START_MS } from "./tests/pane-world.ts";
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
 
@@ -25,6 +26,23 @@ describe("register", () => {
 
     expect(w.registered).toEqual([COMMAND_NAME]);
   });
+
+  // T-1.7: a Write or Edit re-reads the open file at once, without waiting for the clock.
+  for (const tool of ["Write", "Edit"] as const) {
+    test(`should re-read the open file and redraw the pane when Claude's ${tool} call on it returns`, async ($, on) => {
+      const doc = `${CWD}/notes.md`;
+      on("tool.call", { tool: ["Write", "Edit"] }, () => ({ result: { written: doc } }) as never);
+      const { w, ui } = await openDoc($, on, { files: { [doc]: "# Before\n" } }, "notes.md");
+      expect((await header(ui)).title).toBe("notes.md › Before");
+
+      w.edit(doc, "# After\n");
+      await $.tool.call({ tool, file_path: doc, content: "# After\n", old_string: "Before", new_string: "After" });
+      await w.clock.settle();
+
+      expect((await header(ui)).title).toBe("notes.md › After");
+      expect(w.clock.now()).toBe(START_MS);
+    });
+  }
 
   // NFR-9: the mod observes Write and Edit to trigger a reload and never answers them.
   for (const call of [
