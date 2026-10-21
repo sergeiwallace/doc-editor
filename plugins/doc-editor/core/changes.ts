@@ -29,23 +29,84 @@ export function alignBlocks(before: readonly Block[], after: readonly Block[]): 
 
 const LCS_CELLS = 4_000_000;
 
-// The longest common subsequence of two string lists. Past the table limit it matches each new
-// text to the next unused equal old text in order, which finds every unchanged block that keeps
-// its order and marks the rest changed.
+// The longest common subsequence of two string lists. Past the table limit it anchors on the
+// texts that occur once on each side (patience alignment) and aligns each gap between anchors the
+// same way, so a copy of a block inserted elsewhere is never taken for the block itself.
 function lcs(a: readonly string[], b: readonly string[]): [number, number][] {
   if (a.length === 0 || b.length === 0) return [];
-  if (a.length * b.length > LCS_CELLS) {
-    const pairs: [number, number][] = [];
-    let from = 0;
-    for (let j = 0; j < b.length; j++) {
-      const i = a.indexOf(b[j] ?? "", from);
-      if (i >= 0) {
-        pairs.push([i, j]);
-        from = i + 1;
-      }
-    }
-    return pairs;
+  if (a.length * b.length > LCS_CELLS) return anchored(a, b);
+  return fullTable(a, b);
+}
+
+function anchored(a: readonly string[], b: readonly string[]): [number, number][] {
+  const anchors = uniqueAnchors(a, b);
+  if (anchors.length === 0) return inOrder(a, b);
+  const pairs: [number, number][] = [];
+  let [i0, j0] = [0, 0];
+  for (const [i, j] of [...anchors, [a.length, b.length] as [number, number]]) {
+    for (const [x, y] of lcs(a.slice(i0, i), b.slice(j0, j))) pairs.push([x + i0, y + j0]);
+    if (i < a.length) pairs.push([i, j]);
+    [i0, j0] = [i + 1, j + 1];
   }
+  return pairs;
+}
+
+// The pairs of texts that occur exactly once in each list, cut to the longest run in order on both
+// sides (a longest increasing subsequence of the new indices).
+function uniqueAnchors(a: readonly string[], b: readonly string[]): [number, number][] {
+  const seen = new Map<string, { inA: number; atA: number; inB: number; atB: number }>();
+  a.forEach((text, i) => {
+    const entry = seen.get(text) ?? { inA: 0, atA: i, inB: 0, atB: -1 };
+    entry.inA++;
+    seen.set(text, entry);
+  });
+  b.forEach((text, j) => {
+    const entry = seen.get(text);
+    if (entry === undefined) return;
+    entry.inB++;
+    entry.atB = j;
+  });
+  const candidates = [...seen.values()]
+    .filter((entry) => entry.inA === 1 && entry.inB === 1)
+    .map((entry): [number, number] => [entry.atA, entry.atB])
+    .sort((x, y) => x[0] - y[0]);
+  const tails: number[] = [];
+  const back: number[] = [];
+  candidates.forEach(([, j], k) => {
+    let lo = 0;
+    let hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((candidates[tails[mid] ?? 0]?.[1] ?? 0) < j) lo = mid + 1;
+      else hi = mid;
+    }
+    back[k] = lo > 0 ? (tails[lo - 1] ?? -1) : -1;
+    tails[lo] = k;
+  });
+  const out: [number, number][] = [];
+  for (let k = tails.at(-1) ?? -1; k >= 0; k = back[k] ?? -1) {
+    const pair = candidates[k];
+    if (pair !== undefined) out.unshift(pair);
+  }
+  return out;
+}
+
+// The last resort for a long run with no unique text: each new text matched to the next unused
+// equal old text, in order.
+function inOrder(a: readonly string[], b: readonly string[]): [number, number][] {
+  const pairs: [number, number][] = [];
+  let from = 0;
+  for (let j = 0; j < b.length; j++) {
+    const i = a.indexOf(b[j] ?? "", from);
+    if (i >= 0) {
+      pairs.push([i, j]);
+      from = i + 1;
+    }
+  }
+  return pairs;
+}
+
+function fullTable(a: readonly string[], b: readonly string[]): [number, number][] {
   const width = b.length + 1;
   const table = new Uint32Array((a.length + 1) * width);
   for (let i = a.length - 1; i >= 0; i--) {

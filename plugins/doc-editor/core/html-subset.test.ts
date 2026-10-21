@@ -1,6 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { decodeEntities, htmlToMarkdown, imageText } from "./html-subset.ts";
+import { codeSpan, decodeEntities, escapeText, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset.ts";
 
 describe("htmlToMarkdown", () => {
   test("should convert inline tags to Markdown emphasis, strikethrough, code and links", () => {
@@ -52,11 +52,34 @@ describe("htmlToMarkdown", () => {
   });
 
   test("should keep the text and drop the tags when the HTML is malformed or unknown", () => {
-    expect(htmlToMarkdown("<span>a < b</span> <unknown x=1>c</unknown> <b>open")).toBe("a < b c **open");
+    expect(htmlToMarkdown("<span>a < b</span> <unknown x=1>c</unknown> <b>open")).toBe("a \\< b c **open");
   });
 
   test("should give nothing for an empty fragment", () => {
     expect(htmlToMarkdown("")).toBe("");
+  });
+});
+
+describe("writing a link into Markdown", () => {
+  test("should percent-encode every character that could end a destination or open another construct", () => {
+    expect(linkDestination("https://safe/) [bad](javascript:alert(1)")).toBe(
+      "https://safe/%29%20%5Bbad%5D%28javascript:alert%281%29",
+    );
+    expect(linkDestination("a b`\"'<>\\\n")).toBe("a%20b%60%22%27%3C%3E%5C%0A");
+    expect(linkDestination("https://e.com/ok")).toBe("https://e.com/ok");
+  });
+
+  test("should escape a label's unescaped brackets and a trailing backslash, and leave escaped ones", () => {
+    expect(linkLabel("x](javascript:1) [y")).toBe("x\\](javascript:1) \\[y");
+    expect(linkLabel("a \\[b\\]")).toBe("a \\[b\\]");
+    expect(linkLabel("end\\")).toBe("end\\\\");
+  });
+
+  test("should give a code span nothing inside can close, and escape literal text", () => {
+    expect(codeSpan("a`b\nc")).toBe("`ab c`");
+    expect(escapeText("[x](javascript:1) <javascript:2> `c`")).toBe(
+      "\\[x\\](javascript:1) \\<javascript:2\\> \\`c\\`",
+    );
   });
 });
 

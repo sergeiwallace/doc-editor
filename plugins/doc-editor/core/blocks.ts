@@ -17,7 +17,7 @@
 import type { Block, BlockKind, Document, Link } from "./types.ts";
 import { parseMarkdown, splitLines } from "./parse.ts";
 import type { Node } from "./parse.ts";
-import { decodeEntities, htmlToMarkdown, imageText } from "./html-subset.ts";
+import { codeSpan, decodeEntities, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset.ts";
 import { classifyHref, isDrawableHref } from "./links.ts";
 import { outline } from "./outline.ts";
 
@@ -73,13 +73,15 @@ const drawable = (walk: Walk, href: string): boolean =>
     ? classifyHref(href) === "url" && /^https?:\/\//i.test(href.trim())
     : isDrawableHref(href, walk.origin.path, walk.origin.repoRoot);
 
-const labelOf = (walk: Walk, node: Node): string => {
-  const children = node.children ?? [];
-  const first = children[0];
-  const last = children.at(-1);
-  if (first === undefined || last === undefined) return "";
-  return walk.source.slice(startOf(first), endOf(last));
-};
+// Every link the drawn text holds is written here: the label escaped so it cannot close the link,
+// the href percent-encoded so it cannot end the destination, and the encoded href checked again.
+// A link that may not be drawn becomes its label and its target as code.
+function linkMarkdown(walk: Walk, label: string, url: string): string {
+  const destination = linkDestination(url);
+  const text = linkLabel(label);
+  if (drawable(walk, destination)) return `[${text}](${destination})`;
+  return label === "" || label === url ? codeSpan(url) : `${text} (${codeSpan(url)})`;
+}
 
 const PHRASING_PARENTS = new Set([
   "paragraph",
@@ -111,24 +113,21 @@ function rewrites(walk: Walk, node: Node, parent: Node | null, inCell: boolean, 
       out.push({ from: startOf(node), to: endOf(node), text: imageText(node.alt ?? "", url) });
       return;
     }
-    case "link": {
-      const url = node.url ?? "";
-      href(url);
-      if (!drawable(walk, url)) {
-        const label = labelOf(walk, node);
-        const text = label === url || label === "" ? `\`${url}\`` : `${label} (\`${url}\`)`;
-        out.push({ from: startOf(node), to: endOf(node), text });
-        return;
-      }
-      break;
-    }
+    case "link":
     case "linkReference": {
-      const url = walk.definitions.get(node.identifier ?? "");
+      const url = node.type === "link" ? (node.url ?? "") : walk.definitions.get(node.identifier ?? "");
       if (url === undefined) break;
       href(url);
-      const label = labelOf(walk, node);
-      const text = drawable(walk, url) ? `[${label}](${url})` : `${label} (\`${url}\`)`;
-      out.push({ from: startOf(node), to: endOf(node), text });
+      const children = node.children ?? [];
+      const first = children[0];
+      const last = children.at(-1);
+      const inner: Replacement[] = [];
+      for (const child of children) rewrites(walk, child, node, inCell, inner);
+      const label =
+        first === undefined || last === undefined
+          ? ""
+          : applyRewrites(walk.source.slice(startOf(first), endOf(last)), startOf(first), inner);
+      out.push({ from: startOf(node), to: endOf(node), text: linkMarkdown(walk, label, url) });
       return;
     }
     case "listItem": {
@@ -205,7 +204,7 @@ function anchorRewrite(
   let text = label;
   if (url !== null) {
     walk.links.push({ href: url, offset: startOf(first) });
-    text = drawable(walk, url) ? `[${label}](${url})` : `${label} (\`${url.replaceAll("`", "")}\`)`;
+    text = linkMarkdown(walk, label, url);
   }
   out.push({ from: startOf(first), to: endOf(last), text });
   return close;

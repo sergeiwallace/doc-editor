@@ -581,6 +581,13 @@ Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort m
 | 3 | T-1.7, T-1.8 | The safety gate read only validate's descriptors, so an answering `tool.call` handler, an unregistered own tool or a `fetch` call could pass | Fixed: `scripts/safety-floor.mjs` reads the hooks sources inside the same gate |
 | 4 | T-1.7, T-1.8 | The save and watch closures are bound but nothing calls them yet | Justified: the reader child wires them into the pane; the live check exercises them |
 | 5 | T-1.7, T-1.8 | A write between the helper's last stat and its rename is overwritten | Justified: no portable file-system call closes that window. The design asks for the re-check "immediately before the rename", which is what the helper does, so the window is the gap between two adjacent system calls |
+| 6 | T-1.7, T-1.8 (round 2) | The observer could mutate `next`'s result, and `node -e` could carry a network call past the gate | Fixed: `next`'s result may only be returned untouched, and `$.process.run` may only run `node --version` or a `bin/` script the plugin ships, with no node flags; every shipped source, `bin/` included, is scanned for network and process imports |
+| 7 | Core | Links produced from inline HTML skipped href validation | Fixed: every anchor's href goes through the same classification |
+| 8 | Core | A symlink inside the repository pointing outside it passed the target check | Fixed: the target check takes the resolved real path and refuses one outside the repository |
+| 9 | Core | Changes to blank lines between blocks or to the final newline produced no marker or hunk | Fixed: recorded, marked and diffed |
+| 10 | Core | A deletion-only change carried no block ids | Fixed: marked on the surviving neighbour, so it can be reviewed and discarded |
+| 11 | Core | CRLF front matter parsed as a rule and a heading | Fixed: CRLF is read like LF for front matter, callouts and quotes |
+| 12 | Core | Block ids use section ordinals, so an earlier insertion renumbers later blocks | Fixed for the reader's state: `mapBlockIds` carries focus and folds across a reload |
 
 <!-- /doc:region name="overview" -->
 
