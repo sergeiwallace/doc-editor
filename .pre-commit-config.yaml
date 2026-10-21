@@ -33,7 +33,13 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: end-of-file-fixer
+        # A Founding Ask Record under docs/asks/ stores a human's exact words and binds
+        # them with a body_sha256 and a content_sha256 over the whole file, so a fixer
+        # that normalizes one byte leaves a record that no longer hashes to its own
+        # digest. Verbatim means verbatim (same exclusion as ai-harness).
+        exclude: ^docs/asks/
       - id: trailing-whitespace
+        exclude: ^docs/asks/
       - id: check-added-large-files
         # uv.lock is an expected, deterministic large generated artifact (AIH-v6kf9
         # T-2.2 requires tracking it fleet-wide) -- exempt it rather than raising the
@@ -137,3 +143,16 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
         always_run: true
+
+      # A public repo never names employer infrastructure (gateways, credential
+      # variables, internal tools). The checker and its name list live in
+      # ai-harness, resolved via PATH (~/.claude/bin/public-repo-name-check) like
+      # bd-blocked-check, so this repo never carries the list. docs/asks/ is
+      # skipped: a founding ask is recorded byte for byte.
+      - id: public-repo-name-check
+        name: no employer infrastructure names in a public repo
+        entry: public-repo-name-check
+        language: system
+        stages: [pre-commit]
+        types: [text]
+        exclude: ^docs/asks/
