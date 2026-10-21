@@ -1,7 +1,7 @@
 import type { Engine } from "claude-code/testing";
 import { describe, expect, test } from "claude-code/testing";
 
-import { COMMAND_NAME } from "./commands.ts";
+import { COMMAND_NAME, FALLBACK_COMMAND_NAME, takenText } from "./commands.ts";
 import { PANE_ID } from "./register.ts";
 import { CWD, mountPane, openDoc, paneWorld, SESSION } from "./tests/pane-world.ts";
 
@@ -102,5 +102,48 @@ describe("path completion after /doc", () => {
     await $.session.start(SESSION);
 
     expect((await complete($, "/doc nowhere/x")).suggestions).toEqual([]);
+  });
+});
+
+// The person's own `doc` skill or command already holds `/doc` (the engine refuses it, as 2.1.306
+// does for a user skill): `/doc-editor` stands in, and `show` is registered whatever happens.
+const TAKEN = "refused: it is the user's /doc";
+const RUN = { origin: { kind: "composer" }, presentation: { isFullscreen: true, columns: 160 } } as const;
+
+describe("when /doc is taken", () => {
+  test("should register /doc-editor and show, say why in the status row, open the pane from /doc-editor and pass the person's /doc on", async ($, on) => {
+    const reached: string[] = [];
+    on("command.run", (_engine, e) => {
+      reached.push(e.command);
+      return {};
+    });
+    const w = paneWorld(on, { files: { [DOC]: "# Doc\n" }, dirs: DIRS, refuse: { [COMMAND_NAME]: TAKEN } });
+    await $.session.start(SESSION);
+
+    expect(w.commands).toEqual([FALLBACK_COMMAND_NAME]);
+    expect(w.tools).toEqual(["show"]);
+    expect(w.statuses).toEqual([takenText(TAKEN)]);
+    expect(w.statuses[0]).toBe("doc-editor: /doc is taken by another command (refused: it is the user's /doc); use /doc-editor");
+
+    await $.command.run({ command: FALLBACK_COMMAND_NAME, args: "doc.md", ...RUN });
+    expect(w.opened.map((open) => open.id)).toEqual([PANE_ID]);
+    expect((await complete($, "/doc-editor do")).suggestions.map((row) => row.text)).toEqual(["docs/", "doc.md"]);
+    expect((await complete($, "/doc do")).suggestions).toEqual([]);
+
+    await $.command.run({ command: COMMAND_NAME, args: "doc.md", ...RUN });
+    expect(reached).toEqual([COMMAND_NAME]);
+    expect(w.opened).toHaveLength(1);
+  });
+
+  test("should say so in the status row and still register show when /doc-editor is refused too", async ($, on) => {
+    const w = paneWorld(on, { files: {}, refuse: { [COMMAND_NAME]: TAKEN, [FALLBACK_COMMAND_NAME]: "refused: taken" } });
+
+    await $.session.start(SESSION);
+
+    expect(w.commands).toEqual([]);
+    expect(w.tools).toEqual(["show"]);
+    expect(w.statuses).toEqual([
+      "doc-editor: neither /doc nor /doc-editor could be registered (refused: taken); ask Claude to show a file instead",
+    ]);
   });
 });

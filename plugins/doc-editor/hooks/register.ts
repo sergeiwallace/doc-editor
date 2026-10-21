@@ -1,15 +1,29 @@
 import type { On } from "claude-code";
 
-import { COMMAND_NAME, COMMAND_SPEC, completePath, runDoc } from "./commands.ts";
+import {
+  COMMAND_NAME,
+  COMMAND_SPEC,
+  completePath,
+  FALLBACK_COMMAND_NAME,
+  FALLBACK_COMMAND_SPEC,
+  noCommandText,
+  runDoc,
+  takenText,
+} from "./commands.ts";
 import { DocPane, PANE_ID, type PaneHost } from "./pane.ts";
 import { groupPaths, rowPath, withOpenLinks } from "./rows.ts";
 import { createSaver, type FileStamp, type Save } from "./save.ts";
 import { runShow, SHOW_TOOL_SPEC } from "./tools.ts";
 import { createWatcher, type Watcher } from "./watch.ts";
 
-export { COMMAND_NAME, PANE_ID };
+export { COMMAND_NAME, FALLBACK_COMMAND_NAME, PANE_ID };
 export const PLUGIN_NAME = "doc-editor";
 export const OPEN_FAILED_TEXT = "doc-editor could not open the pane";
+
+// A refusal's reason without the engine's `<plugin>: <call>: ` lead, for the status row. The
+// pattern is a string, so the source scan never reads its dollar sign as the engine handed on.
+const ENGINE_LEAD = new RegExp("^[\\w-]+: \\$\\.\\w+\\.\\w+: ");
+const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(ENGINE_LEAD, "");
 
 /**
  * Registers `/doc` and the `show` tool at session start, binds the pane, the safe-write path and
@@ -71,13 +85,34 @@ export function register(on: On) {
       loadChanges: async (path) => (await $.state.get({ plugin: "doc-editor", key: "changes", id: path })).value ?? [],
     };
     pane.bind(host);
-    await $.command.register(COMMAND_SPEC);
-    await $.tool.register({ ...SHOW_TOOL_SPEC, name: "show" });
+    // Each registration stands alone, so a refusal of one never stops the next. `/doc` may already
+    // be the person's own skill or command; `/doc-editor` then stands in for it.
+    try {
+      await $.command.register(COMMAND_SPEC);
+      pane.command = COMMAND_NAME;
+    } catch (taken) {
+      try {
+        await $.command.register(FALLBACK_COMMAND_SPEC);
+        pane.command = FALLBACK_COMMAND_NAME;
+        $.ui.status(takenText(message(taken)));
+      } catch (refused) {
+        pane.command = null;
+        $.ui.status(noCommandText(message(refused)));
+      }
+    }
+    try {
+      await $.tool.register({ ...SHOW_TOOL_SPEC, name: "show" });
+    } catch (refused) {
+      $.ui.status(`doc-editor: the show tool could not be registered (${message(refused)})`);
+    }
 
     return next(e);
   });
 
-  on("command.run", { command: "doc" }, async (_$, e) => runDoc(pane, e.args)).catch(() => ({
+  // Only the name the session granted is the mod's: a `/doc` that is the person's own passes on.
+  on("command.run", { command: ["doc", "doc-editor"] }, async (_$, e, next) =>
+    e.command === pane.command ? runDoc(pane, e.args) : next(e),
+  ).catch(() => ({
     text: OPEN_FAILED_TEXT,
   }));
 
@@ -85,7 +120,7 @@ export function register(on: On) {
     const base = await next(e);
     const cwd = pane.host?.cwd;
     if (cwd === undefined) return base;
-    const extra = await completePath((path) => $.fs.list(path), cwd, e);
+    const extra = await completePath((path) => $.fs.list(path), cwd, e, pane.command);
     return extra.length === 0 ? base : { suggestions: [...base.suggestions, ...extra] };
   }).catch((_$, e, next) => next(e));
 

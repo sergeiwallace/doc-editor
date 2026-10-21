@@ -65,6 +65,10 @@ export const EDIT_INPUT = "edit";
 export const LINE_INPUT = "edit-line";
 export const EMPTY_TEXT = "No document is open. Run /doc <path> to open one.";
 
+/** What the pane shows with no document, naming the command the session granted. */
+export const emptyText = (command: string | null): string =>
+  command === null ? "No document is open. Ask Claude to show a Markdown file." : `No document is open. Run /${command} <path> to open one.`;
+
 /** The keep, discard, refine and view-diff Buttons drawn under a changed block. */
 export const CHANGE_ACTIONS = { keep: "change:keep", discard: "change:discard", refine: "change:refine", diff: "change:diff" } as const;
 /** The Button of a task checkbox at line `n`, and of an editable line `n` when `e` asks which. */
@@ -74,12 +78,19 @@ const MAX_LINE_BUTTONS = 12;
 /** The most changes the session's state keeps for one file; the newest are kept. */
 export const MAX_KEPT_CHANGES = 50;
 /** The hint the hint row adds while the focused block carries link or checkbox Buttons. */
-export const ENTER_HINT = "Enter: open or tick the focused button";
+export const ENTER_HINT = "Tab: next button · Enter: open or tick it";
+/** The hint the hint row adds on the outline. */
+export const OUTLINE_HINT = "Up, Down or Tab: move · Enter: jump";
 
 type Field = typeof FIND_INPUT | typeof GOTO_INPUT | typeof ASK_INPUT | typeof EDIT_INPUT | typeof LINE_INPUT;
 
 /** The header's two lines above the body. */
 const HEADER_ROWS = 2;
+/** The rows the engine's border adds above and below a table it draws. */
+const TABLE_BORDER_ROWS = 2;
+/** A table card's round border: a row above and below, and a column and its padding either side. */
+const CARD_BORDER_ROWS = 2;
+const CARD_FRAME_COLUMNS = 4;
 /** The focus marker's column beside every piece. */
 const MARGIN_COLUMNS = 2;
 const MAX_LINK_BUTTONS = 9;
@@ -272,6 +283,8 @@ export class DocPane {
   /** Which field the pane shows above the body, if any. */
   input: Field | null = null;
   isOpen = false;
+  /** The command the session granted the pane, `doc` or its fallback, or null when neither was. */
+  command: string | null = "doc";
   /** Claude's requests and changes this session. */
   readonly review = new Review();
   /** The open file's stamp as last read or saved: what a save checks the file against. */
@@ -282,6 +295,8 @@ export class DocPane {
   skip = 0;
   /** The first outline entry the outline view shows. */
   outlineAt = 0;
+  /** The outline entry Up and Down have reached: the one the focus ring is put on. */
+  outlineCursor = 0;
   /** The keys the pane answers; a later mode appends its own. */
   bindings: KeyBinding<DocPane>[] = [...READ_KEYS, ...EDIT_KEYS];
   /** The drill-in sections entered before the current one, innermost last (null: the whole document). */
@@ -297,6 +312,8 @@ export class DocPane {
   private minutes = 1;
   private statusText: string | undefined;
   private cache: { key: string; pieces: Piece[] } | undefined;
+  /** A table piece's rows as the core counted them, for one the pane draws taller (sized). */
+  private readonly sourceRows = new Map<string, number>();
 
   bind(host: PaneHost): void {
     this.host = host;
@@ -339,7 +356,7 @@ export class DocPane {
     const host = this.host;
     if (host === undefined) return { ok: false, reason: "the doc-editor session has not started" };
     const trimmed = spec.trim();
-    if (trimmed === "") return this.refuse("give a path: /doc <path>[:line|#heading]");
+    if (trimmed === "") return this.refuse(`give a path: /${this.command ?? "doc"} <path>[:line|#heading]`);
     const place = parseLocation(trimmed);
     const loaded = await this.load(absoluteFrom(host.cwd, place.path));
     if (!loaded.ok) return this.refuse(loaded.reason);
@@ -365,7 +382,7 @@ export class DocPane {
   async present(focus: boolean): Promise<Opened> {
     const host = this.host;
     const doc = this.doc;
-    if (host === undefined || doc === undefined) return { ok: false, reason: EMPTY_TEXT };
+    if (host === undefined || doc === undefined) return { ok: false, reason: emptyText(this.command) };
     const opened = await host.open({ title: baseName(doc.path), focus });
     this.isOpen = true;
     host.invalidate();
@@ -466,9 +483,33 @@ export class DocPane {
     const columns = this.contentColumns();
     const key = `${this.doc?.mtimeMs}|${this.doc?.path}|${columns}|${this.view.drill}|${this.view.folded.join(",")}`;
     if (this.cache?.key === key) return this.cache.pieces;
-    const pieces = viewPieces(this.blocks, this.view, columns);
+    const byId = new Map(this.blocks.map((block) => [block.id, block]));
+    this.sourceRows.clear();
+    const pieces = viewPieces(this.blocks, this.view, columns).map((piece) => this.sized(piece, byId.get(piece.blockId), columns));
     this.cache = { key, pieces };
     return pieces;
+  }
+
+  /**
+   * A piece with the rows the pane draws it in: the core counts a table by its source lines, but a
+   * table that fits draws inside a border and one wider than the body draws as a bordered card per
+   * row (drawTable). Pages, scrolling and keep-in-view all count these rows, so a page never runs
+   * past the body and the hint row and the focused block stay in view.
+   */
+  private sized(piece: Piece, block: Block | undefined, columns: number): Piece {
+    if (piece.type !== "markdown" || block?.kind !== "table" || piece.key !== block.id) return piece;
+    const table = parseTable(piece.text);
+    if (table === null) return piece;
+    let rows: number;
+    if (naturalWidth(table) <= columns) {
+      rows = rowsOf(piece.text, columns) + TABLE_BORDER_ROWS + 1;
+    } else {
+      const cards = tableCards(table);
+      if (cards.reduce((sum, card) => sum + card.length, 0) > ELEMENT_LIMIT) return piece;
+      rows = cards.reduce((sum, card) => sum + rowsOf(card, columns - CARD_FRAME_COLUMNS) + CARD_BORDER_ROWS, 0) + 1;
+    }
+    this.sourceRows.set(piece.key, piece.rows);
+    return { ...piece, rows };
   }
 
   /** The visible blocks that draw at least one piece, in order: what Up and Down step through. */
@@ -486,8 +527,12 @@ export class DocPane {
     return [...new Set(hrefs)];
   }
 
-  /** ENTER_HINT while the document shows and the focused block carries link or checkbox Buttons. */
+  /**
+   * OUTLINE_HINT on the outline; ENTER_HINT while the document shows and the focused block carries
+   * link or checkbox Buttons, which Tab moves the focus ring onto.
+   */
   private enterNote(): string | undefined {
+    if (this.screen === "outline") return OUTLINE_HINT;
     const focus = this.view.focus;
     if (this.screen !== "document" || focus === null) return undefined;
     return this.linkHrefs(focus).length > 0 || this.tasksOf(focus).length > 0 ? ENTER_HINT : undefined;
@@ -540,7 +585,23 @@ export class DocPane {
     this.view.offset =
       block === "start"
         ? Math.max(0, pieceIndex(pieces, id))
-        : revealOffset(pieces, this.view.offset, id, this.bodySize());
+        : this.reveal(pieces, this.view.offset, id);
+  }
+
+  /**
+   * The offset that brings block `id` into view, moving the least. The core's revealOffset counts a
+   * piece as shown when it starts on the page's last row, but the draw stops before a piece with
+   * fewer than two rows left; so this goes on until the block's first piece fits whole below the
+   * pieces above it, or is first on the page.
+   */
+  private reveal(pieces: readonly Piece[], offset: number, id: string): number {
+    const size = this.bodySize();
+    let at = revealOffset(pieces, offset, id, size);
+    const target = pieceIndex(pieces, id);
+    const need = Math.min(pieces[target]?.rows ?? 1, size.bodyRows);
+    const above = () => pieces.slice(at, target).reduce((sum, piece) => sum + piece.rows, 0);
+    while (target > at && above() + need > size.bodyRows) at++;
+    return at;
   }
 
   /** Focuses a heading, as the outline, `:N` and `#heading` and a link do. */
@@ -573,10 +634,17 @@ export class DocPane {
       return;
     }
     if (this.screen === "outline") {
+      // Up and Down move between entries, a page key by a page; the list follows the entry and
+      // the focus ring is put on it, so Enter jumps to what is highlighted.
+      const entries = this.doc.outline;
       const rows = this.bodySize().bodyRows;
-      const last = Math.max(0, this.doc.outline.length - rows);
-      this.outlineAt = Math.min(last, Math.max(0, this.outlineAt + by));
+      const step = Math.abs(by) === 1 ? by : Math.sign(by) * rows;
+      this.outlineCursor = Math.min(Math.max(0, entries.length - 1), Math.max(0, this.outlineCursor + step));
+      if (this.outlineCursor < this.outlineAt) this.outlineAt = this.outlineCursor;
+      if (this.outlineCursor >= this.outlineAt + rows) this.outlineAt = this.outlineCursor - rows + 1;
       this.host?.invalidate();
+      const key = entries[this.outlineCursor]?.id;
+      if (key !== undefined) void this.host?.focus(`outline:${key}`).catch(() => undefined);
       return;
     }
     const pieces = this.pieces();
@@ -653,7 +721,7 @@ export class DocPane {
     this.view.folded = toggleFoldAll(this.blocks, this.view.folded);
     this.keepFocusVisible();
     const focus = this.view.focus;
-    this.view.offset = focus === null ? 0 : revealOffset(this.pieces(), this.view.offset, focus, this.bodySize());
+    this.view.offset = focus === null ? 0 : this.reveal(this.pieces(), this.view.offset, focus);
     this.skip = 0;
   }
 
@@ -826,6 +894,7 @@ export class DocPane {
     const current = this.sectionHeading();
     const at = Math.max(0, entries.findIndex((entry) => entry.id === current));
     this.outlineAt = Math.max(0, at - 2);
+    this.outlineCursor = at;
     const key = entries[at]?.id;
     this.host?.invalidate();
     if (key !== undefined) void this.host?.focus(`outline:${key}`).catch(() => undefined);
@@ -875,7 +944,7 @@ export class DocPane {
     }
     this.keepFocusVisible();
     if (this.editAt !== null && lineAt(next.source, this.editAt) === null) this.closeEditing();
-    if (view.focus !== null) view.offset = revealOffset(this.pieces(), view.offset, view.focus, this.bodySize());
+    if (view.focus !== null) view.offset = this.reveal(this.pieces(), view.offset, view.focus);
     this.skip = 0;
     host.invalidate();
   }
@@ -1247,7 +1316,7 @@ export class DocPane {
     const doc = this.doc;
     const host = this.host;
     if (doc === undefined || host === undefined) {
-      return ui.Box({ flexDirection: "column", children: [ui.Text({ children: EMPTY_TEXT })] });
+      return ui.Box({ flexDirection: "column", children: [ui.Text({ children: emptyText(this.command) })] });
     }
     const bindings = bindingsFor(this.bindings, this.screen);
     const hints = hintRow(ui, bindings, (binding) => void this.press(binding), this.enterNote());
@@ -1287,7 +1356,8 @@ export class DocPane {
       const left = size.bodyRows - used;
       let keep: number | null = null;
       if (piece.rows - skip > left) {
-        const overhead = piece.rows - rowsOf(piece.text, textColumns(piece, size.bodyColumns));
+        // A cut table draws as its source lines, so its frame is counted from the source rows.
+        const overhead = (this.sourceRows.get(piece.key) ?? piece.rows) - rowsOf(piece.text, textColumns(piece, size.bodyColumns));
         keep = left - overhead;
         if (k > 0 && keep < 2) break;
       }
@@ -1454,13 +1524,14 @@ export class DocPane {
     const rows = this.bodySize().bodyRows;
     const last = Math.max(0, entries.length - rows);
     this.outlineAt = Math.min(last, Math.max(0, this.outlineAt));
-    const current = this.sectionHeading();
+    const cursor = entries[this.outlineCursor]?.id;
     const folded = new Set(this.view.folded);
     // A tall body holds thousands of entries; the outline stops at PAGE_BUDGET as a page does.
     const children: RenderElement[] = [];
     let bytes = 0;
     for (const entry of entries.slice(this.outlineAt, this.outlineAt + rows)) {
-      const mark = entry.id === current ? "› " : folded.has(entry.id) ? "▸ " : "  ";
+      // `›` marks the entry Up and Down reached (it opens on the current section).
+      const mark = entry.id === cursor ? "› " : folded.has(entry.id) ? "▸ " : "  ";
       const note = folded.has(entry.id) ? `  (folded, ${hiddenCount(this.blocks, entry.id)})` : "";
       const label = `${mark}${"  ".repeat(Math.max(0, entry.level - 1))}${entry.title}${note}`;
       bytes += JSON.stringify(label).length + JSON.stringify(entry.id).length + PIECE_FRAME_COST;

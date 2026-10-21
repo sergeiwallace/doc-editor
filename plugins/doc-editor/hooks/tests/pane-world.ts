@@ -30,6 +30,8 @@ export interface PaneWorldOptions {
   dirs?: Record<string, { name: string; kind: "file" | "dir" | "other" }[]>;
   /** What the session state holds per file before the mod reads it, as after a reload of the mod. */
   state?: Record<string, unknown>;
+  /** Command names the engine refuses, with its reason, as for a name the person's own skill holds. */
+  refuse?: Record<string, string>;
 }
 
 const encoder = new TextEncoder();
@@ -71,6 +73,8 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
 
   on("session.start", (_engine, e) => ({ cwd: e.cwd }));
   on("command.register", (_engine, e) => {
+    const reason = options.refuse?.[e.name];
+    if (reason !== undefined) return { deny: reason };
     commands.push(e.name);
     return { value: { command: e.name } };
   });
@@ -296,4 +300,92 @@ export async function focusedKey(ui: MountedPane): Promise<string | undefined> {
 export async function header(ui: MountedPane): Promise<{ title: string; status: string }> {
   const texts = await ui.findAll({ type: "Text" });
   return { title: texts[0]?.text ?? "", status: texts[1]?.text ?? "" };
+}
+
+// ---- rows a drawn tree takes ---------------------------------------------------------------
+// A small model of the terminal's layout, independent of the pane's own estimate, so a test can
+// check that what the pane drew fits its rows: text wrapped at the width, a border adds a row
+// above and below and a column each side, padding and margins as given, a row Box as tall as its
+// tallest child, a wrapping row of buttons by their labels.
+
+interface Drawn {
+  type?: string;
+  props?: Record<string, unknown>;
+  children?: unknown;
+}
+
+const childrenOf = (node: Drawn): Drawn[] => {
+  const raw = node.children ?? node.props?.children;
+  const list = Array.isArray(raw) ? raw : raw === undefined ? [] : [raw];
+  return list.filter((child): child is Drawn => typeof child === "object" && child !== null);
+};
+
+const textOf = (node: Drawn): string => {
+  const raw = node.children ?? node.props?.children;
+  const list = Array.isArray(raw) ? raw : [raw];
+  return list.filter((part) => typeof part === "string" || typeof part === "number").join("");
+};
+
+const wrapped = (text: string, width: number): number =>
+  text.split("\n").reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / Math.max(1, width))), 0);
+
+const num = (value: unknown): number => (typeof value === "number" ? value : 0);
+
+/** The width a node takes on one row, for the fixed children of a row Box. */
+const widthOf = (node: Drawn): number =>
+  node.type === "Text" ? textOf(node).length : node.type === "Button" ? String(node.props?.label ?? "").length + 2 : 0;
+
+/** The rows `node` takes at `width` columns. */
+export function drawnRows(node: Drawn, width: number): number {
+  const props = node.props ?? {};
+  switch (node.type) {
+    case "Text":
+      return props.wrap === "truncate-end" || props.wrap === "truncate-start" ? 1 : wrapped(textOf(node), width);
+    case "Markdown": {
+      const text = String(props.text ?? "");
+      const lines = text.split("\n");
+      // A table draws inside a border: a row above and below.
+      return lines.every((line) => line.startsWith("|")) ? lines.length + 2 : wrapped(text, width);
+    }
+    case "Code":
+      return wrapped(String(props.source ?? ""), width - 2);
+    case "Button":
+    case "Input":
+      return 1;
+    case "Box": {
+      const border = props.borderStyle === undefined ? 0 : 2;
+      const inner = width - border - 2 * num(props.paddingX) - num(props.paddingLeft);
+      const children = childrenOf(node);
+      let rows = 0;
+      if (props.flexDirection === "row" && props.flexWrap === "wrap") {
+        let used = 0;
+        rows = children.length === 0 ? 0 : 1;
+        for (const child of children) {
+          const w = widthOf(child);
+          if (used > 0 && used + num(props.columnGap) + w > inner) {
+            rows++;
+            used = w;
+          } else {
+            used += (used > 0 ? num(props.columnGap) : 0) + w;
+          }
+        }
+      } else if (props.flexDirection === "row") {
+        const fixed = children.filter((child) => child.type !== "Box").reduce((sum, child) => sum + widthOf(child), 0);
+        rows = Math.max(0, ...children.map((child) => drawnRows(child, child.type === "Box" ? inner - fixed : widthOf(child) || inner)));
+      } else {
+        rows = children.reduce((sum, child) => sum + drawnRows(child, inner), 0);
+      }
+      return Math.max(rows, num(props.height)) + border + num(props.marginBottom);
+    }
+    default:
+      return 0;
+  }
+}
+
+/** The rows the pane's frame takes above its blank spacer: header, field, body and hint row. */
+export async function frameRows(ui: MountedPane, width: number): Promise<number> {
+  const tree = (await ui.drawn()) as Drawn;
+  return childrenOf(tree)
+    .filter((child) => child.props?.key !== "spacer")
+    .reduce((sum, child) => sum + drawnRows(child, width), 0);
 }
