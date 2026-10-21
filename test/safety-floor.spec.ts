@@ -13,8 +13,11 @@ import { claudeStatus } from "../scripts/claude-floor.mjs";
 const repoRoot = resolve(import.meta.dirname, "..");
 const pluginDir = join(repoRoot, "plugins/doc-editor");
 const gate = join(repoRoot, "scripts/check-plugin-declared.mjs");
-// What a session load writes into the plugin; a copy leaves it behind, as git does.
-const SKIPPED = new Set(["node_modules", "types", "tsconfig.json"]);
+// What a session load writes into the plugin (the mod types and a root tsconfig.json), and
+// node_modules; a copy leaves them behind, as git does. The plugin's own types/ contract is kept.
+const GENERATED = [".claude-plugin/types", "tsconfig.json"];
+const isSkipped = (rel: string) =>
+  rel.split("/").includes("node_modules") || GENERATED.some((path) => rel === path || rel.startsWith(`${path}/`));
 const BEGIN = "<!-- validate-declared:begin -->";
 const END = "<!-- validate-declared:end -->";
 const ANCHOR = '  on("command.run",';
@@ -45,7 +48,7 @@ function pluginWith(change: Change): string {
   scratch.push(dir);
   cpSync(pluginDir, dir, {
     recursive: true,
-    filter: (path) => !relative(pluginDir, path).split("/").some((part) => SKIPPED.has(part)),
+    filter: (path) => !isSkipped(relative(pluginDir, path)),
   });
   const register = join(dir, "hooks/register.ts");
   let source = readFileSync(register, "utf8");
@@ -106,7 +109,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     const hooks = notes.filter((note) => note.startsWith(`${MODULE} hooks: `));
     const calls = notes.filter((note) => note.startsWith(`${MODULE} calls: `));
     expect(hooks).toEqual([
-      `${MODULE} hooks: session.start, command.run{command=doc}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
+      `${MODULE} hooks: session.start, command.run{command=doc}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, turn.start, turn.complete, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
     ]);
     expect(calls.join("\n")).not.toMatch(/\$\.(model\.|agent\.spawn|http\.|mcp\.)/);
     const result = runGate(pluginDir);

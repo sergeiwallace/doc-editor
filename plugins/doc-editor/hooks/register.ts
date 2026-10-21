@@ -46,6 +46,7 @@ export function register(on: On) {
       every: (ms, fn) => $.clock.every(ms, fn),
     });
     session.watcher = watcher;
+    const save = session.save;
     const root = await $.fs.stat(e.cwd, { resolve: true }).catch(() => undefined);
     const host: PaneHost = {
       cwd: e.cwd,
@@ -58,6 +59,16 @@ export function register(on: On) {
       status: (text) => $.ui.status(text),
       focus: (key) => $.ui.focus({ requestId: PANE_ID, key }),
       watcher,
+      save,
+      // The request is the person's own words (D-4); the pane never awaits this in a hook.
+      submit: async (text) => {
+        const result = await $.prompt.submit({ text, asUser: true });
+        return result.drop === undefined ? { ok: true } : { ok: false, reason: result.drop };
+      },
+      storeChanges: async (path, changes) => {
+        await $.state.set({ plugin: "doc-editor", key: "changes", id: path }, changes);
+      },
+      loadChanges: async (path) => (await $.state.get({ plugin: "doc-editor", key: "changes", id: path })).value ?? [],
     };
     pane.bind(host);
     await $.command.register(COMMAND_SPEC);
@@ -89,6 +100,20 @@ export function register(on: On) {
     void session.watcher?.check();
 
     return result;
+  }).catch((_$, e, next) => next(e));
+
+  // The main loop's turns, observed: a request the pane submitted learns its turn id at the start,
+  // and its edit lands at the end. Both pass on unchanged and never wait on the pane.
+  on("turn.start", (_$, e, next) => {
+    if (e.agentId === undefined) pane.turnStarted(e.turnId, e.text);
+
+    return next(e);
+  }).catch((_$, e, next) => next(e));
+
+  on("turn.complete", (_$, e, next) => {
+    if (e.agentId === undefined) void pane.turnEnded(e.turnId);
+
+    return next(e);
   }).catch((_$, e, next) => next(e));
 
   on("ui.close", { id: "doc" }, async (_$, e, next) => {

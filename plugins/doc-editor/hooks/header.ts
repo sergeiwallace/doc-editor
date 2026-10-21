@@ -35,6 +35,8 @@ export interface HeaderInput {
   drill: string | null;
   /** Minutes to read, computed once per document. */
   minutes: number;
+  /** How many blocks carry a marker for a change Claude made. */
+  changed?: number;
 }
 
 export interface Header {
@@ -49,7 +51,16 @@ export function documentHeader(input: HeaderInput): Header {
   const parts = [MODE_WORD[input.mode], `${input.minutes} min read`];
   if (input.drill !== null) parts.push("section · u up");
   if (input.find !== null) parts.push(`find "${input.find.query}" ${hitLabel(input.find)}`);
+  if ((input.changed ?? 0) > 0) parts.push(`${input.changed} changed by Claude`);
   return { title, status: parts.join(" · ") };
+}
+
+/** The two header lines for the diff view: which turn of how many, and its blocks. */
+export function diffHeader(path: string, repoRoot: string, turn: number, turns: number, blocks: number): Header {
+  return {
+    title: `${shownPath(path, repoRoot)} › Changes this session`,
+    status: `DIFF · turn ${turn} of ${turns} · ${blocks} ${blocks === 1 ? "block" : "blocks"} · n/p turn · v back`,
+  };
 }
 
 /** The two header lines for the outline view. */

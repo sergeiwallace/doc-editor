@@ -4,7 +4,7 @@
 
 import type { Elements, RenderElement } from "claude-code";
 
-export type Screen = "document" | "outline";
+export type Screen = "document" | "outline" | "diff";
 
 export interface KeyBinding<P> {
   /** One lowercase letter or digit: a pane hotkey takes nothing else. */

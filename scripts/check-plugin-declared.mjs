@@ -2,8 +2,8 @@
 // Declared-list gate for the mod's hooks and calls (design D-11, task T-0.2).
 // Usage: node scripts/check-plugin-declared.mjs <plugin-dir>
 // Runs `claude plugin validate --strict --json <plugin-dir>` and compares every
-// "<module> <kind>: <values>" note it reports (hooks, calls, env reads, env writes,
-// surface modules, gating hooks) with the list <plugin-dir>/README.md declares, both ways:
+// "<module> <kind>: <values>" note it reports (hooks, calls, env reads, env writes, state reads,
+// state writes, surface modules, gating hooks) with the list <plugin-dir>/README.md declares, both ways:
 // a reported value the README does not declare fails, and so does a declared value validate
 // does not report. It prints one line per difference.
 // Adapted from the sibling beads-ui repository's allow-list gate, which reads a JSON file.
@@ -35,7 +35,7 @@ import { requireClaude } from "./claude-floor.mjs";
 import { registeredTools, reportBreaches, sourceBreaches } from "./safety-floor.mjs";
 
 const NOTE =
-  /^(\.\/\S+) (hooks|calls|env reads|env writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
+  /^(\.\/\S+) (hooks|calls|env reads|env writes|state reads|state writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
 const VIA = / \(via [\w$.]+\)$/;
 const ENGINE_CALL = /(?<![\w$])\$\.[A-Za-z_]/;
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);

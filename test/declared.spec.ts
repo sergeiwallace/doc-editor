@@ -10,8 +10,11 @@ import { claudeStatus } from "../scripts/claude-floor.mjs";
 const repoRoot = resolve(import.meta.dirname, "..");
 const pluginDir = join(repoRoot, "plugins/doc-editor");
 const gate = join(repoRoot, "scripts/check-plugin-declared.mjs");
-// What a session load writes into the plugin; a copy leaves it behind, as git does.
-const SKIPPED = new Set(["node_modules", "types", "tsconfig.json"]);
+// What a session load writes into the plugin (the mod types and a root tsconfig.json), and
+// node_modules; a copy leaves them behind, as git does. The plugin's own types/ contract is kept.
+const GENERATED = [".claude-plugin/types", "tsconfig.json"];
+const isSkipped = (rel: string) =>
+  rel.split("/").includes("node_modules") || GENERATED.some((path) => rel === path || rel.startsWith(`${path}/`));
 
 const scratch: string[] = [];
 
@@ -25,7 +28,7 @@ function pluginWith(edit: (dir: string) => void): string {
   scratch.push(dir);
   cpSync(pluginDir, dir, {
     recursive: true,
-    filter: (path) => !relative(pluginDir, path).split("/").some((part) => SKIPPED.has(part)),
+    filter: (path) => !isSkipped(relative(pluginDir, path)),
   });
   edit(dir);
   return dir;
@@ -44,7 +47,7 @@ const runGate = (dir: string) =>
 const REGISTER = "hooks/register.ts";
 const SESSION_START = "    return next(e);\n  });";
 const DECLARED_CALLS =
-  '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],';
+  '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.prompt.submit", "$.state.get", "$.state.set", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],';
 
 // Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();

@@ -6,5 +6,6 @@
     "name": "Sergei Wallace"
   },
   "license": "MIT",
+  "types": "./types/doc-editor.d.ts",
   "repository": "https://github.com/sergeiwallace/doc-editor"
 }

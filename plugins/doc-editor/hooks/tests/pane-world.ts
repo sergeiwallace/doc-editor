@@ -28,6 +28,8 @@ export interface PaneWorldOptions {
   files: Record<string, FileSpec>;
   /** Directories `$.fs.list` answers, by absolute path. */
   dirs?: Record<string, { name: string; kind: "file" | "dir" | "other" }[]>;
+  /** What the session state holds per file before the mod reads it, as after a reload of the mod. */
+  state?: Record<string, unknown>;
 }
 
 const encoder = new TextEncoder();
@@ -120,13 +122,101 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
     return {};
   });
 
+  // The save helper as bin/save.mjs behaves: it writes only while the file's mtimeMs and size are
+  // the ones the mod read, and prints the new stamp. node is on PATH.
+  const saves: { path: string; text: string; expected: [number, number] }[] = [];
+  let writes = 0;
+  on("process.run", (_engine, e) => {
+    const [cmd, script, path = "", mtime = "", size = ""] = e.argv;
+    const result = (exitCode: number, stdout: string, stderr = "") => ({
+      value: { exitCode, stdout, stderr, isStdoutTruncated: false, isStderrTruncated: false },
+    });
+    if (cmd === "node" && script === "--version") return result(0, "v24.11.0\n");
+    if (cmd !== "node" || !script?.endsWith("/bin/save.mjs")) return result(127, "", `unscripted: ${e.argv.join(" ")}`);
+    const target = real(path);
+    const mtimeMs = mtimes.get(target) ?? START_MS;
+    if (Number(mtime) !== mtimeMs || Number(size) !== sizeOf(path)) {
+      return result(1, "", `save: ${path} changed: mtimeMs ${mtimeMs}, size ${sizeOf(path)}`);
+    }
+    const text = e.init?.stdin ?? "";
+    saves.push({ path, text, expected: [Number(mtime), Number(size)] });
+    files.set(target, text);
+    mtimes.set(target, START_MS + 10_000 + ++writes);
+    return result(0, `${JSON.stringify({ mtimeMs: mtimes.get(target), size: sizeOf(target) })}\n`);
+  });
+  // The session state the mod keeps: each write it makes, and a value seeded for a read, as a
+  // reload of the mod finds what the session held. The kit answers beneath.
+  const stateWrites = new Map<string, unknown>();
+  const seeded = new Map<string, unknown>(Object.entries(options.state ?? {}));
+  const stateReads: string[] = [];
+  on("state.set", (_engine, e, next) => {
+    stateWrites.set(String(e.id), e.value);
+    return next(e);
+  });
+  on("state.get", (_engine, e, next) => {
+    const id = String(e.id);
+    stateReads.push(id);
+    return seeded.has(id) ? { value: { value: seeded.get(id) as never, version: 1 } } : next(e);
+  });
+
+  on("turn.start", (_engine, e) => ({ turnId: e.turnId }));
+  on("turn.complete", (_engine, e) => ({ text: e.answer }));
+
+  // Prompts the mod submits. While `busy` is set the engine holds each one, as it does while a
+  // turn runs; `release` lets them through.
+  const submits: { text: string; asUser: boolean }[] = [];
+  let held: (() => void)[] = [];
+  let busy = false;
+  let drop: string | undefined;
+  on("prompt.submit", async (_engine, e) => {
+    submits.push({ text: e.text, asUser: e.origin.kind === "plugin" && e.origin.asUser === true });
+    if (drop !== undefined) return { drop };
+    if (busy) await new Promise<void>((resolve) => held.push(resolve));
+    return { text: e.text };
+  });
+
   /** Changes a file on disk, as an editor or Claude's Write would, with a later mtimeMs. */
   const edit = (path: string, text: string) => {
     files.set(path, text);
     mtimes.set(path, clock.now() + 1);
   };
-  return { files, opened, closed, statuses, focused, commands, tools, reads, clock, edit };
+  return {
+    files,
+    opened,
+    closed,
+    statuses,
+    focused,
+    commands,
+    tools,
+    reads,
+    clock,
+    edit,
+    saves,
+    submits,
+    /** The last value the mod wrote to its session state for a file. */
+    stateOf: (path: string) => stateWrites.get(path),
+    stateReads,
+    /** Holds every submitted prompt until `release`, as a busy session does. */
+    hold: () => {
+      busy = true;
+    },
+    release: () => {
+      busy = false;
+      for (const resolve of held.splice(0)) resolve();
+    },
+    /** Makes the next submits come back dropped with `reason`. */
+    dropSubmits: (reason: string) => {
+      drop = reason;
+    },
+  };
 }
+
+/** A main-loop turn of Claude's starting with `text`, as the engine raises it. */
+export const startTurn = ($: Engine, turnId: string, text: string) => $.turn.start({ text, turnId });
+
+/** The end of a main-loop turn, as the engine raises it. */
+export const endTurn = ($: Engine, turnId: string) =>
+  $.turn.complete({ answer: "", durationMs: 1, isAborted: false, turnId, reason: "answer" });
 
 /** Starts the session, runs `/doc <args>` and mounts the pane at `props`. */
 export async function openDoc($: Engine, on: On, options: PaneWorldOptions, args: string, props = PANE_PROPS) {

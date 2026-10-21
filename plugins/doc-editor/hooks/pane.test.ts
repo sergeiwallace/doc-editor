@@ -243,7 +243,8 @@ describe("window and budget (T-1.2)", () => {
   });
 
   test("should cut a piece that runs past the body to the rows left, so the hint row stays in view", async ($, on) => {
-    const short = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 16 } };
+    // 17 rows: the hint row, with the editor's keys, wraps to three rows at 100 columns.
+    const short = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 17 } };
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-2-topic-2", short);
     const keys = await pieceKeys(ui);
     const last = keys.at(-1) ?? "";
