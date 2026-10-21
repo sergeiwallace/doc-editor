@@ -7,6 +7,7 @@ import { outline } from "./outline.ts";
 
 const ROOT = "/repo";
 const FROM = "/repo/docs/test/fixtures/thousand-line-doc.md";
+const LINKED = "/repo/docs/test/fixtures/linked-doc.md";
 const linkedOutline = outline(parseBlocks(linkedDoc()).blocks);
 const ownOutline = outline(parseBlocks(fixtureDoc(1000)).blocks);
 
@@ -29,7 +30,7 @@ describe("resolveLink and checkTarget", () => {
     const target = resolveLink("linked-doc.md#second-section", FROM, ROOT);
 
     expect(target).toEqual({ ok: true, path: "/repo/docs/test/fixtures/linked-doc.md", heading: "second-section" });
-    expect(checkTarget(target, { exists: true, outline: linkedOutline })).toEqual({
+    expect(checkTarget(target, { exists: true, realPath: LINKED, outline: linkedOutline }, ROOT)).toEqual({
       ok: true,
       path: "/repo/docs/test/fixtures/linked-doc.md",
       headingId: "h1.1",
@@ -40,7 +41,7 @@ describe("resolveLink and checkTarget", () => {
     const target = resolveLink("#chapter-2-topic-2", FROM, ROOT);
 
     expect(target).toEqual({ ok: true, path: FROM, heading: "chapter-2-topic-2" });
-    expect(checkTarget(target, { exists: true, outline: ownOutline })).toMatchObject({ ok: true, path: FROM });
+    expect(checkTarget(target, { exists: true, realPath: FROM, outline: ownOutline }, ROOT)).toMatchObject({ ok: true, path: FROM });
   });
 
   test("should read a path that starts with a slash from the repository root and decode escapes", () => {
@@ -61,7 +62,7 @@ describe("resolveLink and checkTarget", () => {
   test("should refuse a missing file with its path", () => {
     const target = resolveLink("missing-file.md", FROM, ROOT);
 
-    expect(checkTarget(target, { exists: false })).toEqual({
+    expect(checkTarget(target, { exists: false, realPath: null }, ROOT)).toEqual({
       ok: false,
       reason: "missing file: /repo/docs/test/fixtures/missing-file.md",
     });
@@ -70,7 +71,7 @@ describe("resolveLink and checkTarget", () => {
   test("should refuse a heading the target file does not have", () => {
     const target = resolveLink("linked-doc.md#nowhere", FROM, ROOT);
 
-    expect(checkTarget(target, { exists: true, outline: linkedOutline })).toEqual({
+    expect(checkTarget(target, { exists: true, realPath: LINKED, outline: linkedOutline }, ROOT)).toEqual({
       ok: false,
       reason: "no heading #nowhere in /repo/docs/test/fixtures/linked-doc.md",
     });
@@ -85,10 +86,29 @@ describe("resolveLink and checkTarget", () => {
     expect(resolveLink("bad%E0.md", FROM, ROOT)).toEqual({ ok: false, reason: "the link is not a valid address: bad%E0.md" });
   });
 
+  test("should refuse an in-repository path whose real path, through a symlink, is outside the repository", () => {
+    const target = resolveLink("linked-doc.md", FROM, ROOT);
+
+    expect(checkTarget(target, { exists: true, realPath: "/etc/passwd" }, ROOT)).toEqual({
+      ok: false,
+      reason: "outside the repository: /repo/docs/test/fixtures/linked-doc.md resolves to /etc/passwd",
+    });
+    expect(checkTarget(target, { exists: true, realPath: "/repository/x.md" }, ROOT)).toMatchObject({ ok: false });
+  });
+
+  test("should refuse an existing target whose real path the host did not give", () => {
+    const target = resolveLink("linked-doc.md", FROM, ROOT);
+
+    expect(checkTarget(target, { exists: true, realPath: null }, ROOT)).toEqual({
+      ok: false,
+      reason: "outside the repository: no real path for /repo/docs/test/fixtures/linked-doc.md",
+    });
+  });
+
   test("should pass a refusal through checkTarget unchanged", () => {
     const refused = { ok: false, reason: "why" } as const;
 
-    expect(checkTarget(refused, { exists: true })).toEqual(refused);
+    expect(checkTarget(refused, { exists: true, realPath: FROM }, ROOT)).toEqual(refused);
   });
 });
 

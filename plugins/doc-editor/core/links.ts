@@ -93,6 +93,11 @@ export function resolveLink(href: string, fromPath: string, repoRoot: string): L
 export interface TargetFacts {
   /** Whether the target path exists as a readable file, as the host found it. */
   exists: boolean;
+  /**
+   * The target's real path with every symlink resolved, as the host found it; null when it could
+   * not resolve one. A symlink inside the repository may point outside it.
+   */
+  realPath: string | null;
   /** The target file's outline, when a heading is asked for and the file was read. */
   outline?: OutlineEntry[];
 }
@@ -101,10 +106,19 @@ export type CheckedTarget =
   | { ok: true; path: string; headingId: string | null }
   | { ok: false; reason: string };
 
-/** Checks a resolved target against what the host found: the file and, when named, the heading. */
-export function checkTarget(target: LinkTarget, facts: TargetFacts): CheckedTarget {
+/**
+ * Checks a resolved target against what the host found: the file, its real path inside
+ * `repoRoot` (which the host passes with its own symlinks resolved), and, when named, the heading.
+ */
+export function checkTarget(target: LinkTarget, facts: TargetFacts, repoRoot: string): CheckedTarget {
   if (!target.ok) return target;
   if (!facts.exists) return { ok: false, reason: `missing file: ${target.path}` };
+  if (facts.realPath === null) {
+    return { ok: false, reason: `outside the repository: no real path for ${target.path}` };
+  }
+  if (!inside(repoRoot, normalizePath(facts.realPath))) {
+    return { ok: false, reason: `outside the repository: ${target.path} resolves to ${facts.realPath}` };
+  }
   if (target.heading === null) return { ok: true, path: target.path, headingId: null };
   const entries = facts.outline ?? [];
   const slugs = headingSlugs(entries);
