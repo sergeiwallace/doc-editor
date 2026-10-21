@@ -97,8 +97,9 @@ const blockText = (lines: readonly string[], block: Block): string => lineRange(
  * The changes one turn made, one per changed run between unchanged blocks, the blank lines between
  * blocks and the final newline included. `start` and `end` are the run's lines in the new source
  * (`end` is `start - 1` when the run only removed text); `before` and `after` are the old and new
- * text of those lines, each line with its line ending. A run that changed no block of the new
- * source marks the block after it.
+ * text of those lines, each line with its line ending. A run that leaves no block of its own in
+ * the new source (a deletion, or a change only to blank lines) marks the surviving block after
+ * it, or the one before it at the end of the file, so it can still be reviewed and discarded.
  */
 export function recordChanges(
   turn: string,
@@ -125,7 +126,7 @@ export function recordChanges(
     const [from, to, start, end] = trimCommon(oldLines, oldStart, oldEnd, newLines, newStart, newEnd);
     if (to < from && end < start) continue;
     let blockIds = after.blocks.slice(j0 + 1, j1).map((block) => block.id);
-    if (blockIds.length === 0 && i1 - i0 <= 1) blockIds = neighbour(after.blocks, j0, j1);
+    if (blockIds.length === 0) blockIds = neighbour(after.blocks, j0, j1);
     changes.push({
       turn,
       blockIds,

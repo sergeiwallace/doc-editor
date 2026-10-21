@@ -43,6 +43,23 @@ describe("marking changed blocks", () => {
     expect(removed).toMatchObject([{ turn: "t", before: "Two.\n\n", after: "", start: 5, end: 4 }]);
   });
 
+  test("should mark a deleted run on the surviving block after it, or before it at the end, and discard it", () => {
+    const middle = "# T\n\nOne.\n\nThree.\n";
+    const atEnd = "# T\n\nOne.\n\nTwo.\n";
+    const [removed] = recordChanges("t", doc(BEFORE), doc(middle));
+    const [last] = recordChanges("t", doc(BEFORE), doc(atEnd));
+
+    expect(removed?.blockIds).toEqual(["h1:2"]);
+    expect(last).toEqual({ turn: "t", blockIds: ["h1:2"], before: "\nThree.\n", after: "", start: 6, end: 5 });
+    expect(markedBlockIds([removed, last].filter((change) => change !== undefined))).toEqual(["h1:2"]);
+    expect(last === undefined ? null : discardChange(last, atEnd)).toEqual({ ok: true, source: BEFORE });
+    expect(turnDiff("a.md", last === undefined ? [] : [last]).split("\n").slice(2)).toEqual([
+      "@@ -6,2 +5,0 @@",
+      "-",
+      "-Three.",
+    ]);
+  });
+
   test("should record a change only to the blank lines between blocks and mark the block after it", () => {
     const after = "# T\n\nOne.\n\n\nTwo.\n\nThree.\n";
     const changes = recordChanges("t", doc(BEFORE), doc(after));
