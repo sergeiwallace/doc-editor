@@ -28,6 +28,8 @@ Claude Code for every step: `claude --version` printed `2.1.306 (Claude Code)` a
 
 Note, 2026-10-21T16:16Z: the fixes for Findings 1 to 3 were re-checked live at `fa64a89`; see [Re-check after the fixes](#re-check-after-the-fixes). Finding 1 is fixed. Finding 3 is fixed for one Down at a time, with a new defect when several Downs arrive together (Finding 4). Finding 2 is fixed for fold all, unfold all and find, but a page that ends on a cut piece still pushes one or two hint rows off the pane (Finding 5).
 
+Note, 2026-10-21T17:11Z: the fixes for Findings 4 and 5 were re-checked live at `1c304e1`; see [Second re-check](#second-re-check). Both are fixed at 160 by 50. At 100 by 40 a card taller than the rows the pane has left is drawn whole and pushes the header and two hint rows out of view (Finding 6).
+
 ## Method
 
 Two scratch directories were made with `mktemp -d`: one holding copies of `docs/test/fixtures/thousand-line-doc.md` and `docs/test/fixtures/linked-doc.md`, used as the session's working directory, and one for screen captures. Neither is a git repository, so the reader took the working directory as the repository root.
@@ -668,3 +670,139 @@ With the prompt empty, bare `/doc-editor` and Enter added no assistant row to th
 
 4. `hooks/pane.ts:641` reads any `by` other than 1 as a page key: `const step = Math.abs(by) === 1 ? by : Math.sign(by) * rows;`. The engine's types say a person's `by` grows "as ticks crowd or summed in flight" (`.claude-plugin/types/claude-code/index.d.ts:15235-15237`), so arrow keys that reach the engine together likely arrive as one `ui.scroll` with `by` above 1, and the cursor jumps a page. Five Downs in one write moved 40 entries. Holding Down, or keys queued behind a slow redraw, may do the same. The value of `by` was not logged, so the summing is inferred from the types and the counts.
 5. When a page ends on a piece cut to the rows left (`hooks/pane.ts:1354-1375`), the drawn frame is still taller than the pane, and one or two hint rows are not drawn: two of four on the opening page, three of four with `Hidden text 14` cut. `f634b64` sized the card-drawn tables correctly, and pages whose last piece is whole keep all four rows. Where the extra rows come from was not isolated. On the page that began at `Code 14`, `Table 14` was the last piece and drew as the engine's Markdown grid, wider than the pane, instead of as cards.
+
+## Second re-check
+
+Findings 4 and 5 are fixed at 160 by 50. Five Downs sent in one write move the outline cursor five entries and the document focus five blocks, and every page checked kept all four hint rows inside the pane, including the opening page and pages that end on a cut card table. At 100 by 40 one defect remains, Finding 6 below: when a card is taller than the rows the pane has left, the pane draws the whole card, and the header, the focus mark and two of the three hint rows leave the visible rows. No prompt was sent to the model, and both fixture copies were byte-identical to the originals at the end.
+
+Run at 2026-10-21T17:04Z to 17:11Z, `claude --version` `2.1.306 (Claude Code)`, tmux 3.7c, on a Linux development host. The plugin was loaded from `1c304e1` (`merge(T-1.3, T-1.4, T-1.8): the whole-phase review and re-check fixes`), which carries `29656a4` (a summed `ui.scroll` read as single steps) and `a9d92ce` (pieces counted and cut by the rows the engine draws, cut tables kept as cards). The launch was run 1's, with the host's default setting sources:
+
+```text
+claude --plugin-dir <plugin dir>
+```
+
+The Method above applies, with no mouse click. The window was 160 by 50 except for check 2's narrow repeat, which ran after `tmux resize-window -t <session> -x 100 -y 40`. Each key went in as its own `tmux send-keys` call unless a check says otherwise. As in the earlier runs, the host's own session-start hooks submitted a prompt at launch, and it was interrupted with Escape; a host notice later started a second turn of its own. Neither turn was this check's. The only lines this check submitted were two `/doc-editor thousand-line-doc.md` commands, each read back from the prompt line before Enter.
+
+Rows are numbered from the pane's top row, 1 to 44 at 160 by 50. At 100 by 40 the pane is not beside the transcript: it draws as a bordered box under the transcript, with 11 rows inside its border, and quotes at that size are the box's rows with its border, trailing spaces cut.
+
+| Check | Result |
+|-------|--------|
+| 1. Opening page keeps every hint row | Pass |
+| 2. `Table 14`, `Media 14` and a page ending on a cut card table | Pass at 160 by 50. At 100 by 40, pass for the jumps and fail once a card is in focus (Finding 6) |
+| 3. Five Downs in one write | Pass, five entries in the outline and five blocks in the document |
+| 4. Regression pass | Pass |
+| 5. Close and clean up | Pass |
+
+### Check 1: the opening page
+
+`/doc-editor thousand-line-doc.md` and Enter. The quote starts at row 36, the second-last body row, and runs to row 42; rows 43 and 44 are blank:
+
+```text
+  ▎ heading anchor marker outline section parser window render budget
+  ▎ block heading anchor marker outline section parser window
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+The four hint rows are at rows 39 to 42. Before the fix the same page showed two of them.
+
+### Check 2: Table 14, Media 14 and a cut card table
+
+Enter on `Table 14` in the outline drew `› Table 14` at row 4, its two cards at rows 6 to 25, `Closing` at row 38 and the four hint rows at rows 40 to 43, the same page as the first re-check. `o`, one Down to `Media 14` and Enter drew `› Media 14` at row 4 and the hint rows at rows 20 to 23, with blank rows under them to row 44.
+
+From `Table 14`, Up one block at a time. Each page's focused row and where its hint rows landed:
+
+| Up | Focused block at row 4 | Last piece | Hint rows |
+|----|------------------------|------------|-----------|
+| 1 | the `NOTE` callout of `Quotes 14` | `🖼 Figure 14` | 37 to 40 |
+| 2 | the `Quotes 14` quote | `Table 14`, both cards | 39 to 42 |
+| 3 | `Quotes 14` | `Table 14`, both cards | 39 to 42 |
+| 4 | `export const chapter14 = 14;` | `Table 14`, cut to one card | 32 to 35 |
+| 5 | `Code 14` | `Table 14`, cut to one card | 34 to 37 |
+
+The page after the fourth Up ends on the cut table. It draws as a card, not as the grid the first re-check saw from `Code 14`, and the hint rows stay in the pane:
+
+```text
+  Table 14
+
+  ╭───────────────────────────────────────────────────────────────────╮
+  │ Element: Markdown 14                                              │
+  ...
+  │ Extra column: wide                                                │
+  ╰───────────────────────────────────────────────────────────────────╯
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+Rows 36 to 44 are blank. The second card needs 10 rows, so it waits for the next page.
+
+At 100 by 40, after closing and reopening, `/doc-editor thousand-line-doc.md` drew the box with the header, six body rows and the hint rows, which wrap to three rows at this width:
+
+```text
+╭────────────────────────────────────────────────────────────────────────────────────────────────✕─╮
+│ thousand-line-doc.md                                                                             │
+│ READ · 24 min read                                                                               │
+│ › ---                                                                                            │
+│   title: Fixture document                                                                        │
+│   ---                                                                                            │
+│                                                                                                  │
+│   Preamble paragraph before any heading.                                                         │
+│                                                                                                  │
+│ o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back  g: go to  t: top          │
+│ q: close  j: next heading  h: previous heading  c: ask Claude  e: edit  n: next change           │
+│ p: previous change  v: view diff  k: keep  x: discard  r: refine                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+From the outline, 84 Downs and Enter on `Media 14` drew `│ › Media 14`, `🖼 Figure 14 images/figure-14.png` and the three hint rows. `h` to `Table 14` drew `│ › Table 14` and the hint rows with no card, since no card fits in the rows left; the box held four blank rows under the hint rows. Both jumps pass.
+
+One Down from `Table 14` put the first card in focus, and the pane drew the whole card:
+
+```text
+╭────────────────────────────────────────────────────────────────────────────────────────────────✕─╮
+│   │ Element: Markdown 14                                                                       │ │
+│   │ Cap: 9,000                                                                                 │ │
+...
+│   │ Extra column: wide                                                                         │ │
+│   ╰────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│                                                                                                  │
+│ o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back  g: go to  t: top          │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+The header, the status row, the card's top border and the `›` mark are above the box's first row, and two of the three hint rows are below its last. A second Down drew the `Element: Code 14` card the same way, and a third and a fourth left the screen unchanged. `j` then drew `🖼 Figure 14 images/figure-14.png` at the box's second row and the hint rows under it, with `› Media 14` and the header still above the box. `t` drew `│   title: Fixture document` at the box's first row: the view stayed three rows down, so the header and the focused `› ---` were not on screen. `q` and a fresh `/doc-editor thousand-line-doc.md` drew the opening page above (Finding 6).
+
+### Check 3: five Downs in one write
+
+In the outline, from `Long blocks`, `tmux send-keys -t <session> Down Down Down Down Down`, one call. The `›` mark and the one reverse-video entry on screen moved five entries:
+
+```text
+‹sgr:7›‹sgr:39››         Table 1‹sgr:0›
+```
+
+`Table 1` is entry 6. The first re-check's same call moved the cursor to entry 41.
+
+In the document, from `› Code 14` at row 4, the same one call moved the focus five blocks: the code block, `Quotes 14`, its quote, the `NOTE` callout and `Table 14`. The page did not scroll, and `› Table 14` was at row 21 with the hint rows at rows 34 to 37.
+
+### Check 4: regression pass
+
+- `a`, fold all, from `Table 14`: `› Chapter 14: topic 14` at row 35 and the four hint rows at rows 39 to 42. `a` again, unfold all: the `Table 13` cards at rows 6 to 25, `› Chapter 14: topic 14` at row 38 and the hint rows at rows 40 to 43.
+- `t`, `f`, `Hidden text` and Enter: `find "Hidden text" 1 of 14` with `› ▸ Details 1` at row 32. Enter: `2 of 14` with `› ▸ Details 2` at row 32. `b`: `1 of 14` with `› ▸ Details 1` at row 5 and the hint rows at rows 36 to 39.
+- `g`, `:301` and Enter: `› Budget block heading anchor marker outline section parser window` at row 4 and its three link buttons at row 9. One Tab put the ring on the second button, `‹sgr:7›→ linked-doc.md#second-section‹sgr:0›`. Enter drew `linked-doc.md › Linked document › Second section` with `› Second section` focused. `b` returned to `thousand-line-doc.md › Chapter 1: topic 1` with the same paragraph focused at row 4.
+- With the find field open, Escape left the field on screen and the prompt line empty. `tmux send-keys -t <session> C-x Tab`, one call, then `t`: the `t` landed in the pane's field, `find: Hidden textt  ⏎ next  next match`, and the prompt line stayed `❯`. Backspace emptied the field and Enter closed it.
+
+Twice the keyboard was at the prompt without an Escape from this check: after the host's own second turn, and after `tmux resize-window` back to 160 by 50. Each time the next pane key appeared on the prompt line (`❯ j`) and was erased with Backspace before anything else, and `C-x`, a 0.4 s pause, then `Tab` gave the keyboard back. Whether the resize itself moved the keyboard was not isolated.
+
+### Check 5: close and clean up
+
+`q` closed the pane. `diff` of each fixture against its scratch copy printed nothing, and the scratch directory held only the two fixture files. `tmux kill-session -t <session>`, then `tmux has-session` answered `can't find session`. Both scratch directories were removed with `rm -r`.
+
+### Findings from the second re-check
+
+6. `hooks/pane.ts:1860` keeps the first card of a cut table even when it is taller than the rows the cut leaves (`shown.length > 0 && used > keep`, one card at least), and `hooks/pane.ts:1455-1466` lets the page's first piece through with any `keep`. When the rows left are fewer than one card's 10 rows, the drawn frame is taller than the pane and the header, the status row and the bottom hint rows leave the visible rows. Seen at 100 by 40, where the pane is a box with 11 rows inside, with a card in focus. The view stayed moved after the focus left the table, until the pane was closed and reopened; that the engine's window moved to keep the focus in view is inferred from the screens, not logged. At 160 by 50 a card fits, so this was not seen there. A pane shorter than one card cannot show a whole card and its chrome together, so the fix needs a choice between cutting the card's rows, falling back to a grid, or another drawing.
