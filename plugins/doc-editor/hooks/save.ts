@@ -26,7 +26,8 @@ export interface SaveHost {
 }
 
 export type SaveResult =
-  | { kind: "saved"; stamp: FileStamp }
+  /** `stamp` is undefined when the saved file could not be stat'ed: re-read it to get one. */
+  | { kind: "saved"; stamp: FileStamp | undefined }
   | { kind: "reload" }
   | { kind: "cancelled" }
   | { kind: "failed"; reason: string };
@@ -70,7 +71,7 @@ function stampOf(stdout: string): FileStamp | undefined {
  * caller to re-read, Cancel or a dismissal returns `{ kind: "cancelled" }`, and Overwrite saves
  * over the file as it now stands. With `node` the helper writes and renames; without it
  * `$.fs.write` does. A failure leaves the target alone, shows its reason in the status row and
- * returns it.
+ * returns it. A save whose new stamp cannot be learned is still saved, with `stamp` undefined.
  *
  * @param host the engine's closures
  * @returns the session's save
@@ -83,6 +84,8 @@ export function createSaver(host: SaveHost): Save {
       (result) => result.exitCode === 0,
       () => false,
     ));
+  // The file is saved by then, so a stat that fails leaves the stamp unknown, never a failure.
+  const restat = (path: string) => host.stat(path).catch(() => undefined);
   const failed = (reason: string): SaveResult => {
     host.status(reason);
     return { kind: "failed", reason };
@@ -119,8 +122,7 @@ export function createSaver(host: SaveHost): Save {
       if (result.exitCode !== 0) {
         return failed(lastLine(result.stderr) ?? `save: the helper exited ${result.exitCode}`);
       }
-      const stamp = stampOf(result.stdout) ?? (await host.stat(path).catch(() => expected));
-      return { kind: "saved", stamp };
+      return { kind: "saved", stamp: stampOf(result.stdout) ?? (await restat(path)) };
     }
 
     if (!isRiskStated) {
@@ -129,9 +131,9 @@ export function createSaver(host: SaveHost): Save {
     }
     try {
       await host.write(path, text);
-      return { kind: "saved", stamp: await host.stat(path) };
     } catch (error) {
       return failed(`cannot save ${path}: ${message(error)}`);
     }
+    return { kind: "saved", stamp: await restat(path) };
   };
 }

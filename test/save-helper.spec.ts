@@ -67,6 +67,30 @@ describe("the save helper", () => {
     expect(JSON.parse(result.stdout)).toEqual({ mtimeMs: saved.mtimeMs, size: saved.size });
   });
 
+  it("should save every byte of a large input", () => {
+    const f = fileWith(ORIGINAL);
+    const large = "| a | b |\n".repeat(900_000) + "end ünïcode\n";
+
+    const result = save(f.path, f.mtimeMs, f.size, large);
+
+    expect(result.status).toBe(0);
+    expect(readFileSync(f.path).equals(Buffer.from(large))).toBe(true);
+    expect(readdirSync(f.dir)).toEqual(["notes.md"]);
+  });
+
+  it("should exit 0 with the target replaced when it cannot report the stamp after the rename", async () => {
+    const f = fileWith(ORIGINAL);
+    const child = spawn("node", [helper, f.path, String(f.mtimeMs), String(f.size)]);
+    // Nobody reads the helper's stdout, so its stamp line fails with EPIPE after the rename.
+    child.stdout.destroy();
+    const exited = new Promise<number | null>((done) => child.on("close", done));
+    child.stdin.end(EDITED);
+
+    expect(await exited).toBe(0);
+    expect(readFileSync(f.path, "utf8")).toBe(EDITED);
+    expect(readdirSync(f.dir)).toEqual(["notes.md"]);
+  });
+
   it("should exit non-zero naming both mtimeMs values and leave the target unchanged when mtimeMs differs", () => {
     const f = fileWith(ORIGINAL);
     const stale = f.mtimeMs - 5_000;
