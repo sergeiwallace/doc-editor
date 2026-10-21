@@ -562,6 +562,16 @@ Phase 0 cross-family review (Codex `review` role, model `gpt-5.6-sol`, effort me
 | 6 | The hygiene test checks a fixed list of files a load writes, not a live load | Justified: a commit hook cannot start a Claude Code session. The list is what a load was measured to write on 2.1.306, a live load at the integration tip left `git status` clean under the plugin, and the Phase 1 live check repeats that |
 | 7 | T-0.1's screen findings have no regression assertions | Justified: T-0.1's criteria are measurements of the engine, recorded in the evidence file. The behaviours they call for (task-marker glyphs, dropped comments, link validation) are Phase 1 core work with their own tests |
 
+Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort medium, read-only), findings and dispositions, by child:
+
+| # | Child | Finding | Disposition |
+|---|---|---|---|
+| 1 | T-1.7, T-1.8 | `writeSync`'s return value was ignored, so a short write could rename a truncated file into place | Fixed: the helper loops until every byte is written; a 9 MB save is checked byte for byte |
+| 2 | T-1.7, T-1.8 | A failure after the rename made the helper exit non-zero with the target already replaced | Fixed: after the rename the helper exits 0, and `hooks/save.ts` re-reads the stamp when the helper could not print it |
+| 3 | T-1.7, T-1.8 | The safety gate read only validate's descriptors, so an answering `tool.call` handler, an unregistered own tool or a `fetch` call could pass | Fixed: `scripts/safety-floor.mjs` reads the hooks sources inside the same gate |
+| 4 | T-1.7, T-1.8 | The save and watch closures are bound but nothing calls them yet | Justified: the reader child wires them into the pane; the live check exercises them |
+| 5 | T-1.7, T-1.8 | A write between the helper's last stat and its rename is overwritten | Justified: no portable file-system call closes that window. The design asks for the re-check "immediately before the rename", which is what the helper does, so the window is the gap between two adjacent system calls |
+
 <!-- /doc:region name="overview" -->
 
 <!-- doc:region name="decisions" kind="replaceable" -->
