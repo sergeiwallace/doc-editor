@@ -4,7 +4,12 @@ import { describe, expect, test } from "claude-code/testing";
 import { COMMAND_NAME, NOT_BUILT_TEXT } from "./register.ts";
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
-const DOC = { command: COMMAND_NAME, args: "README.md", origin: { kind: "composer" } } as const;
+const DOC = {
+  command: COMMAND_NAME,
+  args: "README.md",
+  origin: { kind: "composer" },
+  presentation: { isFullscreen: false, columns: 120 },
+} as const;
 
 // The engine beneath the mod: it ends the session start and keeps each command the mod registers.
 function world(on: On) {

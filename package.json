@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "test": "vitest run && node scripts/plugin-test.mjs plugins/doc-editor",
-    "typecheck": "tsc --noEmit && tsc -p plugins/doc-editor/core"
+    "typecheck": "tsc --noEmit && tsc -p plugins/doc-editor/core && node scripts/typecheck-hooks.mjs plugins/doc-editor"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
