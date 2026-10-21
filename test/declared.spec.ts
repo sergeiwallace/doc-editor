@@ -43,7 +43,8 @@ const runGate = (dir: string) =>
 
 const REGISTER = "hooks/register.ts";
 const SESSION_START = "    return next(e);\n  });";
-const DECLARED_CALLS = '"calls": ["$.command.register"],';
+const DECLARED_CALLS =
+  '"calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status"],';
 
 // Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
@@ -95,7 +96,7 @@ describe.skipIf(!claude.usable)(`the declared-list gate (claude ${claude.version
         d,
         "README.md",
         DECLARED_CALLS,
-        '"calls": ["$.command.register", "$.fs.read"],',
+        '"calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status", "$.session.id"],',
       ),
     );
 
@@ -103,7 +104,7 @@ describe.skipIf(!claude.usable)(`the declared-list gate (claude ${claude.version
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain(
-      "check-plugin-declared: ./register.ts calls: $.fs.read is declared but not reported",
+      "check-plugin-declared: ./register.ts calls: $.session.id is declared but not reported",
     );
   });
 

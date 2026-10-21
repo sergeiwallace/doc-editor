@@ -7,6 +7,9 @@
 // a reported value the README does not declare fails, and so does a declared value validate
 // does not report. It prints one line per difference.
 // Adapted from the sibling beads-ui repository's allow-list gate, which reads a JSON file.
+// It also holds the safety floor (T-1.8), which a declaration cannot lift: any tool.check hook,
+// any tool.call hook but the observed Write and Edit one and the plugin's own tools, any model
+// call ($.model.*, $.agent.spawn) and any network call ($.http.*, $.mcp.*) fails, named.
 // Then it scans the sources, because validate files every call under the module that reached
 // it, even one made in a helper the module handed `on` or `$` to, so the report alone cannot
 // show where a call sits. It fails naming the file and line of:
@@ -353,6 +356,54 @@ function compare(reported, declared, problems) {
   }
 }
 
+// The safety floor (design NFR-4 and NFR-9, task T-1.8): what the plugin never does, whether or
+// not the README declares it. validate reports a tool.call hook the same way whether its handler
+// passes the call on or answers it, so the floor allows only the observed Write and Edit hook and
+// the plugin's own registered tools (mcp__doc-editor__*); hooks/register.test.ts proves the
+// observed hook passes each call on and returns the tool's own result.
+const OBSERVED_TOOL_CALLS = new Set(["tool.call{tool=Write|Edit}"]);
+const OWN_TOOL_CALL = /^tool\.call\{tool=mcp__doc-editor__[\w-]+(\|mcp__doc-editor__[\w-]+)*\}$/;
+const MODEL_CALL = /^\$\.(model\.\w+|agent\.spawn)$/;
+const NETWORK_CALL = /^\$\.(http|mcp)\.\w+$/;
+
+const eventOf = (hook) => hook.split("{")[0];
+function eventMatches(pattern, event) {
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+  return new RegExp(`^${escaped}$`).test(event);
+}
+
+function floorBreaches(reported) {
+  const problems = [];
+  for (const [module, kinds] of Object.entries(reported)) {
+    for (const hook of kinds.hooks ?? []) {
+      const event = eventOf(hook);
+      if (eventMatches(event, "tool.check")) {
+        problems.push(
+          `safety floor: ${module} registers the tool.check hook ${hook}; the mod approves or denies no tool call`,
+        );
+      } else if (
+        eventMatches(event, "tool.call") &&
+        !OBSERVED_TOOL_CALLS.has(hook) &&
+        !OWN_TOOL_CALL.test(hook)
+      ) {
+        problems.push(
+          `safety floor: ${module} registers the tool.call hook ${hook}, which can answer a tool call; the mod only observes ${[...OBSERVED_TOOL_CALLS].join(", ")} and answers its own mcp__doc-editor__ tools`,
+        );
+      }
+    }
+    for (const call of kinds.calls ?? []) {
+      if (MODEL_CALL.test(call)) {
+        problems.push(`safety floor: ${module} makes the model call ${call}; the mod calls no model`);
+      } else if (NETWORK_CALL.test(call)) {
+        problems.push(
+          `safety floor: ${module} makes the network call ${call}; the mod makes no network request`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 function shown(path) {
   const inside = relative(process.cwd(), path);
   return inside === "" ? "." : inside.startsWith("..") ? path : inside;
@@ -391,12 +442,17 @@ function main() {
     fail(problems, pluginDir, readmePath);
   }
 
-  compare(reportedOf(report, problems), declared, problems);
+  const reported = reportedOf(report, problems);
+  compare(reported, declared, problems);
+  problems.push(...floorBreaches(reported));
   problems.push(...engineEscapes(pluginDir));
 
   if (problems.length > 0) fail(problems, pluginDir, readmePath);
   console.log(
     `check-plugin-declared: ${shown(pluginDir)} matches the list ${shown(readmePath)} declares`,
+  );
+  console.log(
+    `check-plugin-declared: ${shown(pluginDir)} keeps the safety floor: no tool.check hook, no tool.call hook that can answer, no model call, no network call`,
   );
 }
 

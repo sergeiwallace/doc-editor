@@ -37,4 +37,36 @@ describe("register", () => {
 
     expect(await $.command.run(DOC)).toEqual({ text: NOT_BUILT_TEXT });
   });
+
+  // NFR-9: the mod observes Write and Edit to trigger a reload and never answers them.
+  for (const call of [
+    { tool: "Write", file_path: "/work/doc-editor/notes.md", content: "# Notes\n" },
+    { tool: "Edit", file_path: "/work/doc-editor/notes.md", old_string: "a", new_string: "b" },
+  ] as const) {
+    test(`should pass the ${call.tool} call on and return the tool's own result unchanged`, async ($, on) => {
+      world(on);
+      const ran: unknown[] = [];
+      const answer = { result: { written: call.file_path }, text: `${call.tool} ran` };
+      on("tool.call", { tool: ["Write", "Edit"] }, (_engine, e) => {
+        ran.push(e.file_path);
+        return answer as never;
+      });
+      await $.session.start(SESSION);
+
+      const result = await $.tool.call(call);
+
+      expect(ran).toEqual([call.file_path]);
+      expect(result).toEqual(expect.objectContaining(answer));
+    });
+
+    test(`should pass the ${call.tool} call's refusal on unchanged`, async ($, on) => {
+      world(on);
+      on("tool.call", { tool: ["Write", "Edit"] }, () => ({ deny: "refused beneath the mod" }));
+      await $.session.start(SESSION);
+
+      const result = await $.tool.call(call);
+
+      expect(result).toEqual(expect.objectContaining({ deny: "refused beneath the mod" }));
+    });
+  }
 });
