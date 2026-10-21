@@ -117,6 +117,26 @@ describe("mapping ids across a reload", () => {
     expect(mapBlockIds(before, after)).toEqual({ h1: "h1", "h1:1": "h1:2", "h1:2": "h1:3", "h1:3": "h1:4" });
   });
 
+  test("should map a block to itself, not to a copy of it inserted before or after it", () => {
+    const paras = (texts: string[]) => parseBlocks(`${texts.join("\n\n")}\n`).blocks;
+    const before = paras(["S", "P", "X", "T"]);
+
+    expect(mapBlockIds(before, paras(["S2", "X", "P", "X", "T2"]))["h:3"]).toBe("h:4");
+    expect(mapBlockIds(before, paras(["S2", "P", "X", "Q", "X", "T2"]))["h:3"]).toBe("h:3");
+  });
+
+  test("should map a block to itself when a copy is inserted earlier in a document too long for the full alignment table", () => {
+    const texts = Array.from({ length: 2500 }, (_, k) => `Paragraph ${k}.`);
+    const before = parseBlocks(`${["S", ...texts, "T"].join("\n\n")}\n`).blocks;
+    const copy = texts[2000] ?? "";
+    const after = parseBlocks(`${["S2", copy, ...texts, "T2"].join("\n\n")}\n`).blocks;
+    const map = mapBlockIds(before, after);
+
+    expect(map["h:2002"]).toBe("h:2003");
+    expect(map["h:2"]).toBe("h:3");
+    expect(Object.keys(map)).toHaveLength(2500);
+  });
+
   test("should leave out a block whose text changed", () => {
     const before = parseBlocks(BEFORE).blocks;
     const after = parseBlocks("# T\n\nOne!\n\nTwo.\n\nThree.\n").blocks;
