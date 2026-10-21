@@ -1,0 +1,9 @@
+{
+  "name": "doc-editor-symlink-probe",
+  "version": "0.0.1",
+  "description": "Phase 0 spike: a hooks module importing a symlink that points outside the plugin directory.",
+  "author": {
+    "name": "Sergei Wallace"
+  },
+  "license": "MIT"
+}
