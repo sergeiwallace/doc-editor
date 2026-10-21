@@ -26,6 +26,8 @@ Claude Code for every step: `claude --version` printed `2.1.306 (Claude Code)` a
 | 8. One checkbox toggle | Pass. The file changed by one character |
 | 9. Close and clean up | Pass |
 
+Note, 2026-10-21T16:16Z: the fixes for Findings 1 to 3 were re-checked live at `fa64a89`; see [Re-check after the fixes](#re-check-after-the-fixes). Finding 1 is fixed. Finding 3 is fixed for one Down at a time, with a new defect when several Downs arrive together (Finding 4). Finding 2 is fixed for fold all, unfold all and find, but a page that ends on a cut piece still pushes one or two hint rows off the pane (Finding 5).
+
 ## Method
 
 Two scratch directories were made with `mktemp -d`: one holding copies of `docs/test/fixtures/thousand-line-doc.md` and `docs/test/fixtures/linked-doc.md`, used as the session's working directory, and one for screen captures. Neither is a git repository, so the reader took the working directory as the repository root.
@@ -463,3 +465,206 @@ npm test: every gate ran
 ```
 
 The one skipped test is `the committed vendor bundles > should match byte for byte what scripts/bundle-vendor.mjs writes`, which skips by design when `tools/vendor-bundle/node_modules` is not installed. `claude plugin validate .` and `claude plugin validate plugins/doc-editor` each ended `✔ Validation passed`.
+
+## Re-check after the fixes
+
+The `/doc-editor` fallback and the `show` tool now load under the default launch, the outline cursor reaches every entry with Down, and fold all, unfold all and find keep the hint row and the focused block inside the pane. Two defects remain, Findings 4 and 5 below. No prompt was sent to the model, and both fixture copies were byte-identical to the originals at the end.
+
+Run at 2026-10-21T16:04Z to 16:16Z, `claude --version` `2.1.306 (Claude Code)`, tmux 3.7c, 160 by 50, on a Linux development host. The plugin was loaded from `fa64a89` (`merge(T-1.1, T-1.2, T-1.3): the live check's fixes`), which carries `027344b`, `f634b64` and `d47aec7`. The launch was run 1's, with the host's default setting sources:
+
+```text
+claude --plugin-dir <plugin dir>
+```
+
+The Method above applies unchanged, except that no mouse click was sent. As in run 1, the host's own session-start hooks submitted a prompt at launch; it was interrupted with Escape. A host notice later started a second turn of its own. Neither turn was this check's. The only lines this check submitted were `/mcp` and `/doc-editor` commands.
+
+| Check | Result |
+|-------|--------|
+| 1. `/doc` taken, `/doc-editor` opens the pane, `show` registered | Pass |
+| 2. Hint row and focused block inside the pane | Pass for `Media 14`, `Table 14`, fold all, unfold all and find. Fail on the opening page and on a page that ends on a cut piece (Finding 5) |
+| 3. Down reaches the last outline entry, ring follows, Enter jumps | Pass with one Down per keystroke. Several Downs that arrive together jump a page (Finding 4) |
+| 4. Escape, `ctrl+x tab`, bare `/doc-editor` | Pass. One `ctrl+x tab` of four did not take |
+| 5. Close and clean up | Pass |
+
+### Check 1: /doc taken, /doc-editor and show
+
+The status line, right after launch:
+
+```text
+  ⚠ doc-editor: doc-editor: /doc is taken by another command ("/doc" refused: it is the user's /doc); use /doc-editor
+```
+
+`/mcp` listed the plugin's server among the built-in servers. The transcript's rows:
+
+```text
+     Built-in MCPs (always available)
+     ✔ doc-editor                               1 tool
+```
+
+The server's page, then `View tools`, then `show`:
+
+```text
+   Tool name: show
+   Full name: mcp__doc-editor__show
+   Description:
+   Open a Markdown file in the doc-editor pane beside the transcript so the user can read it. The path may end in :N to show line N or #heading to show that
+   heading.
+   Parameters:
+     ● path (required): string - The file's path, absolute or relative to the session's directory, with an optional :N or #heading
+```
+
+Typing `/doc-editor thousand-line-doc.md` drew the path completion, and Enter opened the pane:
+
+```text
+thousand-line-doc.md
+READ · 24 min read
+› ---
+  title: Fixture document
+  ---
+```
+
+### Check 2: the hint row and the focused block
+
+Jumping to `Media 14` from the outline drew the focused block at the top and all four hint rows above the pane's last row:
+
+```text
+…er 14: topic 14 › Lists 14 › Code 14 › Quotes 14 › Table 14 › Media 14
+READ · 24 min read
+› Media 14
+...
+  Closing
+  ...
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+The tables are above `Media 14`, so this page holds none. `h` to `Table 14` put both card-drawn tables on screen at rows 6 to 25 of the pane, with `› Table 14` at row 4 and the four hint rows at rows 40 to 43:
+
+```text
+› Table 14
+
+  ╭───────────────────────────────────────────────────────────────────╮
+  │ Element: Markdown 14                                              │
+  ...
+  ╰───────────────────────────────────────────────────────────────────╯
+  ╭───────────────────────────────────────────────────────────────────╮
+  │ Element: Code 14                                                  │
+  ...
+  ╰───────────────────────────────────────────────────────────────────╯
+
+  Media 14
+  ...
+  Closing
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+`a`, fold all, from `Media 14`: `› Chapter 14: topic 14` at row 35 and the four hint rows at rows 39 to 42. `a` again, unfold all: the two `Table 13` cards at rows 6 to 25, `› Chapter 14: topic 14` at row 38 and the four hint rows at rows 40 to 43:
+
+```text
+  ---
+
+› Chapter 14: topic 14
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+`t`, `f`, `Hidden text` and Enter: the hit block at row 32 with the `Table 1` cards above it, then the same for the second hit after Enter:
+
+```text
+…› Chapter 1: topic 1 › Lists 1 › Code 1 › Quotes 1 › Table 1 › Media 1
+READ · 24 min read · find "Hidden text" 1 of 14
+find: Hidden text  next match
+  Table 1
+  ...
+› ▸ Details 1
+
+  Hidden text 1
+  second line.
+
+  ---
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+```text
+READ · 24 min read · find "Hidden text" 2 of 14
+...
+› ▸ Details 2
+```
+
+Two pages still lose hint rows. The pane as opened shows two of its four, as in run 1's step 2. The long quote is cut mid-word at row 40, and rows 42 and 43 hold the hint row:
+
+```text
+  ▎ render budget block heading anchor marker outline section parser
+  ▎ window render budget block headin
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+```
+
+Closing with `q` and reopening drew the same page. Scrolling up one step from `Table 14` drew `› ╭───` (the `NOTE` callout of `Quotes 14`) at row 4, both cards, and `Hidden text 14` cut to its first line at row 39, with three hint rows:
+
+```text
+  Hidden text 14
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+```
+
+The pane's row 44 is blank on every page above, so the missing rows are not drawn anywhere on screen (Finding 5). Three steps further up, with `Code 14` at the top, `Table 14` was the page's last piece and was drawn as a grid wider than the pane, each of its rows wrapped onto two lines:
+
+```text
+  ┌─────────────┬───────┬────────────┬───────┬────────┬────────────────
+  ────────────────────────────┬────────────┬──────────────┐
+  │   Element   │  Cap  │   Source   │ Owner │ Status │
+    Notes                    │  Updated   │ Extra column │
+```
+
+### Check 3: the outline cursor
+
+`o` opened the outline with the new hint:
+
+```text
+o: outline  q: close  Up, Down or Tab: move · Enter: jump
+```
+
+Down sent as its own keystroke, 85 times with 0.3 s between them, moved the `›` mark and the focus ring one entry per press from `Long blocks` to `Closing`, entry 86 of 86. One more Down left them there. Up moved both to `Media 14`, and Down moved them back:
+
+```text
+‹sgr:7›‹sgr:39››           Media 14‹sgr:0›
+‹sgr:7›‹sgr:39›› Closing‹sgr:0›
+```
+
+Enter on `Closing` drew the document with `› Closing` focused and the header path `thousand-line-doc.md › Closing`. Five single Downs from the top, each read back, landed on entries 2 to 6 in order, with one reverse-video entry on screen each time.
+
+Keys that arrive together do not move one entry each. From `Long blocks`, five Downs in one `tmux send-keys` call (one write to the terminal) moved the cursor to `Quotes 7`, entry 41. Twenty separate calls 0.05 s apart moved it 20 entries, to `Lists 4`. Ten separate calls with no pause moved it 55 entries, from `Table 1` to `Quotes 9`, and 40 such calls reached `Closing` (Finding 4).
+
+### Check 4: Escape, ctrl+x tab and bare /doc-editor
+
+With the find field open, Escape moved the keyboard to the prompt: the prompt line drew the block cursor, `‹sgr:39›❯ ‹sgr:7› ‹sgr:0›`, and a `z` typed next appeared as `❯ z`. It was erased with Backspace before anything else. Unlike run 1, the find field stayed on screen, `find: Hidden text  next match`.
+
+`tmux send-keys -t <session> C-x Tab`, then `j`: the `j` landed in the pane's find field, which read `find: Hidden textj  ⏎ next  next match`. The same chord after a second Escape returned the keyboard again (`find: Hidden textx`). Earlier in the run, right after the host's second turn had taken the keyboard, the same one-call chord did not take: a `t` sent next appeared as `❯ t`. `C-x`, a 0.4 s pause, then `Tab` did take, and the next `t` moved the pane to the top. The cause of the one miss was not isolated.
+
+With the prompt empty, bare `/doc-editor` and Enter added no assistant row to the transcript and gave the keyboard back to the pane: a `k` sent next appeared in its find field, `find: Hidden textk`. Enter on the emptied find field closed it.
+
+### Check 5: close and clean up
+
+`q` closed the pane. `diff` of each fixture against its scratch copy printed nothing. `tmux kill-session -t <session>`, then `tmux has-session` answered `can't find session`. The scratch directories were removed with `rm -r`.
+
+### Findings from the re-check
+
+4. `hooks/pane.ts:641` reads any `by` other than 1 as a page key: `const step = Math.abs(by) === 1 ? by : Math.sign(by) * rows;`. The engine's types say a person's `by` grows "as ticks crowd or summed in flight" (`.claude-plugin/types/claude-code/index.d.ts:15235-15237`), so arrow keys that reach the engine together likely arrive as one `ui.scroll` with `by` above 1, and the cursor jumps a page. Five Downs in one write moved 40 entries. Holding Down, or keys queued behind a slow redraw, may do the same. The value of `by` was not logged, so the summing is inferred from the types and the counts.
+5. When a page ends on a piece cut to the rows left (`hooks/pane.ts:1354-1375`), the drawn frame is still taller than the pane, and one or two hint rows are not drawn: two of four on the opening page, three of four with `Hidden text 14` cut. `f634b64` sized the card-drawn tables correctly, and pages whose last piece is whole keep all four rows. Where the extra rows come from was not isolated. On the page that began at `Code 14`, `Table 14` was the last piece and drew as the engine's Markdown grid, wider than the pane, instead of as cards.
