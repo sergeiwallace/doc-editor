@@ -190,3 +190,30 @@ describe("a table card taller than the pane", () => {
     expect(await pieceKeys(ui)).toContain("h1.1");
   });
 });
+
+// The live check of the tall-card fix: a card cut and scrolled, whose last rows were then drawn
+// whole, ran one row past the pane. Walk the 1,000-line fixture's last tables frame by frame.
+describe("a cut table card scrolled to its end", () => {
+  for (const [columns, rows] of [
+    [100, 40],
+    [98, 11],
+    [98, 12],
+    [98, 14],
+  ] as const) {
+    test(`should keep every hint row inside a ${columns} by ${rows} pane on every frame through a card-drawn table`, async ($, on) => {
+      const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
+      const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md#table-14", props);
+      const misfits: unknown[] = [];
+
+      for (let frame = 0; frame < 40; frame++) {
+        const drawn = await frameRows(ui, columns);
+        if (drawn > rows || (await ui.find({ key: "hints" })) === undefined) {
+          misfits.push({ frame, drawn, keys: await pieceKeys(ui) });
+        }
+        await scrollPane($, 1, rows);
+      }
+
+      expect(misfits).toEqual([]);
+    });
+  }
+});
