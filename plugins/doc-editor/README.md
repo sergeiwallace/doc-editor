@@ -6,10 +6,32 @@ Claude and show what changed.
 
 ## What it does today
 
-This is the scaffold release. The plugin loads, registers the `/doc` command at session start,
-and answers `/doc` with one line saying the reader is not built yet. The reader itself arrives in
-the next release. The design is in
-[docs/designs/doc-editor-design.md](../../docs/designs/doc-editor-design.md).
+The reader. `/doc <path>` opens a Markdown file in a pane; `path:N` and `path#heading` open it at
+that line or heading, and the path after `/doc` completes from the session's directory. Claude
+can open a file with the plugin's `show` tool, and every `Read`, `Write` or `Edit` row that names
+a Markdown file gets an open link under it. A file that is missing, over 4 MiB or not UTF-8 text
+is refused with the reason in the plugin's status row.
+
+The pane draws only the blocks in view, so a document of any size up to 4 MiB stays inside the
+engine's draw limits. Fences draw as highlighted code, callouts as bordered boxes with their
+label, and a table too wide for the pane as one card per row. Images draw as their alt text and
+path. The header shows the path, the heading path, the mode, the read time and the find count.
+
+| Key | Action |
+| --- | --- |
+| Up, Down | Previous or next block |
+| PageUp, PageDown, wheel | Scroll |
+| `o` | Outline; Enter on an entry jumps to it |
+| `z`, `a` | Fold the current heading; fold or unfold every heading |
+| `d`, `u` | Show only the current section; back up one level |
+| `f` | Find; Enter goes to the next match, `b` to the previous |
+| Enter on a link | Open a file or heading in the repository in place; `b` goes back |
+| `g` | Go to a path, `:line` or `#heading` |
+| `t`, `q` | Top; close |
+
+When the open file changes on disk, or after Claude's `Write` or `Edit`, the pane re-reads it and
+keeps the focused block, the folds and the open section. Editing arrives in the next release. The
+design is in [docs/designs/doc-editor-design.md](../../docs/designs/doc-editor-design.md).
 
 ## Load it
 
@@ -40,17 +62,19 @@ list in the same commit.
 ```json
 {
   "./register.ts": {
-    "hooks": ["session.start", "command.run{command=doc}", "tool.call{tool=Write|Edit}"],
-    "calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status"],
-    "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=Write|Edit}"]
+    "hooks": ["session.start", "command.run{command=doc}", "prompt.autocomplete", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "ui.close{id=doc}", "ui.scroll{requestId=doc}", "ui.render{component=Pane}", "ui.render{component=ToolUse}", "ui.render{component=ToolGroup}"],
+    "calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],
+    "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=mcp__doc-editor__show}", "tool.call{tool=Write|Edit}", "ui.close{id=doc}", "ui.scroll{requestId=doc}"]
   }
 }
 ```
 <!-- validate-declared:end -->
 
-The plugin registers no `tool.check` hook, answers no `tool.call`, calls no model and makes no
-network request. Its one `tool.call` hook observes `Write` and `Edit`: it passes each call on and
-returns the tool's own result, then re-reads the open file if it changed.
+The plugin registers no `tool.check` hook, calls no model and makes no network request. It answers
+one `tool.call`, for its own registered `show` tool. Its other `tool.call` hook observes `Write`
+and `Edit`: it passes each call on and returns the tool's own result, then re-reads the open file
+if it changed. Its `ui.render` hooks on `ToolUse` and `ToolGroup` draw the row the chain beneath
+returns and add one line under it.
 
 The same gate enforces this safety floor whatever the list says, over both the validate report
 and the sources. It fails, naming the hook, call or line, on any of these:
@@ -81,6 +105,10 @@ its status line.
 ## Layout
 
 - `hooks/register.ts`: the hooks module, registered through `hooks/hooks.json`.
+- `hooks/pane.ts`: the reader pane, with `hooks/header.ts` (the header row), `hooks/hints.ts`
+  (the key bindings and hint row) and `hooks/tables.ts` (tables fitted to the pane or as cards).
+- `hooks/commands.ts`: `/doc` and its path completion; `hooks/tools.ts`: the `show` tool;
+  `hooks/rows.ts`: the open link under tool rows. Each takes the pane or plain closures, never `$`.
 - `hooks/save.ts`: the safe-write path, and `hooks/watch.ts`: the reload watcher. Both take
   plain closures from `register.ts`, never `$`.
 - `bin/save.mjs`: the write-then-rename save helper.

@@ -84,7 +84,7 @@ const probe = (body: string, calls: string[] = []): Change => ({
 
 const OBSERVED_BODY =
   "async (_$, e, next) => {\n    const result = await next(e);\n    void session.watcher?.check();\n\n    return result;\n  }";
-const OBSERVED_CATCH = "}).catch((_$, e, next) => next(e));\n}";
+const OBSERVED_CATCH = "void session.watcher?.check();\n\n    return result;\n  }).catch((_$, e, next) => next(e));";
 
 const runGate = (dir: string) => spawnSync("node", [gate, dir], { cwd: repoRoot, encoding: "utf8" });
 
@@ -106,7 +106,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     const hooks = notes.filter((note) => note.startsWith(`${MODULE} hooks: `));
     const calls = notes.filter((note) => note.startsWith(`${MODULE} calls: `));
     expect(hooks).toEqual([
-      `${MODULE} hooks: session.start, command.run{command=doc}, tool.call{tool=Write|Edit}`,
+      `${MODULE} hooks: session.start, command.run{command=doc}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
     ]);
     expect(calls.join("\n")).not.toMatch(/\$\.(model\.|agent\.spawn|http\.|mcp\.)/);
     const result = runGate(pluginDir);
@@ -176,9 +176,10 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     });
   }
 
-  const SHOW = "tool.call{tool=mcp__doc-editor__show}";
+  // The shipped plugin registers and answers `show`, so these cases use a tool of their own.
+  const SHOW = "tool.call{tool=mcp__doc-editor__peek}";
   const showHook: Change = {
-    code: '  on("tool.call", { tool: "mcp__doc-editor__show" }, async () => ({ result: "shown" }) as never);',
+    code: '  on("tool.call", { tool: "mcp__doc-editor__peek" }, async () => ({ result: "shown" }) as never);',
     extra: { hooks: [SHOW], "gating hook without .catch": [SHOW] },
   };
 
@@ -187,12 +188,12 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain(
-      `check-plugin-declared: safety floor: ./register.ts registers the tool.call hook ${SHOW}, but no $.tool.register names show`,
+      `check-plugin-declared: safety floor: ./register.ts registers the tool.call hook ${SHOW}, but no $.tool.register names peek`,
     );
   });
 
   it("should pass when a tool.call hook answers a tool the plugin registers", () => {
-    const register = probe('await $.tool.register({ name: "show", description: "Open a file in the pane." });', [
+    const register = probe('await $.tool.register({ name: "peek", description: "Peek at a file." });', [
       "$.tool.register",
     ]);
     const dir = pluginWith({
@@ -224,7 +225,9 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
   });
 
   it("should fail naming the line when the observed hook's .catch handler answers the call", () => {
-    const dir = pluginWith({ replace: [[OBSERVED_CATCH, '}).catch(() => ({ deny: "refused" }));\n}']] });
+    const dir = pluginWith({
+      replace: [[OBSERVED_CATCH, 'void session.watcher?.check();\n\n    return result;\n  }).catch(() => ({ deny: "refused" }));']],
+    });
 
     const result = runGate(dir);
 
