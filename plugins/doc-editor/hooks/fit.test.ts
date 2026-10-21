@@ -69,3 +69,35 @@ describe("the outline with keys alone", () => {
     expect((await header(ui)).title).toBe("doc.md › Closing");
   });
 });
+
+// The engine sums arrows that arrive together into one ui.scroll: a `by` of 5 is five Downs, not
+// a page key, which moves the window's rows.
+describe("summed arrow keys", () => {
+  test("should move five outline entries on a summed scroll of 5, as five Downs do", async ($, on) => {
+    const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md");
+    await ui.press({ key: keyButton("o") });
+    for (let k = 0; k < 5; k++) await scrollPane($, 1);
+    const stepped = await cursorEntry(ui);
+    await ui.press({ key: keyButton("o") });
+    await ui.press({ key: keyButton("o") });
+
+    await scrollPane($, 5);
+
+    expect(await cursorEntry(ui)).toBe(stepped);
+    expect(stepped).not.toBe(undefined);
+  });
+
+  test("should move the focus five blocks on a summed scroll of 5, as five Downs do", async ($, on) => {
+    const { ui } = await openDoc($, on, files(fixtureDoc(200)), "doc.md");
+    const start = await focusedKey(ui);
+    for (let k = 0; k < 5; k++) await scrollPane($, 1);
+    const stepped = await focusedKey(ui);
+    await ui.press({ key: keyButton("t") });
+    expect(await focusedKey(ui)).toBe(start);
+
+    await scrollPane($, 5);
+
+    expect(await focusedKey(ui)).toBe(stepped);
+    expect(stepped).not.toBe(start);
+  });
+});

@@ -632,12 +632,21 @@ export class DocPane {
 
   /**
    * Answers the pane's `ui.scroll` (design D-2): moves the pane's own offset and never the
-   * engine's window. One row (an arrow, a wheel tick) steps the focus one block; more moves by
-   * whole pieces; a piece taller than the body scrolls inside itself first.
+   * engine's window. Each row of a move shorter than the window (an arrow, a wheel tick, or several
+   * summed) steps the focus one block; a page key moves by whole pieces; a piece taller than the
+   * body scrolls inside itself first.
    */
   scroll(by: number, bodyRows: number): void {
     if (bodyRows > 0) this.size = { ...this.size, bodyRows };
     if (this.doc === undefined || by === 0) return;
+    // The event marks no key: an arrow is one row, a page key the window's rows, Home and End all
+    // of them, and the engine sums the moves that arrive together (a burst of Downs, a held key,
+    // crowded wheel ticks). So a move shorter than the window is that many single steps.
+    const windowRows = bodyRows > 0 ? bodyRows : this.size.bodyRows;
+    if (this.screen !== "diff" && Math.abs(by) > 1 && Math.abs(by) < windowRows) {
+      for (let k = 0; k < Math.abs(by); k++) this.scroll(Math.sign(by), bodyRows);
+      return;
+    }
     if (this.screen === "diff") {
       this.diffAt.page = Math.max(0, this.diffAt.page + Math.sign(by));
       this.host?.invalidate();
