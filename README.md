@@ -11,11 +11,34 @@ links that open, and edits that save back to the file on disk.
 
 ## Status
 
-Research and design stage. Nothing is built yet. The research and design docs land in
-[docs/research/](docs/research/) and [docs/designs/](docs/designs/) and wait on the owner's review
-before any build starts. The design phases the work, starting with an MVP.
+The plugin scaffold is in place: the repository is a Claude Code marketplace, the plugin loads
+and registers `/doc`, and the test gate runs at commit and at push. The first reader, a Markdown
+pane with Claude-mediated editing, is in progress; until it lands, `/doc` answers with one line
+saying the reader is not built yet. The design is
+[docs/designs/doc-editor-design.md](docs/designs/doc-editor-design.md), and the research behind it
+is in [docs/research/](docs/research/).
 
 The work is tracked in this repo's own Beads store (prefix `DED`).
+
+## Install
+
+```text
+/plugin install doc-editor --marketplace sergeiwallace/doc-editor
+```
+
+To load it from a clone instead, run `claude --plugin-dir plugins/doc-editor`. The
+[install note](docs/procedures/mod-install.md) covers requirements, both routes and the test gate.
+
+## Repository structure
+
+- `.claude-plugin/marketplace.json`: the marketplace, listing one plugin.
+- `plugins/doc-editor/`: the plugin. `hooks/register.ts` holds every call to the mods API, and
+  `core/` is the dependency-free document core.
+- `scripts/` and `test/`: the repository's gates and their Vitest suites.
+- `packages/`: later surfaces, a web app and an MCP App, which will import the same core.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to work on it and [SECURITY.md](SECURITY.md) to report a
+vulnerability.
 
 ## Open source
 
