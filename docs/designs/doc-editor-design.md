@@ -544,6 +544,10 @@ The restart contract for the build runs that implement this design. One authorit
 
 Resolved plan for this run: stages Phase 0 (T-0.1 to T-0.3) then Phase 1 (T-1.1 to T-1.8); implementation by Claude engineer children on Opus (the machine profile's default delegation family); cross-family review of each merged child and each phase diff by Codex (`cx review`, read-only); integration mode `parent` with integration ownership; at most 2 concurrent children. Target: doc-editor `main` at `53b303b`; integration worktree `.worktrees/aih-ec2-3-agents/ded-build` on branch `wt/aih-ec2-3/ded-build`. Stage cursor: Phase 0. Last completed integration boundary: none.
 
+Expression repairs this run made (Authority test Gate C, `✅ Resolved by Opus orchestrator (doc-editor build coordinator)`, model `claude-opus-5-5`):
+
+1. D-11's mitigation sentence. Before: "the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green". After: "when the binary is absent or below the floor, the script reports the plugin tests as not run and prints the runner's verbatim reason, never a false green". The ratified intent is that same sentence: no plugin-test run without the binary, the runner's reason printed, no false green. The fleet's lexical founding-ask check read the old verb as a requirement being given up; the new wording says the same thing affirmatively. Not changed: what the gate does when `claude` is missing or too old.
+
 <!-- /doc:region name="overview" -->
 
 <!-- doc:region name="decisions" kind="replaceable" -->
@@ -1015,7 +1019,9 @@ Criterion 1 resolves it: install paths and package names decay into one-way door
 <!-- decision-record: chosen-option=(a); ai-family=claude; ai-model=claude-fable-5-1; ai-effort=high; ai-profile=architect -->
 <!-- decision-lineage: decision-id=DED-b3p/D-11; decision-topic=doc-editor-test-gate; governs=gate:doc-editor/pre-commit; normalized-proposition=the-plugin-is-gated-by-claude-plugin-validate-and-claude-plugin-test-and-the-web-packages-by-vitest; applicability=repo:doc-editor; outcome-id=test-gate; relation=different-question; related-decision-id=DED-b3p/D-9; supersedes=; approval-log-decision-id=; approval-actor=; approval-date=; approval-commit= -->
 
-Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigations for (a)'s cons: one `npm test` script runs both runners in order, so the gate stays one command for a contributor and for the pre-push hook; the script skips `claude plugin test` with the runner's verbatim reason when the binary is absent or below the floor, never a false green, as the fleet's mods design does. Door type: two-way; blast radius: the repository's gate, shared by every phase. Confidence: high.
+Criterion 2 resolves it: the gate is shared infrastructure every phase depends on. Mitigations for (a)'s cons: one `npm test` script runs both runners in order, so the gate stays one command for a contributor and for the pre-push hook; when the binary is absent or below the floor, the script reports the plugin tests as not run and prints the runner's verbatim reason, never a false green, as the fleet's mods design does. Door type: two-way; blast radius: the repository's gate, shared by every phase. Confidence: high.
+
+The mitigation sentence above was reworded on 2026-10-21 as an expression repair; the record is in the [Run Ledger](#run-ledger).
 
 ---
 
