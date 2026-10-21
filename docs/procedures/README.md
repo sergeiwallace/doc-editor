@@ -17,4 +17,4 @@ Repeatable workflows, operational how-tos, and development processes.
 
 | File | Description |
 |------|-------------|
-| (none yet) | |
+| [mod-install.md](mod-install.md) | Load or install the doc-editor mod, its requirements, and how to run the test gate |
