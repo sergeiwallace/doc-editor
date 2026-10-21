@@ -1,0 +1,16 @@
+{
+  "name": "doc-editor-vendor-bundle",
+  "private": true,
+  "description": "Developer-time bundle step for the libraries the doc-editor plugin vendors. Run scripts/bundle-vendor.mjs from the repository root.",
+  "type": "module",
+  "devDependencies": {
+    "@codemirror/state": "6.7.6",
+    "esbuild": "0.28.2",
+    "mdast-util-from-markdown": "2.1.0",
+    "mdast-util-gfm": "3.1.0",
+    "micromark": "4.0.3",
+    "micromark-extension-gfm": "3.0.0",
+    "prosemirror-model": "1.25.12",
+    "yjs": "13.6.33"
+  }
+}
