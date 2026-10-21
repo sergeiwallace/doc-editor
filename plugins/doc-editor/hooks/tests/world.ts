@@ -62,8 +62,9 @@ export function saveWorld(options: SaveWorldOptions) {
       writes.push({ path, text });
       fs.map.set(path, { text, mtimeMs: (clock += 1000) });
     },
-    run: async (argv, stdin) => {
-      runs.push({ argv: [...argv], stdin });
+    node: async (args, stdin) => {
+      const argv = ["node", ...args];
+      runs.push({ argv, stdin });
       const answer = options.script(argv) ?? exit(127, `unscripted: ${argv.join(" ")}`);
       if (answer instanceof Error) throw answer;
       return answer;

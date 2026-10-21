@@ -15,8 +15,8 @@ export interface SaveHost {
   stat: (path: string) => Promise<FileStamp>;
   /** `$.fs.write`, the fallback when `node` is absent. */
   write: (path: string, text: string) => Promise<void>;
-  /** `$.process.run` with `stdin`; rejects when the command cannot start or overruns. */
-  run: (argv: readonly string[], stdin?: string) => Promise<ProcessRunResult>;
+  /** `$.process.run(["node", ...args])` with `stdin`; rejects when node cannot start or overruns. */
+  node: (args: readonly string[], stdin?: string) => Promise<ProcessRunResult>;
   /** `$.ui.ask`; rejects when the person dismisses it. */
   ask: (question: string, options: readonly string[]) => Promise<string>;
   /** `$.ui.status`. */
@@ -80,7 +80,7 @@ export function createSaver(host: SaveHost): Save {
   let node: Promise<boolean> | undefined;
   let isRiskStated = false;
   const hasNode = () =>
-    (node ??= host.run(["node", "--version"]).then(
+    (node ??= host.node(["--version"]).then(
       (result) => result.exitCode === 0,
       () => false,
     ));
@@ -112,8 +112,8 @@ export function createSaver(host: SaveHost): Save {
     if (await hasNode()) {
       let result: ProcessRunResult;
       try {
-        result = await host.run(
-          ["node", host.helper, path, String(expected.mtimeMs), String(expected.size)],
+        result = await host.node(
+          [host.helper, path, String(expected.mtimeMs), String(expected.size)],
           text,
         );
       } catch (error) {

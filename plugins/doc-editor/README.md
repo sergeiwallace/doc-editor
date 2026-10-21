@@ -43,6 +43,10 @@ list in the same commit.
     "hooks": ["session.start", "command.run{command=doc}", "tool.call{tool=Write|Edit}"],
     "calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status"],
     "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=Write|Edit}"]
+  },
+  "safety floor": {
+    "process.run binaries": ["node"],
+    "process.run argv expressions": []
   }
 }
 ```
@@ -50,10 +54,21 @@ list in the same commit.
 
 The plugin registers no `tool.check` hook, answers no `tool.call`, calls no model and makes no
 network request. Its one `tool.call` hook observes `Write` and `Edit`: it passes each call on and
-returns the tool's own result, then re-reads the open file if it changed. The same gate enforces
-this safety floor whatever the list says. It fails, naming the hook or call, on any `tool.check`
-hook, any other `tool.call` hook except one for the plugin's own `mcp__doc-editor__` tools, any
-model call (`$.model.*`, `$.agent.spawn`) and any network call (`$.http.*`, `$.mcp.*`).
+returns the tool's own result, then re-reads the open file if it changed.
+
+The same gate enforces this safety floor whatever the list says, over both the validate report
+and the sources. It fails, naming the hook, call or line, on any of these:
+
+- a `tool.check` hook;
+- a `tool.call` hook other than the observed one, unless it answers a tool the plugin registers
+  with `$.tool.register` under the `mcp__doc-editor__` prefix;
+- a `tool.call` handler, or its `.catch` handler, that returns anything but the result of
+  `next(...)`;
+- a model call (`$.model.*`, `$.agent.spawn`) or a network call (`$.http.*`, `$.mcp.*`);
+- a reference to `fetch`, `WebSocket`, `XMLHttpRequest` or `EventSource`;
+- a `$.process.run` whose literal argv starts with a binary the `safety floor` entry above does
+  not list, or whose argv is not a literal array and whose `<file>: <argv expression>` the entry
+  does not list.
 
 ## Saving
 
