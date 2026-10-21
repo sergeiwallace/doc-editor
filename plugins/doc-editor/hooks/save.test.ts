@@ -37,6 +37,36 @@ describe("save", () => {
     expect(w.asked).toEqual([]);
   });
 
+  test("should report saved and re-read the stamp when the helper exits 0 without printing one", async () => {
+    const w = saveWorld({
+      files: unchanged,
+      script: (argv) => nodeVersion(argv) ?? (isHelper(argv) ? ok("") : undefined),
+    });
+
+    const result = await createSaver(w.host)(PATH, NEW_TEXT, READ);
+
+    expect(result).toEqual({ kind: "saved", stamp: await w.fs.stat(PATH) });
+    expect(w.statuses).toEqual([]);
+  });
+
+  test("should report saved with no stamp when the helper exits 0 and the file cannot be stat'ed after", async () => {
+    const w = saveWorld({
+      files: unchanged,
+      script: (argv) => {
+        if (isHelper(argv)) {
+          w.fs.map.delete(PATH);
+          return ok("");
+        }
+        return nodeVersion(argv);
+      },
+    });
+
+    const result = await createSaver(w.host)(PATH, NEW_TEXT, READ);
+
+    expect(result).toEqual({ kind: "saved", stamp: undefined });
+    expect(w.statuses).toEqual([]);
+  });
+
   test("should detect node once per session by running node --version as an argument vector", async () => {
     const w = saveWorld({ files: unchanged, script: helperSaves });
     const save = createSaver(w.host);

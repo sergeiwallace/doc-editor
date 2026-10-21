@@ -3,9 +3,10 @@
 // the mod read.
 // Usage: node bin/save.mjs <target> <expected-mtimeMs> <expected-size>  (the new content on stdin)
 // It writes a temporary file beside the target, re-reads the target's mtimeMs and size right
-// before the rename, and renames only when both still match. On success it prints the saved
-// file's {"mtimeMs","size"} as one JSON line. On any failure it removes the temporary file,
-// leaves the target as it was and exits non-zero with one stderr line saying why.
+// before the rename, and renames only when both still match. On success it exits 0 and prints the
+// saved file's {"mtimeMs","size"} as one JSON line when it can. On a failure before the rename it
+// removes the temporary file, leaves the target as it was and exits non-zero with one stderr line
+// saying why. After the rename it always exits 0.
 // A symbolic link is resolved first, so the temporary file sits beside the real file and the link
 // survives the rename.
 import {
@@ -70,7 +71,10 @@ try {
   const fd = openSync(temporary, "wx", before.mode & 0o7777);
   created = true;
   try {
-    writeSync(fd, content);
+    // writeSync may write fewer bytes than asked: loop until all of them are written.
+    for (let written = 0; written < content.length; ) {
+      written += writeSync(fd, content, written, content.length - written);
+    }
     fsyncSync(fd);
   } finally {
     closeSync(fd);
@@ -89,5 +93,12 @@ try {
   fail(`cannot save ${target}: ${error.message}`);
 }
 
-const saved = statSync(real);
-process.stdout.write(`${JSON.stringify({ mtimeMs: saved.mtimeMs, size: saved.size })}\n`);
+// The target is replaced now, so the helper exits 0 whatever happens next: a non-zero exit tells
+// the mod the target is unchanged. Without the stamp line the mod re-reads the file for it.
+try {
+  const saved = statSync(real);
+  writeSync(1, `${JSON.stringify({ mtimeMs: saved.mtimeMs, size: saved.size })}\n`);
+} catch {
+  // Saved; the stamp could not be reported.
+}
+process.exit(0);
