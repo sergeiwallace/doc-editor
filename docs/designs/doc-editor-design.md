@@ -588,6 +588,8 @@ Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort m
 | 10 | Core | A deletion-only change carried no block ids | Fixed: marked on the surviving neighbour, so it can be reviewed and discarded |
 | 11 | Core | CRLF front matter parsed as a rule and a heading | Fixed: CRLF is read like LF for front matter, callouts and quotes |
 | 12 | Core | Block ids use section ordinals, so an earlier insertion renumbers later blocks | Fixed for the reader's state: `mapBlockIds` carries focus and folds across a reload |
+| 13 | Core (round 2) | A validated href was written back into Markdown unescaped, so a crafted href could inject a second, `javascript:` link | Fixed: every href and label the core writes is percent-encoded or escaped and checked again |
+| 14 | Core (round 2) | `mapBlockIds` could map a block to an identical copy inserted elsewhere | Fixed: the long-document fallback anchors on unique texts, with tests for a copy before and after |
 
 <!-- /doc:region name="overview" -->
 
