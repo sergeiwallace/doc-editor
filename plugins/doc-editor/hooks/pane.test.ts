@@ -29,6 +29,24 @@ const files = (text = SMALL): PaneWorldOptions => ({
 });
 const lineOf = (text: string, line: string) => text.split("\n").indexOf(line) + 1;
 
+/** Words of six characters with their space, `w00001 w00002 ...`, so a 60-column row holds ten. */
+const words = (count: number) => Array.from({ length: count }, (_, k) => `w${String(k + 1).padStart(5, "0")}`).join(" ");
+
+/**
+ * A quote of short paragraphs, each holding eight links to distinct long in-repository paths: a
+ * block over 9,000 characters the core splits into several pieces, and so many links that
+ * listing a whole block's links on every piece would pass the tree limit.
+ */
+const linkHeavy = (paragraphs: number) => {
+  const lines = ["# Link-heavy section", ""];
+  for (let p = 0; p < paragraphs; p++) {
+    if (p > 0) lines.push(">");
+    const links = Array.from({ length: 8 }, (_, k) => `[l${p}.${k}](docs/${"deep-folder-name/".repeat(4)}target-${p}-${k}.md)`);
+    lines.push(`> ${links.join(" ")}`);
+  }
+  return `${lines.join("\n")}\n`;
+};
+
 describe("open and render (T-1.1)", () => {
   test("should open the pane with the header row, the first blocks and the hint row within one render when /doc names a Markdown file", async ($, on) => {
     const { w, ui } = await openDoc($, on, files(), "doc.md");
@@ -107,8 +125,12 @@ describe("open and render (T-1.1)", () => {
 });
 
 describe("window and budget (T-1.2)", () => {
-  test("should keep every render of a 20,000-line file under 100,000 serialized characters with no Markdown over 9,000", { timeoutMs: 180_000 }, async ($, on) => {
-    const { ui } = await openDoc($, on, files(fixtureDoc(20_000)), "doc.md");
+  for (const [name, props] of [
+    ["a 40-row body", PANE_PROPS],
+    ["a 2,000-row body", { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 2_000 } }],
+  ] as const) {
+  test(`should keep every render of a 20,000-line file with a link-heavy block under 100,000 serialized characters with no Markdown over 9,000, in ${name}`, { timeoutMs: 180_000 }, async ($, on) => {
+    const { ui } = await openDoc($, on, files(`${linkHeavy(60)}\n${fixtureDoc(20_000)}`), "doc.md", props);
     let renders = 0;
     let last = "";
     let largest = 0;
@@ -125,13 +147,27 @@ describe("window and budget (T-1.2)", () => {
       const body = JSON.stringify(await ui.find({ key: "body" }));
       if (body === last) break;
       last = body;
-      await scrollPane($, PANE_PROPS.scroll.bodyRows);
+      await scrollPane($, props.scroll.bodyRows);
     }
     await ui.press({ key: keyButton("o") });
     expect(JSON.stringify(await ui.drawn()).length).toBeLessThan(TREE_LIMIT);
 
-    expect(renders).toBeGreaterThan(100);
+    expect(renders).toBeGreaterThan(props === PANE_PROPS ? 100 : 5);
     expect(largest).toBeGreaterThan(0);
+  });
+  }
+
+  test("should list on each piece only the links its own text draws", async ($, on) => {
+    const tall = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 2_000 } };
+    const { ui } = await openDoc($, on, files(linkHeavy(60)), "doc.md", tall);
+    const pieces = (await ui.findAll({ type: "Markdown" })).filter((node) => (node.key ?? "").startsWith("md:h1:1~p"));
+
+    expect(pieces.length).toBeGreaterThan(1);
+    for (const piece of pieces) {
+      const links = piece.props.pressableLinks as string[];
+      expect(links.length).toBeGreaterThan(0);
+      for (const href of links) expect(piece.text).toContain(href);
+    }
   });
 
   test("should rewrite its own offset, return without calling next and redraw the rows in view when the pane receives ui.scroll", async ($, on) => {
@@ -228,9 +264,26 @@ describe("window and budget (T-1.2)", () => {
     expect(tree.children?.at(-2)?.props?.key).toBe("hints");
   });
 
+  test("should scroll a single long wrapped line row by row and show every row before the next piece", async ($, on) => {
+    const narrow = { ...PANE_PROPS, bodyColumns: 62, scroll: { offset: 0, bodyRows: 20 } };
+    const text = `# Long line\n\n${words(1_200)}\n\n## After\n`;
+    const { ui } = await openDoc($, on, files(text), "doc.md", narrow);
+    await scrollPane($, 1, 20);
+    expect((await pieceKeys(ui))[0]).toBe("h1:1");
+    const seen = new Set<string>();
+    for (let k = 0; k < 200 && (await pieceKeys(ui))[0] === "h1:1"; k++) {
+      for (const word of ((await ui.find({ key: "md:h1:1" }))?.text ?? "").split(/\s+/)) seen.add(word);
+      await scrollPane($, 1, 20);
+    }
+
+    expect((await pieceKeys(ui))[0]).not.toBe("h1:1");
+    const missing = words(1_200).split(" ").filter((word) => !seen.has(word));
+    expect(missing).toEqual([]);
+  });
+
   test("should scroll inside a piece taller than the body before moving to the next piece", async ($, on) => {
     const { ui } = await openDoc($, on, files(MEDIUM), "doc.md#long-blocks");
-    for (let k = 0; k < 10 && (await pieceKeys(ui))[0] !== "h1:2~c1"; k++) await scrollPane($, 1);
+    for (let k = 0; k < 400 && (await pieceKeys(ui))[0] !== "h1:2~c1"; k++) await scrollPane($, 1);
     expect((await pieceKeys(ui))[0]).toBe("h1:2~c1");
     const top = (await ui.find({ key: "h1:2~c1" }))?.text ?? "";
 
@@ -378,9 +431,10 @@ describe("navigate (T-1.3)", () => {
     expect(await focusedKey(ui)).toBe("h1:1");
   });
 
-  for (const [name, href, reason] of [
-    ["outside the repository", "../../../../outside.md", "outside the repository: ../../../../outside.md"],
-    ["to a missing file", "missing-file.md", `missing file: ${CWD}/missing-file.md`],
+  // The outside link draws as text, not a link, so it is reached through the focused block's link row.
+  for (const [name, button, reason] of [
+    ["outside the repository", "link:0", "outside the repository: ../../../../outside.md"],
+    ["to a missing file", "link:1", `missing file: ${CWD}/missing-file.md`],
   ] as const) {
     test(`should show the reason in the status row and not navigate when a link points ${name}`, async ($, on) => {
       const { w, ui } = await openDoc($, on, files(), "doc.md");
@@ -388,7 +442,7 @@ describe("navigate (T-1.3)", () => {
       await scrollPane($, 1);
       expect(await focusedKey(ui)).toBe("h:3");
 
-      await ui.press({ key: "md:h:3", link: { href } });
+      await ui.press({ key: button });
 
       expect(w.statuses).toEqual([reason]);
       expect(await focusedKey(ui)).toBe("h:3");
