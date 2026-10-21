@@ -33,12 +33,13 @@ const complete = ($: Engine, text: string): Promise<Suggested> =>
   ($.prompt as unknown as { autocomplete: (e: ReturnType<typeof draft>) => Promise<Suggested> }).autocomplete(draft(text));
 
 describe("/doc", () => {
-  test("should register /doc when the session starts", async ($, on) => {
+  test("should register /doc with its argument hint and the show tool when the session starts", async ($, on) => {
     const w = paneWorld(on, { files: {} });
 
     await $.session.start(SESSION);
 
     expect(w.commands).toEqual([COMMAND_NAME]);
+    expect(w.tools).toEqual(["show"]);
   });
 
   test("should name the missing path in the status row and open no pane when /doc runs with no path and nothing open", async ($, on) => {

@@ -1,4 +1,4 @@
 {
-  "description": "The doc-editor mod: the /doc reader pane",
+  "description": "The doc-editor mod: the /doc reader pane, the show tool and the open link under tool rows",
   "modules": ["./register.ts"]
 }

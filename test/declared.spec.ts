@@ -44,7 +44,7 @@ const runGate = (dir: string) =>
 const REGISTER = "hooks/register.ts";
 const SESSION_START = "    return next(e);\n  });";
 const DECLARED_CALLS =
-  '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],';
+  '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],';
 
 // Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
@@ -96,7 +96,7 @@ describe.skipIf(!claude.usable)(`the declared-list gate (claude ${claude.version
         d,
         "README.md",
         DECLARED_CALLS,
-        '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status", "$.session.id"],',
+        '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status", "$.session.id"],',
       ),
     );
 

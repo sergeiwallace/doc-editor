@@ -2,7 +2,9 @@ import type { On } from "claude-code";
 
 import { COMMAND_NAME, COMMAND_SPEC, completePath, runDoc } from "./commands.ts";
 import { DocPane, PANE_ID, type PaneHost } from "./pane.ts";
+import { groupPaths, rowPath, withOpenLinks } from "./rows.ts";
 import { createSaver, type FileStamp, type Save } from "./save.ts";
+import { runShow, SHOW_TOOL_SPEC } from "./tools.ts";
 import { createWatcher, type Watcher } from "./watch.ts";
 
 export { COMMAND_NAME, PANE_ID };
@@ -10,15 +12,16 @@ export const PLUGIN_NAME = "doc-editor";
 export const OPEN_FAILED_TEXT = "doc-editor could not open the pane";
 
 /**
- * Registers `/doc` at session start, binds the pane, the safe-write path and the reload watcher,
- * draws the pane, and observes Write and Edit tool calls. Every `$` call of the plugin sits in
- * this file; helpers in other files take plain values or closures, never `$`.
+ * Registers `/doc` and the `show` tool at session start, binds the pane, the safe-write path and
+ * the reload watcher, draws the pane and the open link under Read, Write and Edit rows, and
+ * observes Write and Edit tool calls. Every `$` call of the plugin sits in this file; helpers in
+ * other files take plain values or closures, never `$`.
  *
  * @param on the engine's registrar
  */
 export function register(on: On) {
-  // Matchers are literals so that `claude plugin validate` and the safety floor can read them;
-  // they are COMMAND_NAME and PANE_ID.
+  // Matchers and the tool name are literals so that `claude plugin validate` and the safety floor
+  // can read them; they are COMMAND_NAME, PANE_ID, SHOW_TOOL and SHOW_TOOL_CALL.
   // What the session's start binds for the pane: the safe-write path and the reload watcher.
   const session: { save?: Save; watcher?: Watcher } = {};
   const pane = new DocPane();
@@ -58,6 +61,7 @@ export function register(on: On) {
     };
     pane.bind(host);
     await $.command.register(COMMAND_SPEC);
+    await $.tool.register({ ...SHOW_TOOL_SPEC, name: "show" });
 
     return next(e);
   });
@@ -73,6 +77,11 @@ export function register(on: On) {
     const extra = await completePath((path) => $.fs.list(path), cwd, e);
     return extra.length === 0 ? base : { suggestions: [...base.suggestions, ...extra] };
   }).catch((_$, e, next) => next(e));
+
+  // The plugin's own tool: answered here, never passed on (NFR-9).
+  on("tool.call", { tool: "mcp__doc-editor__show" }, async (_$, e) => runShow(pane, { path: e["path"] })).catch(() => ({
+    deny: OPEN_FAILED_TEXT,
+  }));
 
   // Observed, never answered (NFR-9): the call goes on with next and its own result comes back.
   on("tool.call", { tool: ["Write", "Edit"] }, async (_$, e, next) => {
@@ -107,4 +116,21 @@ export function register(on: On) {
       e.props.scroll.bodyRows,
     );
   });
+
+  // The open link under Claude's Read, Write and Edit rows; the row is the chain's (D-13).
+  on("ui.render", { component: "ToolUse" }, async ($, e, next) => {
+    const row = await next(e);
+    const path = rowPath(e.props);
+    if (path === null) return row;
+    const { Box, Button } = await $.ui.resolve(e);
+    return withOpenLinks({ Box, Button }, row, [path], (file) => void pane.openSpec(file, { focus: true }));
+  }).catch((_$, e, next) => next(e));
+
+  on("ui.render", { component: "ToolGroup" }, async ($, e, next) => {
+    const row = await next(e);
+    const paths = groupPaths(e.props.calls);
+    if (paths.length === 0) return row;
+    const { Box, Button } = await $.ui.resolve(e);
+    return withOpenLinks({ Box, Button }, row, paths, (file) => void pane.openSpec(file, { focus: true }));
+  }).catch((_$, e, next) => next(e));
 }
