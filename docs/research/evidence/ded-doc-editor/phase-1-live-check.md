@@ -866,3 +866,50 @@ v: view diff  k: keep  x: discard  r: refine
 Four more Downs reached `› Table 14`, a fifth focused the table with both cards drawn whole (`Extra column: wide` at rows 26 and 36), and a sixth focused `› Media 14`. Each of the eight frames held the status row and the `v: view diff` hint row. `q` closed the pane. Both fixture copies were unchanged, and `tmux has-session` answered `can't find session`.
 
 7. In a box 11 rows tall, a card scrolled partly past whose remaining rows fit `keep` is drawn whole (`hooks/pane.ts:1872`). The frame then runs one row past the box and the last hint row is lost. The cause was not isolated. The blank margin row under the table piece may not be counted against `keep`. Seen on one frame of 17, twice.
+
+### After the border fix
+
+Finding 7 is fixed: every frame of the walk keeps the header, the status row and all three hint rows inside the box. Run at 2026-10-21T18:19Z to 18:24Z at 100 by 40, with the plugin loaded from `b90ac26`, which carries `b23eacb` (a continued card's redrawn top border is counted). The launch, the Method and the walk were the same as in the subsection above, in a fresh scratch copy, with no prompt sent. The host's startup turn was interrupted with Escape, and the one line submitted was `/doc-editor thousand-line-doc.md`.
+
+The frame that failed before, the second card at `Status: ok`, is now cut with the marker:
+
+```text
+╭────────────────────────────────────────────────────────────────────────────────────────────────✕─╮
+│ thousand-line-doc.md › Chapter 14: topic 14 › Lists 14 › Code 14 › Quotes 14 › Table 14          │
+│ READ · 24 min read                                                                               │
+│ › ╭────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│   │ Status: ok                                                                                 │ │
+│   │ … continues below                                                                          │ │
+│   ╰────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│                                                                                                  │
+│ o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back  g: go to  t: top          │
+│ q: close  j: next heading  h: previous heading  c: ask Claude  e: edit  n: next change           │
+│ p: previous change  v: view diff  k: keep  x: discard  r: refine                                 │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+The next Down drew `Notes: Section parser window render budget block.`, `Updated: 2026-10-21` and `Extra column: wide` with the card's bottom border, and the three hint rows on the box's last three inside rows.
+
+Each frame, from Enter on `Table 14` in the outline (frame 0) through 17 Downs. The column says whether all three hint rows were inside the box. The status row `READ · 24 min read` was on every frame:
+
+| Frame | Card row at the box's fifth row | All hint rows inside |
+|-------|---------------------------------|----------------------|
+| 0 | `› Table 14`, no card | yes |
+| 1 | `Element: Markdown 14`, with the marker | yes |
+| 2 | `Cap: 9,000` | yes |
+| 3 | `Source: types file` | yes |
+| 4 | `Owner: core` | yes |
+| 5 | `Status: ok` | yes |
+| 6 | `Notes: Parser window render budget block heading.` | yes |
+| 7 | `Updated: 2026-10-21`, `Extra column: wide`, no marker | yes |
+| 8 to 10 | `Extra column: wide` alone | yes |
+| 11 | `Element: Code 14`, with the marker | yes |
+| 12 | `Cap: 9,000` | yes |
+| 13 | `Source: types file` | yes |
+| 14 | `Owner: core` | yes |
+| 15 | `Status: ok`, with the marker | yes |
+| 16 | `Notes: Section parser window render budget block.` to `Extra column: wide`, no marker | yes |
+| 17 | `› Media 14`, no card | yes |
+
+Frames 1 to 6 and 11 to 15 drew the marker. Frames 8 to 10 drew the same screen, so two of those Downs moved nothing on screen; the earlier walk showed the same row twice. `q` closed the pane, both fixture copies were unchanged, and `tmux has-session` answered `can't find session`.
