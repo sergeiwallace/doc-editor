@@ -1,4 +1,4 @@
 {
-  "description": "The doc-editor mod: /doc registers at session start",
+  "description": "The doc-editor mod: the /doc reader pane",
   "modules": ["./register.ts"]
 }

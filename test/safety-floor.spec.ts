@@ -84,7 +84,7 @@ const probe = (body: string, calls: string[] = []): Change => ({
 
 const OBSERVED_BODY =
   "async (_$, e, next) => {\n    const result = await next(e);\n    void session.watcher?.check();\n\n    return result;\n  }";
-const OBSERVED_CATCH = "}).catch((_$, e, next) => next(e));\n}";
+const OBSERVED_CATCH = "void session.watcher?.check();\n\n    return result;\n  }).catch((_$, e, next) => next(e));";
 
 const runGate = (dir: string) => spawnSync("node", [gate, dir], { cwd: repoRoot, encoding: "utf8" });
 
@@ -106,7 +106,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     const hooks = notes.filter((note) => note.startsWith(`${MODULE} hooks: `));
     const calls = notes.filter((note) => note.startsWith(`${MODULE} calls: `));
     expect(hooks).toEqual([
-      `${MODULE} hooks: session.start, command.run{command=doc}, tool.call{tool=Write|Edit}`,
+      `${MODULE} hooks: session.start, command.run{command=doc}, prompt.autocomplete, tool.call{tool=Write|Edit}, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}`,
     ]);
     expect(calls.join("\n")).not.toMatch(/\$\.(model\.|agent\.spawn|http\.|mcp\.)/);
     const result = runGate(pluginDir);
@@ -224,7 +224,9 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
   });
 
   it("should fail naming the line when the observed hook's .catch handler answers the call", () => {
-    const dir = pluginWith({ replace: [[OBSERVED_CATCH, '}).catch(() => ({ deny: "refused" }));\n}']] });
+    const dir = pluginWith({
+      replace: [[OBSERVED_CATCH, 'void session.watcher?.check();\n\n    return result;\n  }).catch(() => ({ deny: "refused" }));']],
+    });
 
     const result = runGate(dir);
 
