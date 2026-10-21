@@ -8,9 +8,7 @@
 // does not report. It prints one line per difference.
 // Adapted from the sibling beads-ui repository's allow-list gate, which reads a JSON file.
 // It also holds the safety floor (T-1.8, scripts/safety-floor.mjs), which a declaration cannot
-// lift, over both validate's report and the sources. The README's declared object may carry a
-// "safety floor" entry beside the modules: the binaries a literal $.process.run argv may start
-// with, and the non-literal argv call sites it allows.
+// lift, over both validate's report and the sources.
 // Then it scans the sources, because validate files every call under the module that reached
 // it, even one made in a helper the module handed `on` or `$` to, so the report alone cannot
 // show where a call sits. It fails naming the file and line of:
@@ -326,8 +324,7 @@ function engineEscapes(pluginDir) {
 }
 
 // The declared list: the one ```json block between the README's declared-list markers, an object
-// keyed by hooks module ("./register.ts") whose values map each note kind to its values, plus
-// the "safety floor" entry.
+// keyed by hooks module ("./register.ts") whose values map each note kind to its values.
 const BEGIN = "<!-- validate-declared:begin -->";
 const END = "<!-- validate-declared:end -->";
 
@@ -413,13 +410,12 @@ function main() {
     fail(problems, pluginDir, readmePath);
   }
 
-  const { "safety floor": floor = {}, ...modules } = declared;
   const reported = reportedOf(report, problems);
-  compare(reported, modules, problems);
+  compare(reported, declared, problems);
   const files = pluginSources(pluginDir);
   const ownTools = registeredTools(files);
   problems.push(...reportBreaches(reported, ownTools));
-  problems.push(...sourceBreaches(files, floor, ownTools));
+  problems.push(...sourceBreaches(files, ownTools));
   problems.push(...engineEscapes(pluginDir));
 
   if (problems.length > 0) fail(problems, pluginDir, readmePath);

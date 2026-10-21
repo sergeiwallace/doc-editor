@@ -27,10 +27,11 @@ export function register(on: On) {
     session.save = createSaver({
       stat,
       write: (path, text) => $.fs.write(path, text),
-      node: (args, stdin) => $.process.run(["node", ...args], stdin === undefined ? {} : { stdin }),
+      nodeVersion: () => $.process.run(["node", "--version"]),
+      saveHelper: (args, stdin) =>
+        $.process.run(["node", `${$.plugin.root}/bin/save.mjs`, ...args], { stdin }),
       ask: (question, options) => $.ui.ask(question, options),
       status: (text) => $.ui.status(text),
-      helper: `${$.plugin.root}/bin/save.mjs`,
     });
     session.watcher = createWatcher({
       stat,
