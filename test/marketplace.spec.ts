@@ -41,7 +41,7 @@ const runGate = (root: string) =>
 // Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
 
-describe.skipIf(!claude.usable)(`the marketplace gate (claude ${claude.version ?? claude.reason})`, () => {
+describe.skipIf(!claude.usable)(`the marketplace gate (claude ${claude.version ?? claude.reason})`, { timeout: 60_000 }, () => {
   it("should pass when claude plugin validate accepts the root and the marketplace lists doc-editor", () => {
     const result = runGate(repoRoot);
 
