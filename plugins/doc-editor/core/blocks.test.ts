@@ -2,6 +2,8 @@ import { describe, expect, test } from "claude-code/testing";
 
 import { calloutLabel, drawnOf, fenceLanguage, parseBlocks, toDocument } from "./blocks.ts";
 import { fixtureDoc } from "./fixture-docs.ts";
+import { parseMarkdown } from "./parse.ts";
+import type { Node } from "./parse.ts";
 
 const ORIGIN = { path: "/repo/docs/a.md", repoRoot: "/repo" };
 const blocksOf = (source: string) => parseBlocks(source, ORIGIN).blocks;
@@ -123,6 +125,29 @@ describe("parseBlocks", () => {
     expect(paragraph === undefined ? "" : drawnOf(paragraph)).toBe(
       "A x (`file:///etc/passwd`) and [ok **b**](https://e.com) and [in](b.md).",
     );
+  });
+
+  test("should never let an emitted href or label close its link and open another", () => {
+    const evil = "https://safe/) [bad](javascript:alert(1)";
+    const sources = [
+      `A <a href="${evil}">x</a> b.\n`,
+      `<p><a href="${evil}">x</a></p>\n`,
+      `See [x][r].\n\n[r]: <${evil}>\n`,
+      '<a href="https://ok">x](javascript:alert(1)) [y</a>\n',
+      "<a href=\"javascript:a`[b](javascript:c)`\">l</a>\n",
+      "See [x][r].\n\n[r]: <javascript:a`[b](javascript:c)`>\n",
+    ];
+    for (const source of sources) {
+      const drawn = blocksOf(source).map(drawnOf).join("\n\n");
+      const urls: string[] = [];
+      const walk = (node: Node) => {
+        if (node.type === "link") urls.push(node.url ?? "");
+        for (const child of node.children ?? []) walk(child);
+      };
+      walk(parseMarkdown(drawn).tree);
+
+      expect(urls.filter((url) => !url.startsWith("https://")), `${source} drew ${drawn}`).toEqual([]);
+    }
   });
 
   test("should check the href of an anchor inside an HTML block", () => {

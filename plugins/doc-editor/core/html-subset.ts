@@ -36,10 +36,46 @@ const attribute = (tag: string, name: string): string | null => {
   return decodeEntities(match[2] ?? match[3] ?? match[4] ?? "");
 };
 
+const percent = (c: string): string => {
+  const code = c.charCodeAt(0);
+  return code < 0x80 ? `%${code.toString(16).toUpperCase().padStart(2, "0")}` : encodeURIComponent(c);
+};
+
+/**
+ * An href made safe to write as a Markdown link destination: every character that could end the
+ * destination or open another construct (spaces, brackets, parentheses, quotes, backslashes,
+ * backticks, control characters) is percent-encoded. Check the result, not the input, before
+ * drawing it as a link.
+ */
+export function linkDestination(url: string): string {
+  return url.replace(/[\s()<>[\]\\`"'\u0000-\u001f\u007f]/g, percent);
+}
+
+/**
+ * Link text made safe inside `[...]`: an unescaped bracket is escaped, so the text can neither
+ * close the link nor open another, and a trailing odd backslash cannot escape the closing `]`.
+ */
+export function linkLabel(label: string): string {
+  const escaped = label.replace(/(\\*)([[\]])/g, (whole, slashes: string, bracket: string) =>
+    slashes.length % 2 === 1 ? whole : `${slashes}\\${bracket}`,
+  );
+  return /(^|[^\\])(\\\\)*\\$/.test(escaped) ? `${escaped}\\` : escaped;
+}
+
+/** Literal text made safe as Markdown: the characters that open a link, autolink or code span are escaped. */
+export function escapeText(text: string): string {
+  return text.replace(/[\\[\]<>`]/g, "\\$&");
+}
+
+/** Text as an inline code span that nothing inside it can close: backticks and line ends removed. */
+export function codeSpan(text: string): string {
+  return `\`${text.replace(/`/g, "").replace(/[\r\n]+/g, " ")}\``;
+}
+
 /** An image as the MVP draws it (design D-14): its alt text and its path. */
 export function imageText(alt: string, src: string): string {
   const label = alt.trim() === "" ? "image" : alt.trim();
-  return src === "" ? `🖼 ${label}` : `🖼 ${label} \`${src.replaceAll("`", "")}\``;
+  return src === "" ? `🖼 ${escapeText(label)}` : `🖼 ${escapeText(label)} ${codeSpan(src)}`;
 }
 
 const INLINE: Record<string, [string, string]> = {
@@ -92,9 +128,9 @@ export function htmlToMarkdown(
     if (href === null) return;
     if (drawn && opened !== null) {
       opened.target[opened.at] = "[";
-      emit(`](${href})`);
+      emit(`](${linkDestination(href)})`);
     } else {
-      emit(` (\`${href.replaceAll("`", "")}\`)`);
+      emit(` (${codeSpan(href)})`);
     }
     href = null;
     opened = null;
@@ -105,7 +141,7 @@ export function htmlToMarkdown(
     if (token.startsWith("<!--")) continue;
     const name = match[1]?.toLowerCase();
     if (name === undefined) {
-      if (dropping === null) emit(token === "<" ? "<" : decodeEntities(token));
+      if (dropping === null) emit(escapeText(token === "<" ? "<" : decodeEntities(token)));
       continue;
     }
     const closing = token.startsWith("</");
@@ -135,7 +171,7 @@ export function htmlToMarkdown(
         } else {
           closeAnchor();
           href = attribute(token, "href");
-          drawn = href !== null && isDrawable(href);
+          drawn = href !== null && isDrawable(linkDestination(href));
           opened = href === null ? null : emit("");
         }
         break;
