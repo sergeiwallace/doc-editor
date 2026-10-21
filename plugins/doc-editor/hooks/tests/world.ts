@@ -56,26 +56,26 @@ export function saveWorld(options: SaveWorldOptions) {
   const statuses: string[] = [];
   let clock = 2_000_000_000_000;
 
+  const run = async (argv: string[], stdin: string | undefined) => {
+    runs.push({ argv, stdin });
+    const answer = options.script(argv) ?? exit(127, `unscripted: ${argv.join(" ")}`);
+    if (answer instanceof Error) throw answer;
+    return answer;
+  };
   const host: SaveHost = {
     stat: fs.stat,
     write: async (path, text) => {
       writes.push({ path, text });
       fs.map.set(path, { text, mtimeMs: (clock += 1000) });
     },
-    node: async (args, stdin) => {
-      const argv = ["node", ...args];
-      runs.push({ argv, stdin });
-      const answer = options.script(argv) ?? exit(127, `unscripted: ${argv.join(" ")}`);
-      if (answer instanceof Error) throw answer;
-      return answer;
-    },
+    nodeVersion: () => run(["node", "--version"], undefined),
+    saveHelper: (args, stdin) => run(["node", HELPER, ...args], stdin),
     ask: async (question, labels) => {
       asked.push({ question, options: labels });
       if (options.answer instanceof Error) throw options.answer;
       return options.answer ?? "Cancel";
     },
     status: (text) => statuses.push(text),
-    helper: HELPER,
   };
   const helperRuns = () => runs.filter((run) => run.argv[0] === "node" && run.argv[1] === HELPER);
   return { host, fs, runs, helperRuns, writes, asked, statuses };

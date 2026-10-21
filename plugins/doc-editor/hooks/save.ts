@@ -15,14 +15,17 @@ export interface SaveHost {
   stat: (path: string) => Promise<FileStamp>;
   /** `$.fs.write`, the fallback when `node` is absent. */
   write: (path: string, text: string) => Promise<void>;
-  /** `$.process.run(["node", ...args])` with `stdin`; rejects when node cannot start or overruns. */
-  node: (args: readonly string[], stdin?: string) => Promise<ProcessRunResult>;
+  /** `$.process.run(["node", "--version"])`; rejects when node cannot start. */
+  nodeVersion: () => Promise<ProcessRunResult>;
+  /**
+   * `$.process.run(["node", "<plugin>/bin/save.mjs", ...args])` with `stdin`; rejects when node
+   * cannot start or overruns.
+   */
+  saveHelper: (args: readonly string[], stdin: string) => Promise<ProcessRunResult>;
   /** `$.ui.ask`; rejects when the person dismisses it. */
   ask: (question: string, options: readonly string[]) => Promise<string>;
   /** `$.ui.status`. */
   status: (text: string) => void;
-  /** The absolute path of the plugin's `bin/save.mjs`. */
-  helper: string;
 }
 
 export type SaveResult =
@@ -80,7 +83,7 @@ export function createSaver(host: SaveHost): Save {
   let node: Promise<boolean> | undefined;
   let isRiskStated = false;
   const hasNode = () =>
-    (node ??= host.node(["--version"]).then(
+    (node ??= host.nodeVersion().then(
       (result) => result.exitCode === 0,
       () => false,
     ));
@@ -112,8 +115,8 @@ export function createSaver(host: SaveHost): Save {
     if (await hasNode()) {
       let result: ProcessRunResult;
       try {
-        result = await host.node(
-          [host.helper, path, String(expected.mtimeMs), String(expected.size)],
+        result = await host.saveHelper(
+          [path, String(expected.mtimeMs), String(expected.size)],
           text,
         );
       } catch (error) {

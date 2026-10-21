@@ -33,8 +33,6 @@ interface Change {
   code?: string;
   /** Values added to the module's declared list, by kind. */
   extra?: Record<string, string[]>;
-  /** Values added to the README's "safety floor" entry, by key. */
-  floor?: Record<string, string[]>;
   /** Files written into the copy, by path in the plugin. */
   files?: Record<string, string>;
   /** Text in register.ts replaced, [from, to]. */
@@ -67,16 +65,11 @@ function pluginWith(change: Change): string {
   const block = /```json\n([\s\S]*?)\n```/.exec(readme.slice(from, to));
   expect(block?.[1]).toBeDefined();
   const declared = JSON.parse(block?.[1] ?? "{}") as Declared;
-  for (const [key, additions] of [
-    [MODULE, change.extra ?? {}],
-    ["safety floor", change.floor ?? {}],
-  ] as const) {
-    const entry = declared[key] ?? {};
-    for (const [kind, values] of Object.entries(additions)) {
-      entry[kind] = [...(entry[kind] ?? []), ...values];
-    }
-    declared[key] = entry;
+  const own = declared[MODULE] ?? {};
+  for (const [kind, values] of Object.entries(change.extra ?? {})) {
+    own[kind] = [...(own[kind] ?? []), ...values];
   }
+  declared[MODULE] = own;
   const fence = "```json\n" + JSON.stringify(declared, null, 2) + "\n```\n";
   writeFileSync(readmePath, readme.slice(0, from + BEGIN.length) + "\n" + fence + readme.slice(to));
   return dir;
@@ -287,34 +280,143 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     expect(result.status).toBe(0);
   });
 
-  it("should fail naming the binary when a literal argv starts with one the README does not allow", () => {
-    const result = runGate(pluginWith(probe('await $.process.run(["git", "status"]);')));
+  const RUN_REFUSED = "; the mod runs only node --version or node on one of its own bin/*.mjs scripts";
+  const runFails = (body: string, reason: string, files: Record<string, string> = {}) => {
+    const result = runGate(pluginWith({ ...probe(body), files }));
 
     expect(result.status).toBe(1);
     expect(result.stdout).toMatch(
-      /check-plugin-declared: safety floor: hooks\/register\.ts:\d+: \$\.process\.run runs git; the README's safety floor allows node/,
+      new RegExp(
+        `check-plugin-declared: safety floor: hooks/register\\.ts:\\d+: \\$\\.process\\.run ${reason.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${RUN_REFUSED.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+      ),
+    );
+  };
+  const runPasses = (body: string, files: Record<string, string> = {}) => {
+    const result = runGate(pluginWith({ ...probe(body), files }));
+
+    expect(result.stdout).not.toContain("check-plugin-declared: safety floor:");
+    expect(result.status).toBe(0);
+  };
+  const EXTRA = { "bin/extra.mjs": 'import { readFileSync } from "node:fs";\nprocess.stdout.write(String(readFileSync(0)));\n' };
+
+  it("should fail naming the binary when a literal argv runs something other than node", () => {
+    runFails('await $.process.run(["git", "status"]);', 'runs `"git"` rather than node');
+  });
+
+  for (const flag of ["-e", "--eval", "-p", "--print", "--input-type", "-r", "--require", "--import", "--loader"]) {
+    it(`should fail naming the flag when node is passed ${flag}`, () => {
+      runFails(`await $.process.run(["node", "${flag}", "x"]);`, `passes node the flag ${flag}`);
+    });
+  }
+
+  it("should fail when node runs a plain string path, even one ending in the plugin's bin/save.mjs", () => {
+    runFails(
+      'await $.process.run(["node", "/tmp/elsewhere/bin/save.mjs"]);',
+      'runs node on "/tmp/elsewhere/bin/save.mjs", which is not a ${$.plugin.root}/bin/<name>.mjs path',
     );
   });
 
-  it("should pass when a literal argv starts with node", () => {
-    const result = runGate(pluginWith(probe('await $.process.run(["node", "--version"]);')));
+  it("should fail when node runs a plugin script the plugin does not ship", () => {
+    runFails(
+      "await $.process.run([\"node\", `${$.plugin.root}/bin/missing.mjs`]);",
+      "runs node on bin/missing.mjs, which the plugin does not ship",
+    );
+  });
+
+  it("should fail when the argv is not a literal array", () => {
+    runFails('const argv = ["node", "-e", "x"];\n    await $.process.run(argv);', "takes an argv that is not a literal array");
+  });
+
+  it("should pass when node runs a script the plugin ships under bin, with arguments after it", () => {
+    runPasses("await $.process.run([\"node\", `${$.plugin.root}/bin/extra.mjs`, \"-e\", \"x\"]);", EXTRA);
+  });
+
+  it("should pass when the argv is exactly node --version", () => {
+    runPasses('await $.process.run(["node", "--version"]);');
+  });
+
+  it("should fail naming the call when $.process.spawn is added", () => {
+    const result = runGate(pluginWith(probe('$.process.spawn({ argv: ["node", "--version"] });', ["$.process.spawn"])));
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain(
+      "check-plugin-declared: safety floor: ./register.ts makes the call $.process.spawn",
+    );
+  });
+
+  for (const [form, line] of [
+    ["a static import of node:https", 'import { request } from "node:https";'],
+    ["a bare net import", 'import net from "net";'],
+    ["a require of child_process", 'const { spawn } = require("child_process");'],
+    ["a dynamic import of node:dns", 'const dns = await import("node:dns");'],
+    ["a side-effect import of node:worker_threads", 'import "node:worker_threads";'],
+  ] as const) {
+    it(`should fail naming the line when a bin script holds ${form}`, () => {
+      const dir = pluginWith({ files: { "bin/extra.mjs": `// a helper\n${line}\n` } });
+
+      const result = runGate(dir);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toMatch(
+        /check-plugin-declared: safety floor: bin\/extra\.mjs:2: imports \S+, which reaches the network or starts processes/,
+      );
+    });
+  }
+
+  it("should fail naming the line when a bin script references fetch", () => {
+    const dir = pluginWith({ files: { "bin/extra.mjs": 'await fetch("https://example.com/");\n' } });
+
+    const result = runGate(dir);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain(
+      "check-plugin-declared: safety floor: bin/extra.mjs:1: references fetch, a network API",
+    );
+  });
+
+  it("should pass when a bin script imports only node:fs and node:path", () => {
+    const dir = pluginWith({
+      files: { "bin/extra.mjs": 'import { readFileSync } from "node:fs";\nimport { join } from "node:path";\nreadFileSync(join(".", "x"));\n' },
+    });
+
+    const result = runGate(dir);
 
     expect(result.stdout).not.toContain("check-plugin-declared: safety floor:");
     expect(result.status).toBe(0);
   });
 
-  it("should fail naming the call site when an argv that is not a literal array is not declared", () => {
-    const result = runGate(pluginWith(probe('const argv = ["node"];\n    await $.process.run(argv);')));
+  const OBSERVED_CHECK = "    void session.watcher?.check();\n";
+  for (const [form, line] of [
+    ["assigns to a property of next's result", '    (result as { result?: unknown }).result = "answered";\n'],
+    ["merges into next's result with Object.assign", '    Object.assign(result, { result: "answered" });\n'],
+    ["deletes from next's result", "    delete (result as { text?: string }).text;\n"],
+    ["hands next's result to another function", "    console.log(result);\n"],
+  ] as const) {
+    it(`should fail naming the line when the observed handler ${form}`, () => {
+      const dir = pluginWith({ replace: [[OBSERVED_CHECK, `${OBSERVED_CHECK}${line}`]] });
+
+      const result = runGate(dir);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toMatch(
+        /check-plugin-declared: safety floor: hooks\/register\.ts:\d+: the tool\.call\{tool=Write\|Edit\} handler uses next\(\.\.\.\)'s result `result` other than by returning it/,
+      );
+    });
+  }
+
+  it("should fail naming the line when the observed handler returns a spread copy of next's result", () => {
+    const dir = pluginWith({ replace: [["    return result;\n  }", '    return { ...result, text: "answered" } as never;\n  }']] });
+
+    const result = runGate(dir);
 
     expect(result.status).toBe(1);
     expect(result.stdout).toMatch(
-      /check-plugin-declared: safety floor: hooks\/register\.ts:\d+: \$\.process\.run's argv is not a literal array and the README's safety floor does not declare "hooks\/register\.ts: argv"/,
+      /check-plugin-declared: safety floor: hooks\/register\.ts:\d+: the tool\.call\{tool=Write\|Edit\} handler returns `\{ \.\.\.result, text: [^`]*\} as never` rather than next\(\.\.\.\)'s result/,
     );
   });
 
-  it("should pass when the README declares the call site of an argv that is not a literal array", () => {
-    const change = probe('const argv = ["node"];\n    await $.process.run(argv);');
-    const dir = pluginWith({ ...change, floor: { "process.run argv expressions": ["hooks/register.ts: argv"] } });
+  it("should pass when the observed handler does other work and returns next's result untouched", () => {
+    const dir = pluginWith({ replace: [[OBSERVED_CHECK, `${OBSERVED_CHECK}    const seen = e.file_path;\n    void seen;\n`]] });
 
     const result = runGate(dir);
 

@@ -43,10 +43,6 @@ list in the same commit.
     "hooks": ["session.start", "command.run{command=doc}", "tool.call{tool=Write|Edit}"],
     "calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status"],
     "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=Write|Edit}"]
-  },
-  "safety floor": {
-    "process.run binaries": ["node"],
-    "process.run argv expressions": []
   }
 }
 ```
@@ -63,12 +59,15 @@ and the sources. It fails, naming the hook, call or line, on any of these:
 - a `tool.call` hook other than the observed one, unless it answers a tool the plugin registers
   with `$.tool.register` under the `mcp__doc-editor__` prefix;
 - a `tool.call` handler, or its `.catch` handler, that returns anything but the result of
-  `next(...)`;
+  `next(...)`, or that does anything with that result but return it;
 - a model call (`$.model.*`, `$.agent.spawn`) or a network call (`$.http.*`, `$.mcp.*`);
-- a reference to `fetch`, `WebSocket`, `XMLHttpRequest` or `EventSource`;
-- a `$.process.run` whose literal argv starts with a binary the `safety floor` entry above does
-  not list, or whose argv is not a literal array and whose `<file>: <argv expression>` the entry
-  does not list.
+- a reference to `fetch`, `WebSocket`, `XMLHttpRequest` or `EventSource`, or an import of a
+  module that reaches the network or starts processes, such as `node:http`, `node:net` or
+  `node:child_process`, in any source the plugin ships, `bin/` included;
+- a `$.process.run` other than `node --version` or `node` on a
+  `${$.plugin.root}/bin/<name>.mjs` script the plugin ships, so no node flag such as `-e` or
+  `--import`, and no argv that is not a literal array;
+- any `$.process.spawn`.
 
 ## Saving
 
