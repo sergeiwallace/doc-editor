@@ -270,11 +270,20 @@ function scanFile(file) {
         checkSpecifier(node, node.argument?.literal ?? node.argument);
         return;
       case "MemberExpression": {
-        const object = node.object;
+        // A chain through globalThis, self or window (`globalThis.self.window`) is still the
+        // global object, so walk down to its root and read the path on the way.
+        const path = [];
+        let object = node.object;
+        while (object.type === "MemberExpression" && GLOBAL_OBJECTS.has(propertyName(object))) {
+          path.unshift(propertyName(object));
+          object = object.object;
+        }
         if (object.type !== "Identifier" || !GLOBAL_OBJECTS.has(object.name)) return;
         if (declares(scope, object.name)) return;
         const name = propertyName(node);
-        if (FREE_NAMES.has(name) || name === ENGINE) hit(node.property, `${object.name}.${name}`);
+        if (FREE_NAMES.has(name) || name === ENGINE) {
+          hit(node.property, [object.name, ...path, name].join("."));
+        }
         return;
       }
       case "Identifier": {

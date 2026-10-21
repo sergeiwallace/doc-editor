@@ -101,6 +101,12 @@ describe("the core purity lint", () => {
       `${file}:11: require`,
       `${file}:12: window.process`,
       `${file}:12: window`,
+      `${file}:13: globalThis.globalThis.document`,
+      `${file}:14: self.self.document`,
+      `${file}:15: globalThis.window.document`,
+      `${file}:15: globalThis.window`,
+      `${file}:16: window.self.process`,
+      `${file}:16: window`,
     ]);
   });
 
