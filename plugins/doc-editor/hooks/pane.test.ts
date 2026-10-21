@@ -206,6 +206,28 @@ describe("window and budget (T-1.2)", () => {
     for (const code of codes) expect(String(code.props.source).length).toBeLessThanOrEqual(ELEMENT_LIMIT);
   });
 
+  test("should cut a piece that runs past the body to the rows left, so the hint row stays in view", async ($, on) => {
+    const short = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 16 } };
+    const { ui } = await openDoc($, on, files(), "doc.md#chapter-2-topic-2", short);
+    const keys = await pieceKeys(ui);
+    const last = keys.at(-1) ?? "";
+    const drawn = (await ui.find({ key: `md:${last}` }))?.text ?? (await ui.find({ key: last }))?.text ?? "";
+
+    expect(keys[0]).toBe("h2");
+    expect(keys).toContain("h2.1:1");
+    expect(drawn).toContain("First item 2");
+    expect(drawn).not.toContain("Done task 2");
+    expect(await ui.find({ key: keyButton("q") })).toBeDefined();
+  });
+
+  test("should draw a blank spacer of the body's height under the hint row, so the engine raises ui.scroll for the arrow keys", async ($, on) => {
+    const { ui } = await openDoc($, on, files(), "doc.md");
+    const tree = (await ui.drawn()) as { children?: { props?: { key?: string; height?: number } }[] };
+
+    expect(tree.children?.at(-1)?.props).toEqual({ key: "spacer", height: PANE_PROPS.scroll.bodyRows });
+    expect(tree.children?.at(-2)?.props?.key).toBe("hints");
+  });
+
   test("should scroll inside a piece taller than the body before moving to the next piece", async ($, on) => {
     const { ui } = await openDoc($, on, files(MEDIUM), "doc.md#long-blocks");
     for (let k = 0; k < 10 && (await pieceKeys(ui))[0] !== "h1:2~c1"; k++) await scrollPane($, 1);

@@ -140,18 +140,31 @@ function decodeText(base64: string): string | null {
 export const absoluteFrom = (cwd: string, path: string): string =>
   normalizePath(path.startsWith("/") ? path : `${cwd}/${path}`);
 
-/** Drops whole lines from the top of `text` until `rows` rows at `columns` are gone. */
-function dropRows(text: string, rows: number, columns: number): string {
-  if (rows <= 0) return text;
+/**
+ * The rows of `text` in view: whole lines from the top dropped until `skip` rows at `columns` are
+ * gone, then, when `keep` is given, whole lines kept while they fit in `keep` rows (one at least).
+ */
+function rowWindow(text: string, skip: number, keep: number | null, columns: number): string {
   const lines = text.split("\n");
   let dropped = 0;
   let k = 0;
-  while (k < lines.length - 1 && dropped < rows) {
+  while (skip > 0 && k < lines.length - 1 && dropped < skip) {
     dropped += rowsOf(lines[k] ?? "", columns);
     k++;
   }
-  return lines.slice(k).join("\n");
+  if (keep === null) return lines.slice(k).join("\n");
+  let used = 0;
+  let end = k;
+  while (end < lines.length && (end === k || used + rowsOf(lines[end] ?? "", columns) <= keep)) {
+    used += rowsOf(lines[end] ?? "", columns);
+    end++;
+  }
+  return lines.slice(k, end).join("\n");
 }
+
+/** The columns a piece's text wraps at inside its frame. */
+const textColumns = (piece: Piece, columns: number): number =>
+  piece.type === "code" ? columns - 2 : piece.type === "callout" ? columns - 4 : columns;
 
 const emptyView = (path: string): ViewState => ({
   path,
@@ -741,19 +754,35 @@ export class DocPane {
     const size = this.bodySize();
     const page = pageAt(pieces, this.view.offset, size);
     this.view.offset = page.offset;
+    // The core's page may end on a piece that runs past the body; that piece is cut to the rows
+    // left, so the hint row under the body stays on screen.
     const body: RenderElement[] = [];
-    page.pieces.forEach((piece, k) => {
-      body.push(this.drawPiece(ui, piece, k === 0 ? this.skip : 0, size.bodyColumns));
+    let used = 0;
+    for (const [k, piece] of page.pieces.entries()) {
+      const skip = k === 0 ? this.skip : 0;
+      const left = size.bodyRows - used;
+      let keep: number | null = null;
+      if (piece.rows - skip > left) {
+        const overhead = piece.rows - rowsOf(piece.text, textColumns(piece, size.bodyColumns));
+        keep = left - overhead;
+        if (k > 0 && keep < 2) break;
+      }
+      body.push(this.drawPiece(ui, piece, skip, keep === null ? null : Math.max(1, keep), size.bodyColumns));
+      used += piece.rows - skip;
       const isLastOfFocus = piece.blockId === this.view.focus && page.pieces[k + 1]?.blockId !== piece.blockId;
       if (isLastOfFocus) {
         const links = this.drawLinks(ui, piece.blockId);
         if (links !== null) body.push(links);
       }
-    });
+      if (keep !== null) break;
+    }
     const field = this.drawInput(ui);
     return this.frame(ui, header, [...(field === null ? [] : [field]), ui.Box({ key: "body", flexDirection: "column", children: body })], hints);
   }
 
+  // The engine raises ui.scroll for an arrow key only while the tree is taller than the body, so a
+  // blank spacer under the hint row keeps it taller. The pane never lets the engine's window move,
+  // so the spacer stays below the rows in view.
   private frame(ui: PaneUi, header: Header, middle: RenderElement[], hints: RenderElement): RenderElement {
     return ui.Box({
       flexDirection: "column",
@@ -762,6 +791,7 @@ export class DocPane {
         ui.Text({ dimColor: true, wrap: "truncate-end", children: header.status }),
         ...middle,
         hints,
+        ui.Box({ key: "spacer", height: this.size.bodyRows }),
       ],
     });
   }
@@ -774,7 +804,7 @@ export class DocPane {
         children: [
           ui.Input({
             key: GOTO_INPUT,
-            label: "go to: ",
+            label: "go to",
             placeholder: "path, :line or #heading",
             submitLabel: "go",
             autoFocus: true,
@@ -790,7 +820,7 @@ export class DocPane {
       children: [
         ui.Input({
           key: FIND_INPUT,
-          label: "find: ",
+          label: "find",
           value: this.view.find?.query ?? "",
           submitLabel: "next",
           autoFocus: true,
@@ -859,11 +889,12 @@ export class DocPane {
     });
   }
 
-  private drawPiece(ui: PaneUi, piece: Piece, skip: number, columns: number): RenderElement {
+  private drawPiece(ui: PaneUi, piece: Piece, skip: number, keep: number | null, columns: number): RenderElement {
     const block = this.blocks.find((entry) => entry.id === piece.blockId);
+    const text = rowWindow(piece.text, skip, keep, textColumns(piece, columns));
     let content: RenderElement;
     if (piece.type === "code") {
-      const parts: RenderElement[] = [ui.Code({ source: dropRows(piece.text, skip, columns - 2), language: piece.format })];
+      const parts: RenderElement[] = [ui.Code({ source: text, language: piece.format })];
       if (piece.marker !== null) parts.push(ui.Text({ dimColor: true, children: `… ${piece.marker}` }));
       content = ui.Box({ flexDirection: "column", children: parts });
     } else if (piece.type === "callout") {
@@ -871,12 +902,12 @@ export class DocPane {
         borderStyle: "round",
         flexDirection: "column",
         paddingX: 1,
-        children: [ui.Text({ bold: true, children: piece.label }), this.markdown(ui, piece, dropRows(piece.text, skip, columns - 4))],
+        children: [ui.Text({ bold: true, children: piece.label }), this.markdown(ui, piece, text)],
       });
-    } else if (block?.kind === "table") {
+    } else if (block?.kind === "table" && skip === 0 && keep === null) {
       content = this.drawTable(ui, piece, columns);
     } else {
-      content = this.markdown(ui, piece, dropRows(piece.text, skip, columns));
+      content = this.markdown(ui, piece, text);
     }
     const isFocused = piece.blockId === this.view.focus;
     return ui.Box({
