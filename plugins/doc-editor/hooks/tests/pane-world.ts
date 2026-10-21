@@ -329,6 +329,40 @@ const textOf = (node: Drawn): string => {
 const wrapped = (text: string, width: number): number =>
   text.split("\n").reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / Math.max(1, width))), 0);
 
+/** Rows a line takes wrapped at word boundaries, a word longer than the width broken. */
+function wordRows(line: string, width: number): number {
+  const w = Math.max(1, width);
+  let rows = 1;
+  let used = 0;
+  for (const word of line.split(" ")) {
+    const fits = used === 0 ? word.length <= w : used + 1 + word.length <= w;
+    if (fits) {
+      used += (used === 0 ? 0 : 1) + word.length;
+      continue;
+    }
+    if (used > 0) rows++;
+    used = word.length;
+    while (used > w) {
+      rows++;
+      used -= w;
+    }
+  }
+  return rows;
+}
+
+/**
+ * Rows one Markdown line takes as the terminal draws it: a quote's `▎ ` or a list item's bullet
+ * is drawn before every row the line wraps to, so its text wraps at the width less that mark; a
+ * heading's `#`s are not drawn.
+ */
+function markdownLineRows(line: string, width: number): number {
+  const quote = /^\s*(?:>\s?)+/.exec(line);
+  if (quote !== null) return wordRows(line.slice(quote[0].length), width - 2 * (quote[0].match(/>/g)?.length ?? 1));
+  const item = /^(\s*)(?:[-*+]|\d+[.)])\s+/.exec(line);
+  if (item !== null) return wordRows(line.slice(item[0].length), width - item[0].length);
+  return wordRows(line.replace(/^#{1,6}\s+/, ""), width);
+}
+
 const num = (value: unknown): number => (typeof value === "number" ? value : 0);
 
 /** The width a node takes on one row, for the fixed children of a row Box. */
@@ -345,7 +379,8 @@ export function drawnRows(node: Drawn, width: number): number {
       const text = String(props.text ?? "");
       const lines = text.split("\n");
       // A table draws inside a border: a row above and below.
-      return lines.every((line) => line.startsWith("|")) ? lines.length + 2 : wrapped(text, width);
+      if (lines.every((line) => line.startsWith("|"))) return lines.length + 2;
+      return lines.reduce((rows, line) => rows + markdownLineRows(line, width), 0);
     }
     case "Code":
       return wrapped(String(props.source ?? ""), width - 2);

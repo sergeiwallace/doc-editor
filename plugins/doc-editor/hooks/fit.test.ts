@@ -101,3 +101,44 @@ describe("summed arrow keys", () => {
     expect(stepped).not.toBe(start);
   });
 });
+
+// The live re-check's two pages that lost hint rows: the opening page, whose last piece is the long
+// quote cut to the rows left, and a page that ends on a table too wide for the pane.
+describe("the hint row on a page that ends on a cut piece", () => {
+  for (const [columns, rows] of [
+    [160, 50],
+    [100, 40],
+    [76, 46],
+  ] as const) {
+    test(`should draw the opening page of the 1,000-line fixture with every hint row inside a ${columns} by ${rows} pane`, async ($, on) => {
+      const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
+      const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md", props);
+      const misfits: unknown[] = [];
+
+      for (let step = 0; step < 8; step++) {
+        const drawn = await frameRows(ui, columns);
+        const hints = await ui.find({ key: "hints" });
+        if (drawn > rows || hints === undefined) misfits.push({ step, drawn, keys: await pieceKeys(ui) });
+        await scrollPane($, 1, rows);
+      }
+
+      expect(misfits).toEqual([]);
+    });
+  }
+
+  for (const rows of [18, 22, 26, 30, 34, 38]) {
+    test(`should draw a table too wide for a 76 by ${rows} pane as cards, never as a grid, when it is cut as the page's last piece`, async ($, on) => {
+      const props = { ...PANE_PROPS, bodyColumns: 76, scroll: { offset: 0, bodyRows: rows } };
+      const { ui } = await openDoc($, on, files(fixtureDoc(200)), "doc.md#code-1", props);
+      const grids: unknown[] = [];
+      for (let step = 0; step < 6; step++) {
+        const grid = (await ui.findAll({ type: "Markdown" })).find((node) => node.text.startsWith("| Element"));
+        const drawn = await frameRows(ui, 76);
+        if (grid !== undefined || drawn > rows) grids.push({ step, grid: grid?.key, drawn });
+        await scrollPane($, 1, rows);
+      }
+
+      expect(grids).toEqual([]);
+    });
+  }
+});

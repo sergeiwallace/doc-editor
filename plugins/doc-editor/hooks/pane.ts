@@ -91,6 +91,18 @@ const TABLE_BORDER_ROWS = 2;
 /** A table card's round border: a row above and below, and a column and its padding either side. */
 const CARD_BORDER_ROWS = 2;
 const CARD_FRAME_COLUMNS = 4;
+/**
+ * The columns a quote's or a list's mark takes on every row it wraps to: the engine draws `▎ ` or
+ * a bullet before each wrapped row, not only before the line's first.
+ */
+const MARK_COLUMNS = 2;
+const LIST_MARK_COLUMNS = 4;
+/** The blank row under every piece (its Box's marginBottom). */
+const PIECE_MARGIN_ROWS = 1;
+/** A callout's round border, a row above and below, and its label row. */
+const CALLOUT_FRAME_ROWS = 3;
+/** A row held under a piece cut to the rows left, for a cut that renders a row taller. */
+const CUT_SPARE_ROWS = 1;
 /** The focus marker's column beside every piece. */
 const MARGIN_COLUMNS = 2;
 const MAX_LINK_BUTTONS = 9;
@@ -196,16 +208,37 @@ export const absoluteFrom = (cwd: string, path: string): string =>
   normalizePath(path.startsWith("/") ? path : `${cwd}/${path}`);
 
 /**
- * The rows of `text` in view, counting wrapped rows as the core's `rowsOf` does (each line cut
- * every `columns` characters): `skip` rows dropped from the top, then `keep` rows kept when given
- * (one at least). A line cut by the window keeps only its rows in view.
+ * A line as the terminal wraps it at `width`: at the last space that fits, a word longer than the
+ * width cut where it overflows. The rows joined give the line back. Never fewer rows than a cut
+ * every `width` characters, so a count from it does not fall short of what the engine draws.
+ */
+function wrapLine(line: string, width: number): string[] {
+  const w = Math.max(1, width);
+  const rows: string[] = [];
+  let rest = line;
+  while (rest.length > w) {
+    const space = rest.lastIndexOf(" ", w);
+    const cut = space > 0 ? space + 1 : w;
+    rows.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  rows.push(rest);
+  return rows;
+}
+
+/** Rows of `text` wrapped as wrapLine wraps each of its lines. */
+const wrappedRows = (text: string, width: number): number =>
+  text.split("\n").reduce((sum, line) => sum + wrapLine(line, width).length, 0);
+
+/**
+ * The rows of `text` in view, wrapped as wrapLine wraps them: `skip` rows dropped from the top,
+ * then `keep` rows kept when given (one at least). A line cut by the window keeps only its rows in
+ * view.
  */
 function rowWindow(text: string, skip: number, keep: number | null, columns: number): string {
-  const width = Math.max(columns, 1);
   const rows: { line: number; text: string }[] = [];
   text.split("\n").forEach((line, k) => {
-    const count = Math.max(1, Math.ceil(line.length / width));
-    for (let r = 0; r < count; r++) rows.push({ line: k, text: line.slice(r * width, (r + 1) * width) });
+    for (const row of wrapLine(line, columns)) rows.push({ line: k, text: row });
   });
   const from = Math.min(Math.max(0, skip), rows.length - 1);
   const shown = rows.slice(from, keep === null ? undefined : from + Math.max(1, keep));
@@ -314,8 +347,10 @@ export class DocPane {
   private cache: { key: string; pieces: Piece[] } | undefined;
   /** Each file's text as the review last measured it, so a file the pane is not showing can be measured later. */
   private readonly known = new Map<string, Snapshot>();
-  /** A table piece's rows as the core counted them, for one the pane draws taller (sized). */
-  private readonly sourceRows = new Map<string, number>();
+  /** The rows each piece's frame adds to its text's rows: its margin, border and label (sized). */
+  private readonly frames = new Map<string, number>();
+  /** Each card's rows, border included, for a table the pane draws as cards (sized). */
+  private readonly cardRows = new Map<string, number[]>();
 
   bind(host: PaneHost): void {
     this.host = host;
@@ -494,32 +529,53 @@ export class DocPane {
     const key = `${this.doc?.mtimeMs}|${this.doc?.path}|${columns}|${this.view.drill}|${this.view.folded.join(",")}`;
     if (this.cache?.key === key) return this.cache.pieces;
     const byId = new Map(this.blocks.map((block) => [block.id, block]));
-    this.sourceRows.clear();
+    this.frames.clear();
+    this.cardRows.clear();
     const pieces = viewPieces(this.blocks, this.view, columns).map((piece) => this.sized(piece, byId.get(piece.blockId), columns));
     this.cache = { key, pieces };
     return pieces;
   }
 
+  /** The columns a piece's text wraps at as the engine draws it: its frame and its marks taken off. */
+  private wrapColumns(piece: Piece, block: Block | undefined, columns: number): number {
+    const inner = textColumns(piece, columns);
+    if (piece.type !== "markdown") return inner;
+    if (block?.kind === "quote") return inner - MARK_COLUMNS;
+    if (block?.kind === "list") return inner - LIST_MARK_COLUMNS;
+    return inner;
+  }
+
   /**
-   * A piece with the rows the pane draws it in: the core counts a table by its source lines, but a
-   * table that fits draws inside a border and one wider than the body draws as a bordered card per
-   * row (drawTable). Pages, scrolling and keep-in-view all count these rows, so a page never runs
-   * past the body and the hint row and the focused block stay in view.
+   * A piece with the rows the pane draws it in. The core counts rows by cutting each line every
+   * `columns` characters; the engine wraps at word boundaries and draws a quote's or list's mark
+   * on every wrapped row, so the text is counted as wrapLine wraps it at the columns left after the
+   * marks. A table that fits draws inside a border, and one wider than the body as a bordered card
+   * per row (drawTable). Pages, scrolling and keep-in-view all count these rows, so a page never
+   * runs past the body and the hint row and the focused block stay in view.
    */
   private sized(piece: Piece, block: Block | undefined, columns: number): Piece {
-    if (piece.type !== "markdown" || block?.kind !== "table" || piece.key !== block.id) return piece;
-    const table = parseTable(piece.text);
-    if (table === null) return piece;
-    let rows: number;
-    if (naturalWidth(table) <= columns) {
-      rows = rowsOf(piece.text, columns) + TABLE_BORDER_ROWS + 1;
-    } else {
-      const cards = tableCards(table);
-      if (cards.reduce((sum, card) => sum + card.length, 0) > ELEMENT_LIMIT) return piece;
-      rows = cards.reduce((sum, card) => sum + rowsOf(card, columns - CARD_FRAME_COLUMNS) + CARD_BORDER_ROWS, 0) + 1;
+    // What drawPiece draws around the text: the margin under every piece; a callout's border and
+    // label; a code slice's continuation marker.
+    const frame =
+      PIECE_MARGIN_ROWS +
+      (piece.type === "callout" ? CALLOUT_FRAME_ROWS : piece.type === "code" && piece.marker !== null ? 1 : 0);
+    if (piece.type === "markdown" && block?.kind === "table" && piece.key === block.id) {
+      const table = parseTable(piece.text);
+      if (table !== null && naturalWidth(table) > columns) {
+        const cards = tableCards(table);
+        if (cards.reduce((sum, card) => sum + card.length, 0) <= ELEMENT_LIMIT) {
+          const cardRows = cards.map((card) => wrappedRows(card, columns - CARD_FRAME_COLUMNS) + CARD_BORDER_ROWS);
+          this.cardRows.set(piece.key, cardRows);
+          this.frames.set(piece.key, 1);
+          return { ...piece, rows: cardRows.reduce((sum, rows) => sum + rows, 0) + 1 };
+        }
+      } else if (table !== null) {
+        this.frames.set(piece.key, TABLE_BORDER_ROWS + 1);
+        return { ...piece, rows: wrappedRows(piece.text, columns) + TABLE_BORDER_ROWS + 1 };
+      }
     }
-    this.sourceRows.set(piece.key, piece.rows);
-    return { ...piece, rows };
+    this.frames.set(piece.key, frame);
+    return { ...piece, rows: wrappedRows(piece.text, this.wrapColumns(piece, block, columns)) + frame };
   }
 
   /** The visible blocks that draw at least one piece, in order: what Up and Down step through. */
@@ -1397,10 +1453,12 @@ export class DocPane {
       const left = size.bodyRows - used;
       let keep: number | null = null;
       if (piece.rows - skip > left) {
-        // A cut table draws as its source lines, so its frame is counted from the source rows.
-        const overhead = (this.sourceRows.get(piece.key) ?? piece.rows) - rowsOf(piece.text, textColumns(piece, size.bodyColumns));
-        keep = left - overhead;
+        // Cut to the rows left, its frame and a spare row held back, so the hint row stays in view.
+        keep = left - (this.frames.get(piece.key) ?? 1) - CUT_SPARE_ROWS;
         if (k > 0 && keep < 2) break;
+        // A cut card table draws whole cards: below the first piece it waits for the next page
+        // when not even its first card fits.
+        if (k > 0 && (this.cardRows.get(piece.key)?.[0] ?? 0) > keep) break;
       }
       const isLastOfBlock = page.pieces[k + 1]?.blockId !== piece.blockId;
       const isLastOfFocus = piece.blockId === this.view.focus && isLastOfBlock;
@@ -1589,15 +1647,13 @@ export class DocPane {
    * from the parts.
    */
   private pieceCost(piece: Piece, skip: number, keep: number | null, columns: number, links: readonly string[]): number {
-    const text = rowWindow(piece.text, skip, keep, textColumns(piece, columns));
+    const block = this.blocks.find((entry) => entry.id === piece.blockId);
+    const text = rowWindow(piece.text, skip, keep, this.wrapColumns(piece, block, columns));
     let cost = JSON.stringify(text).length + PIECE_FRAME_COST;
     for (const href of this.pressable(piece.blockId, text).keys()) cost += JSON.stringify(href).length + 1;
-    const block = this.blocks.find((entry) => entry.id === piece.blockId);
-    if (block?.kind === "table" && skip === 0 && keep === null) {
+    if (this.cardRows.has(piece.key)) {
       const table = parseTable(piece.text);
-      if (table !== null && naturalWidth(table) > columns) {
-        for (const card of tableCards(table)) cost += JSON.stringify(card).length + PIECE_FRAME_COST;
-      }
+      for (const card of table === null ? [] : tableCards(table)) cost += JSON.stringify(card).length + PIECE_FRAME_COST;
     }
     for (const href of links) cost += 2 * JSON.stringify(href).length + PIECE_FRAME_COST;
     return cost;
@@ -1613,9 +1669,11 @@ export class DocPane {
     under: readonly RenderElement[],
   ): RenderElement {
     const block = this.blocks.find((entry) => entry.id === piece.blockId);
-    const text = rowWindow(piece.text, skip, keep, textColumns(piece, columns));
+    const text = rowWindow(piece.text, skip, keep, this.wrapColumns(piece, block, columns));
     let content: RenderElement;
-    if (piece.type === "code") {
+    if (this.cardRows.has(piece.key)) {
+      content = this.drawCards(ui, piece, skip, keep);
+    } else if (piece.type === "code") {
       const parts: RenderElement[] = [ui.Code({ source: text, language: piece.format })];
       if (piece.marker !== null) parts.push(ui.Text({ dimColor: true, children: `… ${piece.marker}` }));
       content = ui.Box({ flexDirection: "column", children: parts });
@@ -1627,7 +1685,7 @@ export class DocPane {
         children: [ui.Text({ bold: true, children: piece.label }), this.markdown(ui, piece, text)],
       });
     } else if (block?.kind === "table" && skip === 0 && keep === null) {
-      content = this.drawTable(ui, piece, columns);
+      content = this.drawTable(ui, piece);
     } else {
       content = this.markdown(ui, piece, text);
     }
@@ -1775,23 +1833,41 @@ export class DocPane {
     });
   }
 
-  // A table fitted to the body, or one card per row when it is wider; a card set past the element
-  // limit falls back to the table's source as Code, which keeps the tree in budget.
-  private drawTable(ui: PaneUi, piece: Piece, columns: number): RenderElement {
+  // A table fitted to the body as the engine's Markdown table; one wider than the body whose cards
+  // pass the element limit falls back to its source as Code, which keeps the tree in budget. A
+  // wider one within the limit draws as cards (drawCards).
+  private drawTable(ui: PaneUi, piece: Piece): RenderElement {
     const table = parseTable(piece.text);
-    if (table === null || naturalWidth(table) <= columns) return this.markdown(ui, piece, piece.text);
-    const cards = tableCards(table);
-    if (cards.reduce((sum, card) => sum + card.length, 0) > ELEMENT_LIMIT) {
-      return ui.Code({ source: piece.text, language: "markdown" });
+    if (table === null || naturalWidth(table) <= this.contentColumns()) return this.markdown(ui, piece, piece.text);
+    return ui.Code({ source: piece.text, language: "markdown" });
+  }
+
+  /**
+   * A table wider than the body as one bordered card per row: whole cards only, those after the
+   * `skip` rows scrolled past and, for a piece cut to `keep` rows, as many as fit (one at least),
+   * so a cut table never falls back to a grid wider than the pane.
+   */
+  private drawCards(ui: PaneUi, piece: Piece, skip: number, keep: number | null): RenderElement {
+    const table = parseTable(piece.text);
+    const cards = table === null ? [] : tableCards(table);
+    const rows = this.cardRows.get(piece.key) ?? [];
+    let first = 0;
+    for (let top = 0; first < cards.length && top < skip; first++) top += rows[first] ?? 1;
+    const shown: number[] = [];
+    let used = 0;
+    for (let k = first; k < cards.length; k++) {
+      used += rows[k] ?? 1;
+      if (keep !== null && shown.length > 0 && used > keep) break;
+      shown.push(k);
     }
     return ui.Box({
       flexDirection: "column",
-      children: cards.map((card, k) =>
+      children: shown.map((k) =>
         ui.Box({
           key: `${piece.key}~r${k + 1}`,
           borderStyle: "round",
           paddingX: 1,
-          children: [ui.Markdown({ text: card })],
+          children: [ui.Markdown({ text: cards[k] ?? "" })],
         }),
       ),
     });
