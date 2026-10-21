@@ -6,8 +6,12 @@ adding the marketplace. Then run `/doc`.
 
 ## What it does today
 
-This is the scaffold release. `/doc` is registered at session start and answers with one line
-saying the reader is not built yet. The Markdown reader replaces that line in the next release.
+This is the first reader release, for Markdown. `/doc <path>` opens the file in a pane beside the
+transcript, with an outline, folding, one section at a time, find, links followed in place and
+Back. `c` asks Claude to change the focused block, and the pane then marks what Claude changed
+and offers keep, discard, refine and the turn's diff. `e` edits one line in the pane, and Enter on
+a task checkbox ticks it. The keys are listed in the plugin's
+[README](../../plugins/doc-editor/README.md). HTML, PDF and other formats are not built yet.
 
 ## Requirements
 
@@ -36,6 +40,8 @@ mod types into the plugin, and a tsconfig that extends them, so the hooks can be
 Both are gitignored, and `git status` stays clean.
 
 To load it with your own settings left out, add `--setting-sources project`; the mod still loads.
+Such a session also leaves out any login or model route your user settings carry, and on the host
+the build was measured on it answered "Not logged in", so `c` could not reach Claude there.
 
 ## Install it from the marketplace
 
