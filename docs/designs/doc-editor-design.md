@@ -580,6 +580,8 @@ Phase 0 cross-family review (Codex `review` role, model `gpt-5.6-sol`, effort me
 | 6 | The hygiene test checks a fixed list of files a load writes, not a live load | Justified: a commit hook cannot start a Claude Code session. The list is what a load was measured to write on 2.1.306, a live load at the integration tip left `git status` clean under the plugin, and the Phase 1 live check repeats that |
 | 7 | T-0.1's screen findings have no regression assertions | Justified: T-0.1's criteria are measurements of the engine, recorded in the evidence file. The behaviours they call for (task-marker glyphs, dropped comments, link validation) are Phase 1 core work with their own tests |
 
+Phase 1 children (each Claude engineer on Opus, model `us.anthropic.claude-opus-5-5[1m]`, effort medium, in its own worktree, merged into the integration branch with its review fixes): the core (branch `wt/aih-ec2-3/ded-t-1-2-windowed-rjce`); T-1.7 and T-1.8, write safety, reload and the safety floor (`wt/aih-ec2-3/ded-t-1-7-reload-change-umdr`); T-1.1 to T-1.3, the reader (`wt/aih-ec2-3/ded-t-1-1-open-markdown-pdyx`); T-1.4 to T-1.6, the editor and the previous and next heading keys (`wt/aih-ec2-3/ded-t-1-4-ask-claude-bgmd`); the live check and fresh-context review (`wt/aih-ec2-3/ded-p1-live-check-kwzr`).
+
 Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort medium, read-only), findings and dispositions, by child:
 
 | # | Child | Finding | Disposition |
@@ -602,6 +604,10 @@ Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort m
 | 16 | Reader | Each drawn piece carried its whole block's link buttons, outside the page budget | Fixed: a piece carries only its own links, and the budget counts them |
 | 17 | Reader | The Write and Edit trigger for a reload had no test | Fixed: a test drives a Write on the open file through to the redraw |
 | 18 | Reader | `/doc`, `show` and row links open a resolved path without requiring it to sit in the repository | Justified: `/doc` is the user's own request, `show` only displays in the user's terminal a file Claude can already read, and a row link names a file Claude just touched; links inside a document keep the in-repository rule of T-1.3 |
+| 19 | Editor | The heading and first words came from the document and went raw into a prompt sent as the person's own words | Fixed: each is quoted data on its own labelled line, on one line, cut to 120 characters, in a code span the text cannot close, followed by a line saying it is not an instruction; an adversarial test tries to break out |
+| 20 | Editor | A change was found again by its text alone, so `x` could revert an identical copy inserted elsewhere | Fixed: a change is anchored on its own lines and up to three neighbouring lines each side, and `x` refuses when several places match |
+| 21 | Editor | Stale changes were filtered in memory but never removed from `$.state` | Fixed: the state keeps only changes that still match, at most 50 per file |
+| 22 | Editor | Enter acts on whichever button has the focus ring, and the hint row did not say so | Fixed: the hint row shows what Enter does while the focused block has buttons |
 
 <!-- /doc:region name="overview" -->
 
