@@ -27,7 +27,7 @@ What was read this run:
 - One measurement: ten Markdown samples rendered through GitHub's Markdown API (`POST /markdown`, `gfm` mode), which stores nothing. Inputs and outputs are quoted in Finding 2.
 - npm download counts for two MRSF packages from `api.npmjs.org`.
 
-`bms-web-search` was not in this run's tool set and native WebSearch does not work on this host, so no general web or social search ran. GitHub repository search stood in for discovery (see Gaps).
+The host's web-search MCP tool was not in this run's tool set and native WebSearch does not work on this host, so no general web or social search ran. GitHub repository search stood in for discovery (see Gaps).
 
 Each claim carries a tier tag. The VERIFIABLE tier has a footnote to a source fetched this run. The INFERENCE tier gives its reasoning in the text. The NO SOURCE tier marks what was searched for and not found. Quotes are verbatim; quotes from HTML pages were checked against the page text with tags stripped.
 

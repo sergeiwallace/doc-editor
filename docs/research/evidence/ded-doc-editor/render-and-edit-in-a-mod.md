@@ -58,7 +58,7 @@ What was fetched and read this run:
   read instead.
 
 Counts: 14 Anthropic pages, 1 types file, 1 built-in mod, 256 issue comments, 16 third-party mods,
-3 catalogues, 35 library repositories. `bms-web-search` was not in this run's tool set, and native
+3 catalogues, 35 library repositories. The host's web-search MCP tool was not in this run's tool set, and native
 WebSearch does not work on this host, so no general web search ran (see Gaps).
 
 Evidence words follow the browser survey's convention. Each claim also carries a tier tag:
@@ -803,7 +803,7 @@ imported function. A design built against 2.1.296 has to read the types the host
 
 ### Coverage blindspots
 
-- No general web or social search ran. `bms-web-search` was absent from this run's tools and native
+- No general web or social search ran. The host's web-search MCP tool was absent from this run's tools and native
   WebSearch does not work on this host. A doc mod announced only on X, Reddit or Hacker News, with
   no GitHub topic or catalogue entry, is missing here. [NO SOURCE]
 - The catalogue grep matched descriptions cut at about 110 characters, so a doc mod with an
