@@ -590,6 +590,10 @@ Phase 1 cross-family reviews (Codex `review` role, model `gpt-5.6-sol`, effort m
 | 12 | Core | Block ids use section ordinals, so an earlier insertion renumbers later blocks | Fixed for the reader's state: `mapBlockIds` carries focus and folds across a reload |
 | 13 | Core (round 2) | A validated href was written back into Markdown unescaped, so a crafted href could inject a second, `javascript:` link | Fixed: every href and label the core writes is percent-encoded or escaped and checked again |
 | 14 | Core (round 2) | `mapBlockIds` could map a block to an identical copy inserted elsewhere | Fixed: the long-document fallback anchors on unique texts, with tests for a copy before and after |
+| 15 | Reader | A long single line that wraps over several rows could not scroll inside itself | Fixed: the pane scrolls by wrapped rows |
+| 16 | Reader | Each drawn piece carried its whole block's link buttons, outside the page budget | Fixed: a piece carries only its own links, and the budget counts them |
+| 17 | Reader | The Write and Edit trigger for a reload had no test | Fixed: a test drives a Write on the open file through to the redraw |
+| 18 | Reader | `/doc`, `show` and row links open a resolved path without requiring it to sit in the repository | Justified: `/doc` is the user's own request, `show` only displays in the user's terminal a file Claude can already read, and a row link names a file Claude just touched; links inside a document keep the in-repository rule of T-1.3 |
 
 <!-- /doc:region name="overview" -->
 
