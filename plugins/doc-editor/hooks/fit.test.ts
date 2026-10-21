@@ -217,3 +217,32 @@ describe("a cut table card scrolled to its end", () => {
     });
   }
 });
+
+// The live walk at 100 by 40 through Table 14 drew the same frame for three Downs in a row: every
+// Down must change what is on screen while content remains below.
+describe("every Down moves the screen", () => {
+  for (const [columns, rows] of [
+    [100, 40],
+    [98, 11],
+    [98, 12],
+    [98, 14],
+  ] as const) {
+    test(`should change the drawn tree on every Down through a card-drawn table in a ${columns} by ${rows} pane`, async ($, on) => {
+      const props = { ...PANE_PROPS, bodyColumns: columns, scroll: { offset: 0, bodyRows: rows } };
+      const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md#table-14", props);
+      const stalls: unknown[] = [];
+      let last = JSON.stringify(await ui.drawn());
+
+      for (let frame = 1; frame <= 30; frame++) {
+        await scrollPane($, 1, rows);
+        const now = JSON.stringify(await ui.drawn());
+        if (now === last) stalls.push({ frame, keys: await pieceKeys(ui), focus: await focusedKey(ui) });
+        last = now;
+        if ((await header(ui)).title.endsWith("› Closing")) break;
+      }
+
+      expect(stalls).toEqual([]);
+      expect((await header(ui)).title.endsWith("› Closing")).toBe(true);
+    });
+  }
+});
