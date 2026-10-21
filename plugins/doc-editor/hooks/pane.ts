@@ -7,6 +7,7 @@
 import type { Elements, RenderElement } from "claude-code";
 
 import { toDocument } from "../core/blocks.ts";
+import { linkDestination } from "../core/html-subset.ts";
 import { mapBlockIds } from "../core/changes.ts";
 import { currentHit, startFind, stepFind } from "../core/find.ts";
 import { checkTarget, classifyHref, normalizePath, parseLocation, resolveLink, type TargetFacts } from "../core/links.ts";
@@ -889,14 +890,20 @@ export class DocPane {
     });
   }
 
+  // The core writes each href into the drawn text through linkDestination, and a press names the
+  // href as drawn, so the pressable list holds the drawn form and a press maps back to the source's.
   private markdown(ui: PaneUi, piece: Piece, text: string): RenderElement {
-    const hrefs = this.linkHrefs(piece.blockId).slice(0, MAX_PRESSABLE);
-    if (hrefs.length === 0) return ui.Markdown({ key: `md:${piece.key}`, text });
+    const drawn = new Map<string, string>();
+    for (const href of this.linkHrefs(piece.blockId)) {
+      const destination = linkDestination(href);
+      if (!drawn.has(destination) && drawn.size < MAX_PRESSABLE) drawn.set(destination, href);
+    }
+    if (drawn.size === 0) return ui.Markdown({ key: `md:${piece.key}`, text });
     return ui.Markdown({
       key: `md:${piece.key}`,
       text,
-      pressableLinks: hrefs,
-      onLinkPress: (link) => void this.followLink(link.href),
+      pressableLinks: [...drawn.keys()],
+      onLinkPress: (link) => void this.followLink(drawn.get(link.href) ?? link.href),
     });
   }
 

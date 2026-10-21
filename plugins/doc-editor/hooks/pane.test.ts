@@ -374,6 +374,17 @@ describe("navigate (T-1.3)", () => {
     });
   }
 
+  test("should open a link whose path the drawn text percent-encodes when its drawn form is pressed", async ($, on) => {
+    const text = "# Start\n\nSee [the spaced doc](<my notes.md>).\n";
+    const { ui } = await openDoc($, on, { files: { [DOC]: text, [`${CWD}/my notes.md`]: "# Spaced\n" } }, "doc.md");
+    const link = await ui.find({ key: "md:h1:1" });
+    expect(link?.props.pressableLinks).toEqual(["my%20notes.md"]);
+
+    await ui.press({ key: "md:h1:1", link: { href: "my%20notes.md" } });
+
+    expect((await header(ui)).title).toBe("my notes.md › Spaced");
+  });
+
   test("should refuse a link whose symlink leads outside the repository", async ($, on) => {
     const text = "# Start\n\nSee [the escape](escape.md).\n";
     const { w, ui } = await openDoc(
