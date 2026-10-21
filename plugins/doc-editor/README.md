@@ -40,20 +40,33 @@ list in the same commit.
 ```json
 {
   "./register.ts": {
-    "hooks": ["session.start", "command.run{command=doc}"],
-    "calls": ["$.command.register"],
-    "gating hook with .catch": ["command.run{command=doc}"]
+    "hooks": ["session.start", "command.run{command=doc}", "tool.call{tool=Write|Edit}"],
+    "calls": ["$.clock.every", "$.command.register", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.ui.ask", "$.ui.status"],
+    "gating hook with .catch": ["command.run{command=doc}", "tool.call{tool=Write|Edit}"]
   }
 }
 ```
 <!-- validate-declared:end -->
 
 The plugin registers no `tool.check` hook, answers no `tool.call`, calls no model and makes no
-network request.
+network request. Its one `tool.call` hook observes `Write` and `Edit`: it passes each call on and
+returns the tool's own result, then re-reads the open file if it changed.
+
+## Saving
+
+Every save goes through `bin/save.mjs`, a dependency-free helper the mod runs with `node`. It
+writes a temporary file beside the target and renames it over the target only if the target's
+`mtimeMs` and size still match the ones the mod read. When the file changed since it was read,
+the mod first asks whether to reload, overwrite or cancel. Without `node` on `PATH` the mod
+writes the file directly with `$.fs.write`, which is not atomic, and says so once per session in
+its status line.
 
 ## Layout
 
 - `hooks/register.ts`: the hooks module, registered through `hooks/hooks.json`.
+- `hooks/save.ts`: the safe-write path, and `hooks/watch.ts`: the reload watcher. Both take
+  plain closures from `register.ts`, never `$`.
+- `bin/save.mjs`: the write-then-rename save helper.
 - `core/`: the shared core, plain TypeScript with no DOM, no Node, no timers and no `$`. It
   imports only relative paths. `core/types.ts` holds the document model.
 - `hooks/*.test.ts`: tests that `claude plugin test` runs in the mod environment.

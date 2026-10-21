@@ -14,9 +14,13 @@ saying the reader is not built yet. The Markdown reader replaces that line in th
 - Claude Code 2.1.299 or later. That is the first release that lets a hooks module's helpers live
   in other files, which the reader's layout needs. The gate was measured on 2.1.306. Check yours
   with `claude --version`.
-- `node` on your `PATH` from the reader release on. The mod saves a file through a small
-  write-then-rename helper it runs with `node`; without `node` it falls back to a direct write and
-  says so.
+- `node` on your `PATH` for saves, from the reader release on. The mod saves a file through
+  `plugins/doc-editor/bin/save.mjs`, a write-then-rename helper with no dependencies that it runs
+  with `node`. The helper renames its temporary file over yours only if your file's modification
+  time and size still match what the mod read, so an edit made elsewhere at the same moment is
+  never overwritten; the save fails instead and the status line shows why. The mod checks for
+  `node` once per session by running `node --version`. Without it, saves still work, but through a
+  direct write that is not atomic, and the status line says so once per session.
 - For the test gate: Node.js 24 or later and npm.
 
 ## Load it from a clone
