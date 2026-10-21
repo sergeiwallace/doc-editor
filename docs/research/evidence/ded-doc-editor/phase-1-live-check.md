@@ -806,3 +806,63 @@ Twice the keyboard was at the prompt without an Escape from this check: after th
 ### Findings from the second re-check
 
 6. `hooks/pane.ts:1860` keeps the first card of a cut table even when it is taller than the rows the cut leaves (`shown.length > 0 && used > keep`, one card at least), and `hooks/pane.ts:1455-1466` lets the page's first piece through with any `keep`. When the rows left are fewer than one card's 10 rows, the drawn frame is taller than the pane and the header, the status row and the bottom hint rows leave the visible rows. Seen at 100 by 40, where the pane is a box with 11 rows inside, with a card in focus. The view stayed moved after the focus left the table, until the pane was closed and reopened; that the engine's window moved to keep the focus in view is inferred from the screens, not logged. At 160 by 50 a card fits, so this was not seen there. A pane shorter than one card cannot show a whole card and its chrome together, so the fix needs a choice between cutting the card's rows, falling back to a grid, or another drawing.
+
+### After the tall-card fix
+
+Finding 6 is fixed, with one frame left that drops a hint row (Finding 7). This was run at 2026-10-21T17:43Z to 17:48Z with the plugin loaded from `37ee373` (`merge(T-1.2): cut a table card that does not fit the rows left`), which carries `bd54343`. The launch and the Method were the same as above, in a fresh scratch copy, with no prompt sent. The host's startup turn was interrupted with Escape, and the one line submitted was `/doc-editor thousand-line-doc.md`.
+
+At 100 by 40, Enter on `Table 14` in the outline and then one Down put the first card in focus, cut to the rows left, with the header, the focus mark and all three hint rows inside the box:
+
+```text
+╭────────────────────────────────────────────────────────────────────────────────────────────────✕─╮
+│ thousand-line-doc.md › Chapter 14: topic 14 › Lists 14 › Code 14 › Quotes 14 › Table 14          │
+│ READ · 24 min read                                                                               │
+│ › ╭────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│   │ Element: Markdown 14                                                                       │ │
+│   │ … continues below                                                                          │ │
+│   ╰────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│                                                                                                  │
+│ o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back  g: go to  t: top          │
+│ q: close  j: next heading  h: previous heading  c: ask Claude  e: edit  n: next change           │
+│ p: previous change  v: view diff  k: keep  x: discard  r: refine                                 │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+Each further Down showed the card's next row with the marker under it: `Cap: 9,000`, `Source: types file`, `Owner: core`, `Status: ok` and `Notes: Parser window render budget block heading.`, then `Updated: 2026-10-21` with `Extra column: wide`, which closed the card with no marker, then `Extra column: wide` alone. The second card, `Element: Code 14`, followed the same way. The Down after its last rows put `› Media 14` in focus, with the header path ending `› Table 14 › Media 14`. Three times a Down left the screen as it was: on `Element: Markdown 14`, on the first card's `Extra column: wide` and on `Element: Code 14`, each drawn twice in a row. Every frame kept the status row `READ · 24 min read`. `t` drew the header and `› ---` at the box's top, so the view did not stay moved as it did before the fix.
+
+One frame lost the last hint row. When the second card had `Status: ok` and three more rows left, all four were drawn whole, and the box held only two of the three hint rows:
+
+```text
+│ › ╭────────────────────────────────────────────────────────────────────────────────────────────╮ │
+│   │ Status: ok                                                                                 │ │
+│   │ Notes: Section parser window render budget block.                                          │ │
+│   │ Updated: 2026-10-21                                                                        │ │
+│   │ Extra column: wide                                                                         │ │
+│   ╰────────────────────────────────────────────────────────────────────────────────────────────╯ │
+│                                                                                                  │
+│ o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back  g: go to  t: top          │
+│ q: close  j: next heading  h: previous heading  c: ask Claude  e: edit  n: next change           │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+A second walk from `Table 14` with 16 Downs drew the same frame. The next Down drew `› Media 14` with all three hint rows.
+
+At 160 by 50, after `tmux resize-window`, the keyboard was again at the prompt (`❯ h`). It was erased and given back with `C-x`, a pause and `Tab`. Enter on `Code 14` in the outline, then one Down, drew a page that ends on the second card cut with the marker and keeps the four hint rows at rows 39 to 42:
+
+```text
+  ╭───────────────────────────────────────────────────────────────────╮
+  │ Element: Code 14                                                  │
+  │ Cap: 9,000                                                        │
+  │ … continues below                                                 │
+  ╰───────────────────────────────────────────────────────────────────╯
+
+o: outline  z: fold  a: fold all  d: section  u: up  f: find  b: back
+g: go to  t: top  q: close  j: next heading  h: previous heading
+c: ask Claude  e: edit  n: next change  p: previous change
+v: view diff  k: keep  x: discard  r: refine
+```
+
+Four more Downs reached `› Table 14`, a fifth focused the table with both cards drawn whole (`Extra column: wide` at rows 26 and 36), and a sixth focused `› Media 14`. Each of the eight frames held the status row and the `v: view diff` hint row. `q` closed the pane. Both fixture copies were unchanged, and `tmux has-session` answered `can't find session`.
+
+7. In a box 11 rows tall, a card scrolled partly past whose remaining rows fit `keep` is drawn whole (`hooks/pane.ts:1872`). The frame then runs one row past the box and the last hint row is lost. The cause was not isolated. The blank margin row under the table piece may not be counted against `keep`. Seen on one frame of 17, twice.
