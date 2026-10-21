@@ -20,6 +20,9 @@ coverage/
 # tsconfig.json at the plugin root that extends them.
 **/.claude-plugin/types/
 plugins/*/tsconfig.json
+# The same file a load writes into the Phase 0 spike's gallery mods.
+docs/research/evidence/ded-doc-editor/phase-0-gallery/tsconfig.json
+docs/research/evidence/ded-doc-editor/phase-0-gallery/symlink-probe/tsconfig.json
 
 # Local environment (never commit secrets)
 .env
