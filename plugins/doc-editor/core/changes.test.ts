@@ -29,8 +29,8 @@ describe("marking changed blocks", () => {
     const changes = recordChanges("turn-1", doc(BEFORE), after);
 
     expect(changes).toEqual([
-      { turn: "turn-1", blockIds: ["h1:1"], before: "One.", after: "One, edited.", start: 3, end: 3 },
-      { turn: "turn-1", blockIds: ["h1:3"], before: "Three.", after: "Three, edited\nover two lines.", start: 7, end: 8 },
+      { turn: "turn-1", blockIds: ["h1:1"], before: "One.\n", after: "One, edited.\n", start: 3, end: 3 },
+      { turn: "turn-1", blockIds: ["h1:3"], before: "Three.\n", after: "Three, edited\nover two lines.\n", start: 7, end: 8 },
     ]);
     expect(markedBlockIds(changes)).toEqual(["h1:1", "h1:3"]);
   });
@@ -39,8 +39,33 @@ describe("marking changed blocks", () => {
     const inserted = recordChanges("t", doc(BEFORE), doc("# T\n\nOne.\n\nNew.\n\nTwo.\n\nThree.\n"));
     const removed = recordChanges("t", doc(BEFORE), doc("# T\n\nOne.\n\nThree.\n"));
 
-    expect(inserted).toEqual([{ turn: "t", blockIds: ["h1:2"], before: "", after: "New.\n", start: 5, end: 6 }]);
-    expect(removed).toEqual([{ turn: "t", blockIds: [], before: "Two.\n", after: "", start: 5, end: 4 }]);
+    expect(inserted).toEqual([{ turn: "t", blockIds: ["h1:2"], before: "", after: "New.\n\n", start: 5, end: 6 }]);
+    expect(removed).toMatchObject([{ turn: "t", before: "Two.\n\n", after: "", start: 5, end: 4 }]);
+  });
+
+  test("should record a change only to the blank lines between blocks and mark the block after it", () => {
+    const after = "# T\n\nOne.\n\n\nTwo.\n\nThree.\n";
+    const changes = recordChanges("t", doc(BEFORE), doc(after));
+
+    expect(changes).toEqual([{ turn: "t", blockIds: ["h1:2"], before: "", after: "\n", start: 5, end: 5 }]);
+    expect(turnDiff("a.md", changes).split("\n").slice(2)).toEqual(["@@ -4,0 +5,1 @@", "+"]);
+    const [change] = changes;
+    expect(change === undefined ? null : discardChange(change, after)).toEqual({ ok: true, source: BEFORE });
+  });
+
+  test("should record a change only to the final newline, diff it and discard it", () => {
+    const after = "# T\n\nOne.\n\nTwo.\n\nThree.";
+    const changes = recordChanges("t", doc(BEFORE), doc(after));
+
+    expect(changes).toEqual([{ turn: "t", blockIds: ["h1:3"], before: "Three.\n", after: "Three.", start: 7, end: 7 }]);
+    expect(turnDiff("a.md", changes).split("\n").slice(2)).toEqual([
+      "@@ -7,1 +7,1 @@",
+      "-Three.",
+      "+Three.",
+      "\\ No newline at end of file",
+    ]);
+    const [change] = changes;
+    expect(change === undefined ? null : discardChange(change, after)).toEqual({ ok: true, source: BEFORE });
   });
 
   test("should mark nothing when the file is unchanged", () => {
