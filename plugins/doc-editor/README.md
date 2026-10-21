@@ -43,19 +43,25 @@ keeps the focused block, the folds and the open section. The design is in
 ## Editing
 
 `c` asks Claude to change the focused block. The pane sends `Edit lines <start>-<end> of <path>:
-<instruction>`, with the section heading and the block's first words, as your own prompt. A status
-line under the block says Claude is editing it, or that the request is queued while a turn runs.
+<instruction>` as your own prompt. The section heading and the block's first words follow on their
+own lines, each quoted as text from the file: on one line, at most 120 characters, inside a code
+span nothing in it can close, and marked as not an instruction, so a document cannot write words
+that read as yours. A status line under the block says Claude is editing it, or that the request is queued while a turn runs.
 When the file changes during that turn, every block it changed gets a marker in the margin, and the
 focused one shows keep, discard, refine and view-diff actions. `v` shows the turn's unified diff,
 one turn at a time. `x` writes the block's text from before the turn back as a new edit, and
-refuses when the block changed again since. `k` keeps the change and clears its marker. `r` opens
-the request again with its instruction filled in. The markers last for the session, and a reload
-of the mod keeps them.
+refuses when the block changed again since. A change is found again after a reload by its lines
+and their neighbouring lines, never by equal text alone, and when a copy elsewhere matches as well
+`x` refuses and says so. `k` keeps the change and clears its marker. `r` opens the request again
+with its instruction filled in. The markers last for the session, and a reload of the mod keeps
+them: the session state holds, per file, the changes whose lines still read as their turn left
+them, at most 50, the newest kept. A kept, discarded or since-edited change leaves it.
 
 `e` opens a one-line field on a heading, a list item or a table row; Enter saves it. A text with a
 line break is refused, since the field edits one line. A list's task checkboxes are buttons under
 the focused block, beside its link buttons: Enter on a checkbox ticks or unticks it and saves, and
-Enter on a link follows it. Every save goes through the safe-write path below.
+Enter on a link follows it. While the focused block has such buttons the hint row says
+"Enter: open or tick the focused button". Every save goes through the safe-write path below.
 
 ## Load it
 

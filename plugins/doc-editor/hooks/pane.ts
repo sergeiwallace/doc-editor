@@ -46,7 +46,7 @@ import {
 } from "../core/window.ts";
 import { diffHeader, documentHeader, type Header, outlineHeader, readMinutes, shownPath } from "./header.ts";
 import { bindingsFor, hintRow, hintRows, type KeyBinding, type Screen } from "./hints.ts";
-import { type Ask, Review, type Snapshot } from "./review.ts";
+import { type Ask, blocksAt, Review, type Snapshot } from "./review.ts";
 import type { FileStamp, Save } from "./save.ts";
 import { naturalWidth, parseTable, tableCards } from "./tables.ts";
 import type { Reload, Watcher } from "./watch.ts";
@@ -71,6 +71,10 @@ export const CHANGE_ACTIONS = { keep: "change:keep", discard: "change:discard", 
 export const taskButton = (line: number): string => `task:${line}`;
 export const lineButton = (line: number): string => `line:${line}`;
 const MAX_LINE_BUTTONS = 12;
+/** The most changes the session's state keeps for one file; the newest are kept. */
+export const MAX_KEPT_CHANGES = 50;
+/** The hint the hint row adds while the focused block carries link or checkbox Buttons. */
+export const ENTER_HINT = "Enter: open or tick the focused button";
 
 type Field = typeof FIND_INPUT | typeof GOTO_INPUT | typeof ASK_INPUT | typeof EDIT_INPUT | typeof LINE_INPUT;
 
@@ -392,7 +396,8 @@ export class DocPane {
   }
 
   // The changes the session's state kept for this file, after a reload of the mod: those whose
-  // lines still hold the text their turn left, marked on the blocks at those lines.
+  // lines still hold the text their turn left, marked on the blocks at those lines. The state is
+  // written back without the rest, so it never holds a change that can no longer be reviewed.
   private async restoreChanges(path: string): Promise<void> {
     const host = this.host;
     if (host === undefined || this.review.of(path).length > 0) return;
@@ -401,21 +406,23 @@ export class DocPane {
     if (doc === undefined || doc.path !== path || kept.length === 0) return;
     const live = kept
       .filter((change) => discardChange(change, doc.source).ok)
-      .map((change) => ({ ...change, blockIds: this.blocksAt(change.start, change.end) }));
+      .slice(-MAX_KEPT_CHANGES)
+      .map((change) => ({ ...change, blockIds: blocksAt(this.blocks, change.start, change.end) }));
     this.review.restore(path, live);
+    if (live.length !== kept.length) this.persist(path);
     host.invalidate();
   }
 
-  private blocksAt(start: number, end: number): string[] {
-    const last = Math.max(start, end);
-    const ids = this.blocks.filter((block) => block.start <= last && block.end >= start).map((block) => block.id);
-    if (ids.length > 0) return ids;
-    const near = locate(this.blocks, { line: start });
-    return near === null ? [] : [near];
-  }
-
+  /**
+   * Writes the file's changes to the session's state: only those whose lines still hold what their
+   * turn left (a kept, discarded or since-edited change leaves it), at most MAX_KEPT_CHANGES, the
+   * newest kept; none is an empty list.
+   */
   private persist(path: string): void {
-    void this.host?.storeChanges(path, this.review.of(path)).catch(() => undefined);
+    const doc = this.doc;
+    const changes = this.review.of(path);
+    const live = doc === undefined || doc.path !== path ? changes : changes.filter((change) => discardChange(change, doc.source).ok);
+    void this.host?.storeChanges(path, live.slice(-MAX_KEPT_CHANGES)).catch(() => undefined);
   }
 
   private snapshot = (path: string): Snapshot | null => {
@@ -479,10 +486,17 @@ export class DocPane {
     return [...new Set(hrefs)];
   }
 
+  /** ENTER_HINT while the document shows and the focused block carries link or checkbox Buttons. */
+  private enterNote(): string | undefined {
+    const focus = this.view.focus;
+    if (this.screen !== "document" || focus === null) return undefined;
+    return this.linkHrefs(focus).length > 0 || this.tasksOf(focus).length > 0 ? ENTER_HINT : undefined;
+  }
+
   /** The rows the body has for pieces once the header, the field, the link row and the hints are drawn. */
   private bodySize(): Size {
     const columns = this.size.bodyColumns;
-    let chrome = HEADER_ROWS + hintRows(bindingsFor(this.bindings, this.screen), columns);
+    let chrome = HEADER_ROWS + hintRows(bindingsFor(this.bindings, this.screen), columns, this.enterNote());
     if (this.input !== null) chrome++;
     if (this.linkHrefs(this.view.focus).length > 0) chrome++;
     chrome += this.underRows(this.view.focus);
@@ -834,7 +848,6 @@ export class DocPane {
     const next = toDocument(doc.path, reload.stamp.mtimeMs, reload.text, host.repoRoot);
     this.stamp = reload.stamp;
     this.review.fileChanged(doc.path, doc, next);
-    this.persist(doc.path);
     const map = mapBlockIds(doc.blocks, next.blocks);
     const follow = (id: string | null): string | null => {
       if (id === null) return null;
@@ -850,6 +863,7 @@ export class DocPane {
     this.drills = view.drill === null ? [] : this.drills.map((id) => (id === null ? null : (map[id] ?? null)));
     view.history = view.history.map((entry) => (entry.path === doc.path ? { ...entry, focus: follow(entry.focus) } : entry));
     this.doc = next;
+    this.persist(doc.path);
     this.cache = undefined;
     this.minutes = readMinutes(next.blocks);
     if (view.find !== null) {
@@ -1051,6 +1065,13 @@ export class DocPane {
     if (found === null || doc === undefined) return;
     const change = found.changes.at(-1);
     if (change === undefined) return;
+    const places = this.review.placesOf(change);
+    if (places > 1) {
+      this.say(
+        `Claude's change to ${lineRange(change.start, change.end)} now reads the same in ${places} places, so the pane cannot tell which to revert; nothing was discarded`,
+      );
+      return;
+    }
     const undone = discardChange(change, doc.source);
     if (!undone.ok) {
       this.say(`the block changed again since Claude's turn: ${undone.reason}`);
@@ -1229,7 +1250,7 @@ export class DocPane {
       return ui.Box({ flexDirection: "column", children: [ui.Text({ children: EMPTY_TEXT })] });
     }
     const bindings = bindingsFor(this.bindings, this.screen);
-    const hints = hintRow(ui, bindings, (binding) => void this.press(binding));
+    const hints = hintRow(ui, bindings, (binding) => void this.press(binding), this.enterNote());
     if (this.screen === "outline") {
       const header = outlineHeader(doc.path, host.repoRoot, doc.outline.length);
       return this.frame(ui, header, [this.drawOutline(ui)], hints);

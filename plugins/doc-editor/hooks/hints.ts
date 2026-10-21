@@ -30,36 +30,41 @@ export function bindingsFor<P>(bindings: readonly KeyBinding<P>[], screen: Scree
   return [...byKey.values()];
 }
 
-/** The hint row: a wrapping row of plain, dim Buttons, one per binding. */
+/** The hint row: a wrapping row of plain, dim Buttons, one per binding, then `note` as dim text. */
 export function hintRow<P>(
-  ui: Pick<Elements["terminal"], "Box" | "Button">,
+  ui: Pick<Elements["terminal"], "Box" | "Button" | "Text">,
   bindings: readonly KeyBinding<P>[],
   press: (binding: KeyBinding<P>) => void,
+  note?: string,
 ): RenderElement {
   return ui.Box({
     key: "hints",
     flexDirection: "row",
     flexWrap: "wrap",
     columnGap: 2,
-    children: bindings.map((binding) =>
-      ui.Button({
-        key: keyButton(binding.key),
-        label: binding.label,
-        hotkey: binding.key,
-        plain: true,
-        dimColor: true,
-        onPress: () => press(binding),
-      }),
-    ),
+    children: [
+      ...bindings.map((binding) =>
+        ui.Button({
+          key: keyButton(binding.key),
+          label: binding.label,
+          hotkey: binding.key,
+          plain: true,
+          dimColor: true,
+          onPress: () => press(binding),
+        }),
+      ),
+      ...(note === undefined ? [] : [ui.Text({ dimColor: true, children: note })]),
+    ],
   });
 }
 
-/** Rows the hint row takes at `columns`: each hint is `k: label` plus the gap. */
-export function hintRows<P>(bindings: readonly KeyBinding<P>[], columns: number): number {
+/** Rows the hint row takes at `columns`: each hint is `k: label` plus the gap, then the note. */
+export function hintRows<P>(bindings: readonly KeyBinding<P>[], columns: number, note?: string): number {
   let rows = 1;
   let used = 0;
-  for (const binding of bindings) {
-    const width = binding.key.length + 2 + binding.label.length;
+  const widths = bindings.map((binding) => binding.key.length + 2 + binding.label.length);
+  if (note !== undefined) widths.push(note.length);
+  for (const width of widths) {
     if (used > 0 && used + 2 + width > columns) {
       rows++;
       used = width;
