@@ -1183,7 +1183,7 @@ emphasis marks and link targets from the source text.
 ## Appendix: Research Prompt
 
 **Registry ID:** none (delegated researcher leaf on a Linux development host; no ai-core DB on this host)
-**Model:** `us.anthropic.claude-opus-5-5[1m]` (Claude Code Agent tool, researcher persona, effort high)
+**Model:** `claude-opus-5-5` (Claude Code Agent tool, researcher persona, effort high)
 **Date:** 2026-10-14
 
 ```text
