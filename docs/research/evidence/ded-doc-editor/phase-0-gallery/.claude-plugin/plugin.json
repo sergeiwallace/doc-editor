@@ -1,0 +1,9 @@
+{
+  "name": "doc-editor-gallery",
+  "version": "0.0.1",
+  "description": "Phase 0 spike gallery: draws the Markdown, Link and Client cases the doc-editor design measures.",
+  "author": {
+    "name": "Sergei Wallace"
+  },
+  "license": "MIT"
+}

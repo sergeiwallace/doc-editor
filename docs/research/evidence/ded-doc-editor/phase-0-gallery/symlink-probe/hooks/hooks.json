@@ -1,0 +1,4 @@
+{
+  "description": "The symlink probe: /symprobe parses a sample with the bundle reached through a symlink",
+  "modules": ["./register.ts"]
+}

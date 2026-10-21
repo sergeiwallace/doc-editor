@@ -1,0 +1,4 @@
+{
+  "description": "The doc-editor Phase 0 gallery: /gallery opens a pane of spike cases",
+  "modules": ["./register.ts"]
+}
