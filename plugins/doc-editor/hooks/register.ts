@@ -103,7 +103,7 @@ export function register(on: On) {
     try {
       await $.tool.register({ ...SHOW_TOOL_SPEC, name: "show" });
     } catch (refused) {
-      $.ui.status(`doc-editor: the show tool could not be registered (${message(refused)})`);
+      $.ui.status(`the show tool could not be registered (${message(refused)})`);
     }
 
     return next(e);

@@ -14,7 +14,7 @@ is refused with the reason in the plugin's status row.
 
 When the session already has a `/doc`, such as your own `doc` skill, the engine refuses the mod's,
 and the mod registers `/doc-editor` instead, with the same arguments, completion and behaviour. The
-status row says so: `doc-editor: /doc is taken by another command (<reason>); use /doc-editor`.
+status row says so: `/doc is taken by another command (<reason>); use /doc-editor`.
 Your own `/doc` keeps running as before. If `/doc-editor` is refused too, the status row says that,
 and Claude can still open a file with the `show` tool. Each registration at session start stands
 alone, so a refused command never stops the `show` tool, the watcher or the pane.

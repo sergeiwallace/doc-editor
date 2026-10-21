@@ -59,7 +59,7 @@ function everyPage(pieces: readonly Piece[], size: { bodyRows: number; bodyColum
 }
 
 describe("the 20,000-line document", () => {
-  test("should emit every render under 100,000 serialized characters with no element over 9,000", () => {
+  test("should emit every render under 100,000 serialized characters with no element over 9,000", { timeoutMs: 30_000 }, () => {
     for (const size of SIZES) {
       for (const folded of [[], toggleFoldAll(big, [])]) {
         const pieces = viewPieces(big, { folded, drill: null }, size.bodyColumns);

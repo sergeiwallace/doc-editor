@@ -210,6 +210,17 @@ export const absoluteFrom = (cwd: string, path: string): string =>
   normalizePath(path.startsWith("/") ? path : `${cwd}/${path}`);
 
 /**
+ * Rows of a card's text out of view at `skip`, for a card whose rows begin at `start`. Its top
+ * border is the first row it takes; once that has scrolled past, the card is drawn again with a top
+ * border, which the scroll already counted as gone, so the redrawn border takes the place of one
+ * more row of text. At least the card's last row stays in view.
+ */
+function cardPast(skip: number, start: number, content: number): number {
+  const isContinued = skip > start;
+  return Math.min(content - 1, Math.max(0, skip - start - 1) + (isContinued ? 1 : 0));
+}
+
+/**
  * A line as the terminal wraps it at `width`: at the last space that fits, a word longer than the
  * width cut where it overflows. The rows joined give the line back. Never fewer rows than a cut
  * every `width` characters, so a count from it does not fall short of what the engine draws.
@@ -730,10 +741,9 @@ export class DocPane {
     this.view.offset = page.offset;
     const first = pieces[page.offset];
     const hidden = first === undefined ? 0 : first.rows - size.bodyRows;
-    if (by > 0 && this.skip < hidden) {
-      this.skip = Math.min(hidden, this.skip + by);
-    } else if (by < 0 && this.skip > 0) {
-      this.skip = Math.max(0, this.skip + by);
+    const inside = first === undefined ? null : this.stepInside(first, by, hidden);
+    if (inside !== null) {
+      this.skip = inside;
     } else if (Math.abs(by) === 1) {
       const order = this.order();
       const at = this.view.focus === null ? -1 : order.indexOf(this.view.focus);
@@ -747,6 +757,38 @@ export class DocPane {
       if (this.view.focus === null || !shown.includes(this.view.focus)) this.view.focus = shown[0] ?? null;
     }
     this.host?.invalidate();
+  }
+
+  /**
+   * The skip a move inside the page's first piece lands on, or null when the piece has nothing
+   * more to show that way. A table drawn as cards counts rows the drawing does not show (a card's
+   * scrolled-off border, the margin under the last card), so the move goes on until what is drawn
+   * changes, and every Down changes the screen while content remains below.
+   */
+  private stepInside(piece: Piece, by: number, hidden: number): number | null {
+    const clamp = (skip: number) => Math.min(hidden, Math.max(0, skip));
+    if (by > 0 ? this.skip >= hidden : this.skip <= 0) return null;
+    let next = clamp(this.skip + by);
+    if (!this.cardRows.has(piece.key)) return next;
+    const before = this.cardView(piece.key, this.skip);
+    while (this.cardView(piece.key, next) === before) {
+      const after = clamp(next + Math.sign(by));
+      if (after === next) return null;
+      next = after;
+    }
+    return next;
+  }
+
+  /** Which card a card-drawn table shows first at `skip`, and from which of its text rows. */
+  private cardView(key: string, skip: number): string {
+    const rows = this.cardRows.get(key) ?? [];
+    let top = 0;
+    for (const [k, cardRows] of rows.entries()) {
+      const start = top;
+      top += cardRows;
+      if (top > skip) return `${k}:${cardPast(skip, start, cardRows - CARD_BORDER_ROWS)}`;
+    }
+    return "end";
   }
 
   // ---- keys -------------------------------------------------------------------------------
@@ -1865,11 +1907,7 @@ export class DocPane {
       top += rows[k] ?? 1;
       if (top <= skip) continue;
       const content = (rows[k] ?? CARD_BORDER_ROWS + 1) - CARD_BORDER_ROWS;
-      // Rows of this card's text out of view. Its top border is the first row it takes; once that
-      // has scrolled past, the card is drawn again with a top border, which the scroll already
-      // counted as gone, so the redrawn border takes the place of one more row of text.
-      const isContinued = skip > start;
-      const past = Math.min(content - 1, Math.max(0, skip - start - 1) + (isContinued ? 1 : 0));
+      const past = cardPast(skip, start, content);
       const left = content - past;
       const room = keep === null ? Number.POSITIVE_INFINITY : keep - used;
       if (left + CARD_BORDER_ROWS <= room) {

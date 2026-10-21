@@ -14,11 +14,11 @@ export const FALLBACK_COMMAND_SPEC = { name: "doc-editor", description: DESCRIPT
 
 /** The status row when `/doc` was refused and `/doc-editor` stands in for it. */
 export const takenText = (reason: string): string =>
-  `doc-editor: /${COMMAND_NAME} is taken by another command (${reason}); use /${FALLBACK_COMMAND_NAME}`;
+  `/${COMMAND_NAME} is taken by another command (${reason}); use /${FALLBACK_COMMAND_NAME}`;
 
 /** The status row when neither name could be registered: the show tool still opens files. */
 export const noCommandText = (reason: string): string =>
-  `doc-editor: neither /${COMMAND_NAME} nor /${FALLBACK_COMMAND_NAME} could be registered (${reason}); ask Claude to show a file instead`;
+  `neither /${COMMAND_NAME} nor /${FALLBACK_COMMAND_NAME} could be registered (${reason}); ask Claude to show a file instead`;
 
 const MAX_SUGGESTIONS = 20;
 const MARKDOWN = /\.(md|markdown)$/i;

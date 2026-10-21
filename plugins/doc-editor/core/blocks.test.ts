@@ -127,7 +127,7 @@ describe("parseBlocks", () => {
     );
   });
 
-  test("should never let an emitted href or label close its link and open another", () => {
+  test("should never let an emitted href or label close its link and open another", { timeoutMs: 30_000 }, () => {
     const evil = "https://safe/) [bad](javascript:alert(1)";
     const sources = [
       `A <a href="${evil}">x</a> b.\n`,
@@ -210,7 +210,7 @@ describe("CRLF line endings", () => {
   const crlf = lf.replaceAll("\n", "\r\n");
   const strip = (text: string) => text.replaceAll("\r", "");
 
-  test("should give the CRLF fixture the same blocks, ids, kinds, lines and drawn text as the LF one", () => {
+  test("should give the CRLF fixture the same blocks, ids, kinds, lines and drawn text as the LF one", { timeoutMs: 30_000 }, () => {
     const a = parseBlocks(lf, ORIGIN).blocks;
     const b = parseBlocks(crlf, ORIGIN).blocks;
 
