@@ -1865,8 +1865,11 @@ export class DocPane {
       top += rows[k] ?? 1;
       if (top <= skip) continue;
       const content = (rows[k] ?? CARD_BORDER_ROWS + 1) - CARD_BORDER_ROWS;
-      // Rows of this card's text scrolled past: its top border is the first row it takes.
-      const past = Math.min(content - 1, Math.max(0, skip - start - 1));
+      // Rows of this card's text out of view. Its top border is the first row it takes; once that
+      // has scrolled past, the card is drawn again with a top border, which the scroll already
+      // counted as gone, so the redrawn border takes the place of one more row of text.
+      const isContinued = skip > start;
+      const past = Math.min(content - 1, Math.max(0, skip - start - 1) + (isContinued ? 1 : 0));
       const left = content - past;
       const room = keep === null ? Number.POSITIVE_INFINITY : keep - used;
       if (left + CARD_BORDER_ROWS <= room) {
