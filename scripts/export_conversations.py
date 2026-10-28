@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Managed by project-template: formatting is off so every consumer holds the same bytes.
+# ruff: noqa: PTH123, RUF100
+# fmt: off
 """
 Export Claude Code conversation JSONL files to human-readable markdown.
 

@@ -171,7 +171,11 @@ if grep -q "Original Vision" README.md 2>/dev/null && command -v claude &>/dev/n
     info "Expanding project vision with Claude Code..."
     VISION_LINE=$(grep -A1 "## Original Vision" README.md | tail -1 | sed 's/^> //')
     if [ -n "$VISION_LINE" ]; then
-        claude --print --output-format text --max-turns 1 --prompt "$(cat <<VISIONEOF
+        # The prompt is read into a variable, not expanded inside "$(cat <<...)":
+        # macOS's bash 3.2 reads an apostrophe in a heredoc inside "$(...)" as an
+        # open quote and fails to parse the rest of the script.
+        VISION_PROMPT=""
+        IFS= read -r -d '' VISION_PROMPT <<VISIONEOF || true
 You are writing the About section of a README.md for a new software project called $PROJECT_NAME.
 
 The project creator described their vision as:
@@ -185,7 +189,8 @@ Write a clear, compelling About section (2-4 paragraphs) that expands this visio
 Keep the tone professional but approachable. Do NOT include a heading — just the body paragraphs.
 Do NOT wrap output in markdown code fences. Output ONLY the paragraphs.
 VISIONEOF
-)" > /tmp/vision_expanded.md 2>/dev/null
+        claude --print --output-format text --max-turns 1 --prompt "$VISION_PROMPT" \
+            > /tmp/vision_expanded.md 2>/dev/null
 
         if [ -s /tmp/vision_expanded.md ]; then
             # Insert expanded text after the "Original brief" blockquote

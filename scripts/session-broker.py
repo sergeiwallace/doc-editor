@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Managed by project-template: formatting is off so every consumer holds the same bytes.
+# ruff: noqa: RUF100
+# fmt: off
 """Session broker — generates cross-project context for cc session startup.
 
 Called by ai-lib.sh before launching Claude. Writes session-context.md
@@ -140,7 +143,7 @@ def main():
         description="Generate session context for AI startup"
     )
     parser.add_argument("--project", help="Current project name")
-    parser.add_argument("--config", help="Path to sergei.toml")
+    parser.add_argument("--config", help="Path to platform config file")
     parser.add_argument(
         "--engine", choices=["c", "g"], help="AI engine (c for Claude, g for Gemini)"
     )
