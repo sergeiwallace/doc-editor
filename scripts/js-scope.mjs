@@ -1,11 +1,3 @@
-// Scope resolution over a parsed source file, shared by the core purity lint
-// (check-core-purity.mjs) and the safety floor's network check (safety-floor.mjs): which
-// identifiers are free (no enclosing scope declares them), which are names rather than references,
-// and the references to the global object and to chosen global names a file makes.
-//
-// "Free" is resolved by scope: a reference is free when no scope enclosing the use declares the
-// name (function and block scopes, parameters, catch bindings, hoisted `var`, imports, class and
-// function names). A file's own `const fetch = ...` is a local; `globalThis.fetch` is not.
 import { extname } from "node:path";
 import { parseAst } from "rolldown/parseAst";
 
@@ -40,7 +32,6 @@ function children(node) {
   return out;
 }
 
-// Every name a binding pattern declares.
 function patternNames(pattern, names) {
   if (!isNode(pattern)) return;
   switch (pattern.type) {
@@ -157,7 +148,6 @@ export function isPropertyName(parent, key) {
   switch (parent.type) {
     case "MemberExpression":
       return key === "property" && !parent.computed;
-    // A shorthand `{ document }` carries the name twice, as key and value; the value is checked.
     case "Property":
       return key === "key" && !parent.computed;
     case "MethodDefinition":
@@ -201,7 +191,6 @@ export function lineAt(text, offset) {
   return line;
 }
 
-// The property a member access names: its identifier, or a computed string literal; else null.
 const propertyName = (member) => (member.computed ? stringValue(member.property) : member.property.name);
 
 /** The nearest scope enclosing `scope` that declares `name`, or null when the name is free. */
@@ -212,7 +201,6 @@ export function declaringScope(scope, name) {
   return null;
 }
 
-// Wrappers that leave an expression's value as it is: parentheses, TypeScript casts and `!`.
 const unwrap = (node) => {
   let current = node;
   while (
@@ -247,7 +235,6 @@ const unwrap = (node) => {
  */
 export function globalReferences(program, scopes, { freeNames, memberNames, globalObjects, aliasable, resolveAliases = false }) {
   const hits = [];
-  // Bindings, as `scope` and `name`, that hold a global object, and string constants never reassigned.
   const aliases = new Map();
   const constants = new Map();
   const assigned = new Set();
@@ -260,7 +247,6 @@ export function globalReferences(program, scopes, { freeNames, memberNames, glob
     const alias = aliases.get(keyOf(declaringScope(scope, value.name), value.name));
     return alias ?? null;
   };
-  // Whether an expression's value is a global object: one, a member chain of them, or a choice.
   const isGlobalValue = (node, scope) => {
     const value = unwrap(node);
     if (value?.type === "ConditionalExpression") return isGlobalValue(value.consequent, scope) || isGlobalValue(value.alternate, scope);
@@ -287,7 +273,6 @@ export function globalReferences(program, scopes, { freeNames, memberNames, glob
     });
   }
 
-  // Inside an alias's own initialiser a global object is the alias's value, not a use of it.
   const initialisers = new Set();
   const markInit = (node) => {
     const value = unwrap(node);
@@ -331,8 +316,6 @@ export function globalReferences(program, scopes, { freeNames, memberNames, glob
     }
     if (!isAlias && !aliasable.has(node.name)) return;
     if (resolveAliases) {
-      // The alias's own binding, a value inside its initialiser, a member access's object (checked
-      // above) and a `typeof` operand are no loss of track.
       if (isAlias && parent?.type === "VariableDeclarator" && key === "id") return;
       if (initialisers.has(node)) return;
       if (parent?.type === "MemberExpression" && key === "object") return;

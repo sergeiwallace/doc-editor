@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Runs `claude plugin test <plugin-dir>` (design D-11), or says it did not and why.
-// Usage: node scripts/plugin-test.mjs <plugin-dir>
-// Exits with the runner's own status when it runs.
 import { spawnSync } from "node:child_process";
 
 import { requireClaude } from "./claude-floor.mjs";

@@ -1,20 +1,10 @@
 #!/usr/bin/env node
-// Public-repository hygiene (design D-16, task T-0.3).
-// Usage: node scripts/check-hygiene.mjs <repo-root>
-// Fails naming each problem:
-//   - CONTRIBUTING.md, SECURITY.md or CODE_OF_CONDUCT.md missing at the root;
-//   - README.md with no sentence saying the Copier template is private and no link to a public
-//     template repository;
-//   - a file a `claude --plugin-dir plugins/doc-editor` load writes that .gitignore does not
-//     ignore, so git status would list it as untracked.
-// Exits 1 on any problem, 2 when the root is not a git repository.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const REQUIRED = ["CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md"];
 const PUBLIC_TEMPLATE = "https://github.com/sergeiwallace/project-template";
-// Measured on Claude Code 2.1.306: what a --plugin-dir load writes into the plugin.
 const LOAD_WRITES = [
   "plugins/doc-editor/tsconfig.json",
   "plugins/doc-editor/.claude-plugin/types/tsconfig.json",

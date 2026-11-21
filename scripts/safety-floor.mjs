@@ -1,24 +1,3 @@
-// The safety floor (design NFR-4 and NFR-9, task T-1.8), which check-plugin-declared.mjs runs as
-// part of the one declared-list gate. What the plugin never does, whether or not the README
-// declares it:
-//   - over validate's report: any tool.check hook (a glob that could match one included); any
-//     tool.call hook but the observed Write and Edit one and a hook for the plugin's own
-//     registered tools (mcp__doc-editor__<name>); any model call ($.model.*, $.agent.spawn); any
-//     network call ($.http.*, $.mcp.*);
-//   - over the sources, since validate reports a tool.call hook the same way whether its handler
-//     passes the call on or answers it: a tool.call handler (and its .catch handler) that returns
-//     anything but next(...)'s result; an mcp__doc-editor__<name> hook with no
-//     $.tool.register({ name: "<name>" }) for it; a use of next(...)'s result other than returning
-//     it; a reference to fetch, WebSocket, XMLHttpRequest or EventSource, free or read through
-//     globalThis, self or window, and any alias of those global objects (`const g = globalThis`,
-//     a destructuring, a computed key), resolved by scope as the core purity lint resolves it
-//     (scripts/js-scope.mjs), so a local named fetch passes; an import of a module
-//     that reaches the network or starts processes (node:http, node:net, node:child_process and
-//     the like); a $.process.run that is not node --version or node on one of the plugin's own
-//     bin/*.mjs scripts; and, over the report, any $.process.spawn.
-// A static pass reads the code as text, so it is strict rather than complete: a handler it
-// cannot read (one passed by name, a return it cannot parse) fails rather than passes.
-
 import { buildScopes, globalReferences, parseSource } from "./js-scope.mjs";
 
 const OBSERVED_TOOL_CALLS = new Set(["tool.call{tool=Write|Edit}"]);
@@ -34,14 +13,11 @@ const TOOL_REGISTER = /\$\s*\.\s*tool\s*\.\s*register\s*\(\s*\{/g;
 const STRING = /^(["'`])([^"'`$]*)\1$/;
 const PLUGIN_SCRIPT = /^`\$\{\s*\$\s*\.\s*plugin\s*\.\s*root\s*\}\/bin\/([\w.-]+\.mjs)`$/;
 const BIN_SCRIPT = /^bin\/([\w.-]+\.mjs)$/;
-// A module that reaches the network or starts a process, by import, dynamic import or require.
 const ESCAPE_MODULE =
   /(?<![\w$.])(?:from\s*|import\s*\(\s*|require\s*\(\s*|import\s+)(["'`])((?:node:)?(?:http|https|http2|net|tls|dgram|dns|child_process|worker_threads|cluster|inspector)(?:\/[\w/]*)?)\1/g;
 
 const lineAt = (text, offset) => text.slice(0, offset).split("\n").length;
 
-// The network APIs a source reaches, resolved by scope: a free `fetch`, `globalThis.fetch` or
-// `self["fetch"]`, and any alias of a global object, through which one could be reached unseen.
 function networkBreaches(path, source) {
   let program;
   try {
@@ -74,7 +50,6 @@ function eventMatches(pattern, event) {
 
 const OPEN = { "(": ")", "[": "]", "{": "}" };
 
-// The offset of the bracket closing the one at `open`, in code with strings and comments blanked.
 function closing(code, open) {
   let depth = 0;
   for (let i = open; i < code.length; i++) {
@@ -86,9 +61,6 @@ function closing(code, open) {
   return -1;
 }
 
-// The [start, end) spans of the comma-separated items between `from` and `to`, at depth 0.
-// `text` decides whether the last item is empty: pass the source when an item may be only a
-// string literal, which `code` blanks.
 function items(code, from, to, text = code) {
   const spans = [];
   let depth = 0;
@@ -120,8 +92,6 @@ function matcherTools(source) {
   return [...tool[1].matchAll(/(["'`])([^"'`]*)\1/g)].map((match) => match[2] ?? "");
 }
 
-// Why the handler in code[start, end) may return something other than next(...)'s result, or
-// undefined when every return is next's result.
 function answers(code, start, end) {
   const text = code.slice(start, end);
   const head =
@@ -147,7 +117,6 @@ function answers(code, start, end) {
 
   const bodyEnd = closing(code, bodyAt);
   const body = code.slice(bodyAt, bodyEnd);
-  // Each binding whose initializer is exactly a next(...) call, with the body offset of its name.
   const fromNext = new Map();
   const declaration = /\b(?:const|let|var)\s+([\w$]+)\s*=\s*/g;
   for (const match of body.matchAll(declaration)) {
@@ -180,9 +149,6 @@ function answers(code, start, end) {
   }
   if (returns === 0) return "returns nothing rather than next(...)'s result";
 
-  // next's result goes back exactly as received: its binding appears only where it is declared
-  // and where it is returned, so nothing assigns to it or its properties, deletes from it, spreads
-  // it, or hands it to a function that could.
   for (const [name, declaredAt] of fromNext) {
     const use = new RegExp(`(?<![\\w$.])${name.replace(/\$/g, "\\$")}(?![\\w$])`, "g");
     for (const match of body.matchAll(use)) {
@@ -263,12 +229,6 @@ export function registeredTools(files) {
   return names;
 }
 
-// Why the argv at code[start] is not one the floor allows, or undefined when it is: a literal
-// array that is exactly ["node", "--version"], or "node" followed by a
-// `${$.plugin.root}/bin/<name>.mjs` template naming a script the plugin ships, then any arguments
-// (they reach the script, not node). A plain string path is refused: a relative one resolves
-// against the session's directory and an absolute one can name any file, so neither proves the
-// script is the plugin's own.
 function processRunBreach(code, source, start, scripts) {
   if (code[start] !== "[") return "takes an argv that is not a literal array";
   const elements = items(code, start + 1, closing(code, start), source);
@@ -301,8 +261,6 @@ export function sourceBreaches(files, ownTools) {
   for (const { path, source, code, isHooksModule } of files) {
     const at = (offset) => `${path}:${lineAt(source, offset)}`;
     problems.push(...networkBreaches(path, source));
-    // A module name is a string, which `code` blanks, so the search runs on the source and keeps
-    // only the matches that start in code.
     for (const match of source.matchAll(ESCAPE_MODULE)) {
       if (code[match.index ?? 0] === " ") continue;
       problems.push(
@@ -311,8 +269,6 @@ export function sourceBreaches(files, ownTools) {
     }
     if (!isHooksModule) continue;
 
-    // The event name is a string, which `code` blanks, so the search runs on the source and keeps
-    // only the matches whose `on` is code.
     for (const match of source.matchAll(ON_TOOL_CALL)) {
       if (code[match.index ?? 0] === " ") continue;
       const open = (match.index ?? 0) + match[0].indexOf("(");
