@@ -1,6 +1,3 @@
-// Runner: Vitest. The Phase 1 live check opens the committed 1,000-line fixture in the pane, so
-// it must be exactly what the core tests generate. Regenerate both files with:
-//   node -e 'import("./plugins/doc-editor/core/fixture-docs.ts").then(f => { const fs = require("node:fs"); fs.writeFileSync("docs/test/fixtures/thousand-line-doc.md", f.fixtureDoc(1000)); fs.writeFileSync("docs/test/fixtures/linked-doc.md", f.linkedDoc()); })'
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";

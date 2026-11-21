@@ -5,19 +5,8 @@
   "plugins/doc-editor/vendor-candidates/codemirror-state.js": 52,
   "plugins/doc-editor/vendor-candidates/prosemirror-model.js": 76,
   "plugins/doc-editor/vendor-candidates/yjs.js": 127,
-  "test/claude-floor.spec.ts": 5,
-  "test/core-purity.spec.ts": 1,
-  "test/declared.spec.ts": 5,
-  "test/fixture-doc.spec.ts": 3,
   "test/fixtures/core-purity/clean-scopes/shadowed.js": 1,
   "test/fixtures/core-purity/clean/bundle.mjs": 1,
   "test/fixtures/core-purity/clean/mentions.ts": 2,
-  "test/fixtures/core-purity/impure-scopes/escapes.js": 1,
-  "test/hygiene.spec.ts": 4,
-  "test/marketplace.spec.ts": 3,
-  "test/safety-floor.spec.ts": 10,
-  "test/save-helper.spec.ts": 4,
-  "test/size.spec.ts": 5,
-  "test/vendor-bundle.spec.ts": 4,
-  "vitest.config.ts": 2
+  "test/fixtures/core-purity/impure-scopes/escapes.js": 1
 }

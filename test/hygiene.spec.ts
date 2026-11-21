@@ -1,4 +1,3 @@
-// Runner: Vitest. It reads the repository and spawns git, which the mod environment lacks.
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,13 +18,10 @@ afterEach(() => {
   for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true });
 });
 
-// Inside the pre-commit hook git exports GIT_INDEX_FILE and friends for the outer repository;
-// the scratch repository must not inherit them.
 const scratchEnv = Object.fromEntries(
   Object.entries(process.env).filter(([key]) => !key.startsWith("GIT_")),
 );
 
-// A scratch git repository holding the real root files, then `edit` applied.
 function rootWith(edit: (dir: string) => void): string {
   const dir = mkdtempSync(join(tmpdir(), "doc-editor-hygiene-"));
   scratch.push(dir);

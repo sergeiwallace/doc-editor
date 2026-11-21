@@ -1,4 +1,3 @@
-// Runner: Vitest. It runs the mod's gate scripts with a PATH that has no usable `claude`.
 import { spawnSync } from "node:child_process";
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,7 +14,6 @@ afterEach(() => {
   for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true });
 });
 
-// A PATH directory holding nothing, or a `claude` that reports `version`.
 function binDir(version?: string): string {
   const dir = mkdtempSync(join(tmpdir(), "doc-editor-floor-"));
   scratch.push(dir);
@@ -40,8 +38,6 @@ const runWith = (path: string, script: string, args: readonly string[]) =>
     env: { ...process.env, PATH: path },
   });
 
-// The runner's own Vitest pass is narrowed to one quick suite, so it does not run this file again.
-// That suite needs git, so the PATH also holds node's and git's directories, neither with claude.
 const runGate = (bin: string) =>
   runWith(`${bin}:${dirname(process.execPath)}:/usr/bin:/bin`, "scripts/run-gate.mjs", [
     "plugins/doc-editor",
@@ -67,7 +63,6 @@ describe("the npm test summary line", { timeout: 60_000 }, () => {
 });
 
 describe("the pre-commit hooks that can skip", () => {
-  // pre-commit prints a passing hook's output only when the hook is verbose.
   for (const id of ["npm-test", "typecheck", "plugin-declared", "marketplace-validate"]) {
     it(`should show the ${id} hook's output when the hook exits 0`, () => {
       const config = readFileSync(join(repoRoot, ".pre-commit-config.yaml"), "utf8");

@@ -1,7 +1,3 @@
-// Runner: Vitest. The safety floor (design NFR-4 and NFR-9, task T-1.8): over the output of
-// `claude plugin validate`, the plugin registers no tool.check hook and no tool.call hook that can
-// answer, and makes no model or network call. Each failure case adds one to a copy of the shipped
-// plugin AND declares it in the copy's README, so the floor fails even when the list allows it.
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,8 +9,6 @@ import { claudeStatus } from "../scripts/claude-floor.mjs";
 const repoRoot = resolve(import.meta.dirname, "..");
 const pluginDir = join(repoRoot, "plugins/doc-editor");
 const gate = join(repoRoot, "scripts/check-plugin-declared.mjs");
-// What a session load writes into the plugin (the mod types and a root tsconfig.json), and
-// node_modules; a copy leaves them behind, as git does. The plugin's own types/ contract is kept.
 const GENERATED = [".claude-plugin/types", "tsconfig.json"];
 const isSkipped = (rel: string) =>
   rel.split("/").includes("node_modules") || GENERATED.some((path) => rel === path || rel.startsWith(`${path}/`));
@@ -99,7 +93,6 @@ function validateNotes(dir: string): string[] {
   return (report.contents ?? []).flatMap((content) => content.notes ?? []);
 }
 
-// Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
 
 describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? claude.reason})`, { timeout: 60_000 }, () => {
@@ -179,7 +172,6 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     });
   }
 
-  // The shipped plugin registers and answers `show`, so these cases use a tool of their own.
   const SHOW = "tool.call{tool=mcp__doc-editor__peek}";
   const showHook: Change = {
     code: '  on("tool.call", { tool: "mcp__doc-editor__peek" }, async () => ({ result: "shown" }) as never);',
@@ -286,8 +278,6 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     expect(result.status).toBe(0);
   });
 
-  // The network check resolves the global object and its aliases by scope (scripts/js-scope.mjs),
-  // as the core purity lint does, so an alias cannot hide a network API.
   const REACHES = "references fetch, a network API; the mod makes no network request";
   const LOST = "aliased or indexed by a computed key, through which a network API could be reached";
   for (const [name, body, expected] of [
