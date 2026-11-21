@@ -1,7 +1,4 @@
 {
-  ".envrc": 14,
-  ".gitignore": 8,
-  ".pre-commit-config.yaml": 8,
   "docs/research/evidence/ded-doc-editor/phase-0-gallery/hooks/cases.ts": 1,
   "docs/research/evidence/ded-doc-editor/phase-0-gallery/symlink-probe/hooks/register.ts": 1,
   "plugins/doc-editor/bin/save.mjs": 15,
