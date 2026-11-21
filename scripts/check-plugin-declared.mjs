@@ -37,6 +37,9 @@ import { registeredTools, reportBreaches, sourceBreaches } from "./safety-floor.
 const NOTE =
   /^(\.\/\S+) (hooks|calls|env reads|env writes|state reads|state writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
 const VIA = / \(via [\w$.]+\)$/;
+// Claude Code 2.1.323 and later name the matcher keys the loader fills in by default, as in
+// `ui.render{component=Pane} (default matcher key: plugin)`; the registration is the part before.
+const DEFAULT_KEY = / \(default matcher key: [\w, ]+\)$/;
 const ENGINE_CALL = /(?<![\w$])\$\.[A-Za-z_]/;
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
 // .claude-plugin holds the manifest and the mod types Claude Code writes there when it loads the
@@ -78,8 +81,8 @@ function splitTopLevel(values) {
   let current = "";
   for (let i = 0; i < values.length; i++) {
     const char = values[i];
-    if (char === "{") depth++;
-    if (char === "}") depth--;
+    if (char === "{" || char === "(") depth++;
+    if (char === "}" || char === ")") depth--;
     if (depth === 0 && values.startsWith(", ", i)) {
       parts.push(current);
       current = "";
@@ -127,7 +130,11 @@ function reportedOf(report, problems) {
       if (values === "nothing") continue;
       const listed = splitTopLevel(values);
       modules[module][kind].push(
-        ...(kind === "calls" ? listed.map((call) => call.replace(VIA, "")) : listed),
+        ...(kind === "calls"
+          ? listed.map((call) => call.replace(VIA, ""))
+          : kind === "hooks"
+            ? listed.map((hook) => hook.replace(DEFAULT_KEY, ""))
+            : listed),
       );
     }
   }
@@ -399,6 +406,8 @@ function main() {
   const report = validate(pluginDir);
   const problems = [];
 
+  // The floor and the source scan run even when validate fails, so a type error never hides a
+  // breach of the floor.
   if (report.success !== true) {
     for (const part of [report.manifest, ...(report.contents ?? [])]) {
       for (const error of part?.errors ?? []) problems.push(`validate error: ${error.message}`);
@@ -407,16 +416,22 @@ function main() {
       }
     }
     if (problems.length === 0) problems.push("claude plugin validate reported failure");
-    fail(problems, pluginDir, readmePath);
   }
 
   const reported = reportedOf(report, problems);
-  compare(reported, declared, problems);
-  const files = pluginSources(pluginDir);
-  const ownTools = registeredTools(files);
-  problems.push(...reportBreaches(reported, ownTools));
-  problems.push(...sourceBreaches(files, ownTools));
-  problems.push(...engineEscapes(pluginDir));
+  if (report.success === true || Object.keys(reported).length > 0) {
+    compare(reported, declared, problems);
+  }
+  try {
+    const files = pluginSources(pluginDir);
+    const ownTools = registeredTools(files);
+    problems.push(...reportBreaches(reported, ownTools));
+    problems.push(...sourceBreaches(files, ownTools));
+    problems.push(...engineEscapes(pluginDir));
+  } catch (error) {
+    if (report.success === true) throw error;
+    problems.push(`the sources were not scanned: ${error.message}`);
+  }
 
   if (problems.length > 0) fail(problems, pluginDir, readmePath);
   console.log(

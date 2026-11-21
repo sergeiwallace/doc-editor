@@ -1,6 +1,6 @@
 // `/doc <path>[:line|#heading]` and the path completion after it (FR-1, D-13).
 
-import { absoluteFrom, type DocPane } from "./pane.ts";
+import { absoluteFrom, type DocPane } from "./pane";
 
 export const COMMAND_NAME = "doc";
 /** The command registered instead when the session already has a `/doc` (a user's own skill or command). */

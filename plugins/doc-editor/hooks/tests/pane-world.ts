@@ -2,7 +2,7 @@ import type { Args, On, RenderPropsOf } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import { mock } from "claude-code/testing";
 
-import { PANE_ID, PLUGIN_NAME } from "../register.ts";
+import { PANE_ID, PLUGIN_NAME } from "../register";
 
 // The world beneath the mod in the pane tests: a session in a repository whose files are held in
 // memory, an engine that keeps what the mod asked of it (the panes opened, the status rows, the

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
-import { chapterTitle, fixtureDoc } from "./fixture-docs.ts";
+import { parseBlocks } from "./blocks";
+import { chapterTitle, fixtureDoc } from "./fixture-docs";
 import {
   drillUp,
   headingPath,
@@ -15,7 +15,7 @@ import {
   toggleFold,
   toggleFoldAll,
   visibleBlocks,
-} from "./outline.ts";
+} from "./outline";
 
 const SOURCE = ["# A", "", "a1", "", "## B", "", "b1", "", "### C", "", "c1", "", "## D", "", "d1", "", "# E", "", "e1", ""].join("\n");
 const blocks = parseBlocks(SOURCE).blocks;

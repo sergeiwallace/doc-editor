@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "claude-code/testing";
 
-import { sizeOf, watchWorld } from "./tests/world.ts";
-import { createWatcher, type Reload } from "./watch.ts";
+import { sizeOf, watchWorld } from "./tests/world";
+import { createWatcher, type Reload } from "./watch";
 
 // The reload watcher on the test kit's mock clock (T-1.7, the re-read half; the pane's redraw is
 // the reader's). register.test.ts covers the Write and Edit hook that calls `check`.

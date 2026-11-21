@@ -1,7 +1,7 @@
 // The `show` tool Claude calls to open a file in the pane (FR-1, D-13). It is the plugin's own
 // registered tool, so its tool.call hook answers it (NFR-9).
 
-import type { DocPane } from "./pane.ts";
+import type { DocPane } from "./pane";
 
 export const SHOW_TOOL = "show";
 /** The name the model calls it by: `mcp__<plugin>__<name>`. */

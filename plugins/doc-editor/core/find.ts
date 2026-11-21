@@ -1,7 +1,7 @@
 // Find in page: case-insensitive search over the text each block draws, with next and previous.
 
-import type { Block, FindState } from "./types.ts";
-import { drawnOf } from "./blocks.ts";
+import type { Block, FindState } from "./types";
+import { drawnOf } from "./blocks";
 
 /** The ids of the blocks whose drawn text contains the query, ignoring case, in document order. */
 export function findHits(blocks: readonly Block[], query: string): string[] {

@@ -2,8 +2,8 @@
 // engine's own Markdown table; a wider one draws as one card per row, each card the row's cells
 // under their column names. The cells keep their inline Markdown.
 
-import { parseMarkdown } from "../core/parse.ts";
-import type { Node } from "../core/parse.ts";
+import { parseMarkdown } from "../core/parse";
+import type { Node } from "../core/parse";
 
 export interface Table {
   header: string[];

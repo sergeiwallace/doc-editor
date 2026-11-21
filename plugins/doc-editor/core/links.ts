@@ -3,8 +3,8 @@
 // (Phase 0 spike, "Link: non-https hrefs"). The core never touches the file system: whether a
 // resolved target exists is a fact the caller supplies.
 
-import type { LinkKind, OutlineEntry } from "./types.ts";
-import { headingSlugs, slug } from "./outline.ts";
+import type { LinkKind, OutlineEntry } from "./types";
+import { headingSlugs, slug } from "./outline";
 
 const SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
 

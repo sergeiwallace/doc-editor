@@ -6,9 +6,9 @@
 
 import type { Elements, RenderElement } from "claude-code";
 
-import { toDocument } from "../core/blocks.ts";
-import { linkDestination } from "../core/html-subset.ts";
-import { diffsByTurn, discardChange, mapBlockIds } from "../core/changes.ts";
+import { toDocument } from "../core/blocks";
+import { linkDestination } from "../core/html-subset";
+import { diffsByTurn, discardChange, mapBlockIds } from "../core/changes";
 import {
   diffPages,
   editableLines,
@@ -18,9 +18,9 @@ import {
   requestText,
   taskLines,
   toggleTask,
-} from "../core/edits.ts";
-import { currentHit, startFind, stepFind } from "../core/find.ts";
-import { checkTarget, classifyHref, normalizePath, parseLocation, resolveLink, type TargetFacts } from "../core/links.ts";
+} from "../core/edits";
+import { currentHit, startFind, stepFind } from "../core/find";
+import { checkTarget, classifyHref, normalizePath, parseLocation, resolveLink, type TargetFacts } from "../core/links";
 import {
   drillUp,
   headingPath,
@@ -30,8 +30,8 @@ import {
   sectionOf,
   toggleFold,
   toggleFoldAll,
-} from "../core/outline.ts";
-import type { Block, Change, Document, HistoryEntry, ViewState } from "../core/types.ts";
+} from "../core/outline";
+import type { Block, Change, Document, HistoryEntry, ViewState } from "../core/types";
 import {
   ELEMENT_LIMIT,
   PAGE_BUDGET,
@@ -43,13 +43,13 @@ import {
   scrollOffset,
   type Size,
   viewPieces,
-} from "../core/window.ts";
-import { diffHeader, documentHeader, type Header, outlineHeader, readMinutes, shownPath } from "./header.ts";
-import { bindingsFor, hintRow, hintRows, type KeyBinding, type Screen } from "./hints.ts";
-import { type Ask, blocksAt, Review, type Snapshot } from "./review.ts";
-import type { FileStamp, Save } from "./save.ts";
-import { naturalWidth, parseTable, tableCards } from "./tables.ts";
-import type { Reload, Watcher } from "./watch.ts";
+} from "../core/window";
+import { diffHeader, documentHeader, type Header, outlineHeader, readMinutes, shownPath } from "./header";
+import { bindingsFor, hintRow, hintRows, type KeyBinding, type Screen } from "./hints";
+import { type Ask, blocksAt, Review, type Snapshot } from "./review";
+import type { FileStamp, Save } from "./save";
+import { naturalWidth, parseTable, tableCards } from "./tables";
+import type { Reload, Watcher } from "./watch";
 
 export const PANE_ID = "doc";
 /** What `$.fs.read` can read, and so the largest document the pane opens. */

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
-import { currentHit, findHits, hitLabel, startFind, stepFind } from "./find.ts";
-import { fixtureDoc } from "./fixture-docs.ts";
+import { parseBlocks } from "./blocks";
+import { currentHit, findHits, hitLabel, startFind, stepFind } from "./find";
+import { fixtureDoc } from "./fixture-docs";
 
 // Parsed once at load: a test's own time limit is 5 seconds.
 const big = parseBlocks(fixtureDoc(20_000)).blocks;

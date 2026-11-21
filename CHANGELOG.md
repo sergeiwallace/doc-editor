@@ -8,6 +8,14 @@ documentation.
 
 ## [Unreleased]
 
+### Fixed
+
+- The local gate passes again under Claude Code 2.1.323 and later. `claude plugin validate` now
+  type-checks the hooks with its own compiler options, which reject a relative import ending in
+  `.ts`, so the plugin imports its local modules without an extension. The declared-list gate
+  reads the `(default matcher key: ...)` mark validate now adds to a hook, and runs the safety
+  floor even when validate fails, so a type error cannot hide a breach of the floor.
+
 ## [0.1.0]
 
 ### Added

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
-import { diffPages, editableLines, firstWords, lineAt, quoteData, replaceLine, requestText, taskLines, toggleTask } from "./edits.ts";
+import { parseBlocks } from "./blocks";
+import { diffPages, editableLines, firstWords, lineAt, quoteData, replaceLine, requestText, taskLines, toggleTask } from "./edits";
 
 // The edits the pane makes or asks for, through the core's exports (T-1.4's request text, T-1.6's
 // line edits and checkbox toggles).

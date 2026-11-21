@@ -9,9 +9,9 @@
 // `ViewState.offset` is an index into the visible pieces, never a row: the mod answers `ui.scroll`
 // itself and moves by pieces, so the engine's own window never moves.
 
-import type { Block, ViewState } from "./types.ts";
-import { calloutLabel, drawnOf, fenceLanguage } from "./blocks.ts";
-import { visibleBlocks } from "./outline.ts";
+import type { Block, ViewState } from "./types";
+import { calloutLabel, drawnOf, fenceLanguage } from "./blocks";
+import { visibleBlocks } from "./outline";
 
 export const ELEMENT_LIMIT = 9_000;
 export const PAGE_BUDGET = 60_000;

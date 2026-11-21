@@ -2,8 +2,8 @@
 // request, the lines of a block a single-line field may edit, a task checkbox toggle, and one
 // source line replaced with its line ending kept.
 
-import { sourceLines } from "./changes.ts";
-import type { Block, EditRequest } from "./types.ts";
+import { sourceLines } from "./changes";
+import type { Block, EditRequest } from "./types";
 
 /** How many words of a block the request quotes. */
 export const FIRST_WORDS = 8;

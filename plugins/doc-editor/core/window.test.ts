@@ -1,9 +1,9 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import type { Block, ViewState } from "./types.ts";
-import { parseBlocks } from "./blocks.ts";
-import { fixtureDoc } from "./fixture-docs.ts";
-import { outline, toggleFoldAll } from "./outline.ts";
+import type { Block, ViewState } from "./types";
+import { parseBlocks } from "./blocks";
+import { fixtureDoc } from "./fixture-docs";
+import { outline, toggleFoldAll } from "./outline";
 import {
   ELEMENT_LIMIT,
   PAGE_BUDGET,
@@ -19,8 +19,8 @@ import {
   scrollOffset,
   sliceText,
   viewPieces,
-} from "./window.ts";
-import type { Piece } from "./window.ts";
+} from "./window";
+import type { Piece } from "./window";
 
 const big = parseBlocks(fixtureDoc(20_000)).blocks;
 const SIZES = [
