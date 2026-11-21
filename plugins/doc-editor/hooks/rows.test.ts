@@ -1,9 +1,9 @@
 import type { RenderPropsOf } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
-import { PANE_ID, PLUGIN_NAME } from "./register.ts";
-import { openLinkKey } from "./rows.ts";
-import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world.ts";
+import { PANE_ID, PLUGIN_NAME } from "./register";
+import { openLinkKey } from "./rows";
+import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world";
 
 const DOC = `${CWD}/docs/design.md`;
 const TEXT = "# Design\n\nBody.\n";

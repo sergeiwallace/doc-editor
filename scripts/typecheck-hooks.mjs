@@ -17,7 +17,7 @@ if (!existsSync(types) || !existsSync(join(dir, "tsconfig.json"))) {
   process.exit(0);
 }
 const tsc = resolve(dirname(fileURLToPath(import.meta.url)), "../node_modules/typescript/bin/tsc");
-const result = spawnSync(process.execPath, [tsc, "-p", dir, "--allowImportingTsExtensions"], {
+const result = spawnSync(process.execPath, [tsc, "-p", dir], {
   stdio: "inherit",
 });
 if (result.status === 0) console.log(`typecheck-hooks: ${dir}/hooks type-checks against the mod types`);

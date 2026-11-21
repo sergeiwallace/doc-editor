@@ -102,7 +102,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
     const hooks = notes.filter((note) => note.startsWith(`${MODULE} hooks: `));
     const calls = notes.filter((note) => note.startsWith(`${MODULE} calls: `));
     expect(hooks).toEqual([
-      `${MODULE} hooks: session.start, command.run{command=doc|doc-editor}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, turn.start, turn.complete, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane}, ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
+      `${MODULE} hooks: session.start, command.run{command=doc|doc-editor}, prompt.autocomplete, tool.call{tool=mcp__doc-editor__show}, tool.call{tool=Write|Edit}, turn.start, turn.complete, ui.close{id=doc}, ui.scroll{requestId=doc}, ui.render{component=Pane} (default matcher key: plugin), ui.render{component=ToolUse}, ui.render{component=ToolGroup}`,
     ]);
     expect(calls.join("\n")).not.toMatch(/\$\.(model\.|agent\.spawn|http\.|mcp\.)/);
     const result = runGate(pluginDir);
@@ -301,7 +301,7 @@ describe.skipIf(!claude.usable)(`the safety floor (claude ${claude.version ?? cl
 
   for (const [name, body] of [
     ["a local function named fetch", "const fetch = (u: string) => u.length;\nexport const n = fetch(\"a\");\n"],
-    ["an alias of globalThis indexed only by a constant that is no network API", 'const glo = typeof globalThis !== "undefined" ? globalThis : {};\nconst id = "__mark__";\nexport const seen = glo[id] === true;\n'],
+    ["an alias of globalThis indexed only by a constant that is no network API", 'const glo = (typeof globalThis !== "undefined" ? globalThis : {}) as Record<string, unknown>;\nconst id = "__mark__";\nexport const seen = glo[id] === true;\n'],
   ] as const) {
     it(`should pass ${name}`, () => {
       const result = runGate(pluginWith({ files: { "hooks/net.ts": body } }));

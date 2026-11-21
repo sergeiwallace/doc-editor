@@ -1,7 +1,7 @@
-import { drawnOf } from "../core/blocks.ts";
-import { hitLabel } from "../core/find.ts";
-import { headingPath } from "../core/outline.ts";
-import type { Block, FindState, ViewMode } from "../core/types.ts";
+import { drawnOf } from "../core/blocks";
+import { hitLabel } from "../core/find";
+import { headingPath } from "../core/outline";
+import type { Block, FindState, ViewMode } from "../core/types";
 
 /** Words a minute the read time assumes. */
 export const WORDS_PER_MINUTE = 265;

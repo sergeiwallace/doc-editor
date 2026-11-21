@@ -1,4 +1,4 @@
-import type { Block, Change } from "./types.ts";
+import type { Block, Change } from "./types";
 
 /** Pairs of old and new block indices whose source text is equal, in order (a longest common run). */
 export function alignBlocks(before: readonly Block[], after: readonly Block[]): [number, number][] {

@@ -2,10 +2,10 @@ import type { On } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import { describe, expect, test } from "claude-code/testing";
 
-import { LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
-import { keyButton } from "./hints.ts";
-import { ASK_INPUT, CHANGE_ACTIONS, EDIT_INPUT, ENTER_HINT, GOTO_INPUT, lineButton, MAX_KEPT_CHANGES, taskButton } from "./pane.ts";
-import { CWD, elementsOf, endTurn, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, pieceKeys, START_MS, startTurn } from "./tests/pane-world.ts";
+import { LINKED_FILE, linkedDoc } from "../core/fixture-docs";
+import { keyButton } from "./hints";
+import { ASK_INPUT, CHANGE_ACTIONS, EDIT_INPUT, ENTER_HINT, GOTO_INPUT, lineButton, MAX_KEPT_CHANGES, taskButton } from "./pane";
+import { CWD, elementsOf, endTurn, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, pieceKeys, START_MS, startTurn } from "./tests/pane-world";
 
 const DOC = `${CWD}/notes.md`;
 const TEXT = [

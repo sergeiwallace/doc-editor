@@ -1,8 +1,8 @@
 import type { On } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
-import { COMMAND_NAME } from "./register.ts";
-import { CWD, ENGINE_TEST, header, openDoc, START_MS } from "./tests/pane-world.ts";
+import { COMMAND_NAME } from "./register";
+import { CWD, ENGINE_TEST, header, openDoc, START_MS } from "./tests/pane-world";
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
 

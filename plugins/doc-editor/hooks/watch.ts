@@ -1,6 +1,6 @@
 import type { Timer } from "claude-code";
 
-import type { FileStamp } from "./save.ts";
+import type { FileStamp } from "./save";
 
 /**
  * The engine as the reload watcher uses it: plain closures register.ts builds from `$`, so this

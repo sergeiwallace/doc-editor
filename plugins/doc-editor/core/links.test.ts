@@ -1,9 +1,9 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
-import { fixtureDoc, linkedDoc } from "./fixture-docs.ts";
-import { checkTarget, classifyHref, isDrawableHref, normalizePath, parseLocation, resolveLink } from "./links.ts";
-import { outline } from "./outline.ts";
+import { parseBlocks } from "./blocks";
+import { fixtureDoc, linkedDoc } from "./fixture-docs";
+import { checkTarget, classifyHref, isDrawableHref, normalizePath, parseLocation, resolveLink } from "./links";
+import { outline } from "./outline";
 
 const ROOT = "/repo";
 const FROM = "/repo/docs/test/fixtures/thousand-line-doc.md";

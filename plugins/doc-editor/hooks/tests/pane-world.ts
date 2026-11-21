@@ -2,7 +2,7 @@ import type { Args, On, RenderPropsOf } from "claude-code";
 import type { Engine } from "claude-code/testing";
 import { mock } from "claude-code/testing";
 
-import { PANE_ID, PLUGIN_NAME } from "../register.ts";
+import { PANE_ID, PLUGIN_NAME } from "../register";
 
 /**
  * The time limit of a test that starts the engine: starting it dominates such a test and, on a

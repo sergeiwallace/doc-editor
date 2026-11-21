@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
-import { diffPages, editableLines, firstWords, lineAt, quoteData, replaceLine, requestText, taskLines, toggleTask } from "./edits.ts";
+import { parseBlocks } from "./blocks";
+import { diffPages, editableLines, firstWords, lineAt, quoteData, replaceLine, requestText, taskLines, toggleTask } from "./edits";
 
 const SOURCE = [
   "# Title",

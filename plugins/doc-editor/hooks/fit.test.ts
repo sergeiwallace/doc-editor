@@ -1,9 +1,9 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
-import { keyButton } from "./hints.ts";
-import { CARD_CONTINUES, OUTLINE_HINT } from "./pane.ts";
-import { CWD, ENGINE_TEST, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world.ts";
+import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs";
+import { keyButton } from "./hints";
+import { CARD_CONTINUES, OUTLINE_HINT } from "./pane";
+import { CWD, ENGINE_TEST, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world";
 
 const DOC = `${CWD}/doc.md`;
 const files = (text: string) => ({ files: { [DOC]: text, [`${CWD}/${LINKED_FILE}`]: linkedDoc() } });

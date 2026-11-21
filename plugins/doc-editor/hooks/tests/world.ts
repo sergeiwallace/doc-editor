@@ -1,8 +1,8 @@
 import type { ProcessRunResult, Timer } from "claude-code";
 import type { MockClock } from "claude-code/testing";
 
-import type { FileStamp, SaveHost } from "../save.ts";
-import type { WatchHost } from "../watch.ts";
+import type { FileStamp, SaveHost } from "../save";
+import type { WatchHost } from "../watch";
 
 export const HELPER = "/plugins/doc-editor/bin/save.mjs";
 

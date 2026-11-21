@@ -1,5 +1,5 @@
-import { parseMarkdown } from "../core/parse.ts";
-import type { Node } from "../core/parse.ts";
+import { parseMarkdown } from "../core/parse";
+import type { Node } from "../core/parse";
 
 export interface Table {
   header: string[];

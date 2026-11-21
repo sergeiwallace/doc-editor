@@ -1,4 +1,4 @@
-import type { DocPane } from "./pane.ts";
+import type { DocPane } from "./pane";
 
 export const SHOW_TOOL = "show";
 /** The name the model calls it by: `mcp__<plugin>__<name>`. */

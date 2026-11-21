@@ -9,12 +9,12 @@ import {
   noCommandText,
   runDoc,
   takenText,
-} from "./commands.ts";
-import { DocPane, PANE_ID, type PaneHost } from "./pane.ts";
-import { groupPaths, rowPath, withOpenLinks } from "./rows.ts";
-import { createSaver, type FileStamp, type Save } from "./save.ts";
-import { runShow, SHOW_TOOL_SPEC } from "./tools.ts";
-import { createWatcher, type Watcher } from "./watch.ts";
+} from "./commands";
+import { DocPane, PANE_ID, type PaneHost } from "./pane";
+import { groupPaths, rowPath, withOpenLinks } from "./rows";
+import { createSaver, type FileStamp, type Save } from "./save";
+import { runShow, SHOW_TOOL_SPEC } from "./tools";
+import { createWatcher, type Watcher } from "./watch";
 
 export { COMMAND_NAME, FALLBACK_COMMAND_NAME, PANE_ID };
 export const PLUGIN_NAME = "doc-editor";

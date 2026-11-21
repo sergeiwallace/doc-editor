@@ -21,8 +21,9 @@ Governs: `scripts/run-gate.mjs`, `scripts/claude-floor.mjs`, `scripts/plugin-tes
   other files, which the `hooks/*.ts` layout needs. The gates were measured on 2.1.306.
 - `typecheck-hooks.mjs` checks the hooks against the mod types Claude Code writes when a session
   loads the plugin. The types exist only after one `claude --plugin-dir` load; before that the
-  script says it did not type-check and exits 0. It passes `--allowImportingTsExtensions`,
-  because the generated tsconfig does not allow the `.ts` import extensions the mod loader needs.
+  script says it did not type-check and exits 0. The plugin imports its local modules without a
+  `.ts` extension, because `claude plugin validate` type-checks with its own compiler options,
+  which reject one, so the script passes no extra compiler flag.
 - Vitest runs the repository checks in `test/*.spec.ts` under Node. The mod's own tests,
   `plugins/*/**/*.test.ts`, run under `claude plugin test`. `claude plugin test` cannot spawn
   processes, so the hooks tests use stub hosts and the save helper itself runs on real files

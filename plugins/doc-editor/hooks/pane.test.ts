@@ -1,11 +1,11 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs.ts";
-import { ELEMENT_LIMIT, TREE_LIMIT } from "../core/window.ts";
-import { keyButton } from "./hints.ts";
-import { FIND_INPUT, MAX_BYTES } from "./pane.ts";
-import { PANE_ID } from "./register.ts";
-import { CWD, elementsOf, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, type PaneWorldOptions, pieceKeys, scrollPane } from "./tests/pane-world.ts";
+import { fixtureDoc, LINKED_FILE, linkedDoc } from "../core/fixture-docs";
+import { ELEMENT_LIMIT, TREE_LIMIT } from "../core/window";
+import { keyButton } from "./hints";
+import { FIND_INPUT, MAX_BYTES } from "./pane";
+import { PANE_ID } from "./register";
+import { CWD, elementsOf, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, type PaneWorldOptions, pieceKeys, scrollPane } from "./tests/pane-world";
 
 const SMALL = fixtureDoc(200);
 const MEDIUM = fixtureDoc(1000);

@@ -1,5 +1,5 @@
-import type { Block, OutlineEntry } from "./types.ts";
-import { parseMarkdown, plainText } from "./parse.ts";
+import type { Block, OutlineEntry } from "./types";
+import { parseMarkdown, plainText } from "./parse";
 
 /** A heading block's title as plain text, with its Markdown markers and inline syntax removed. */
 export function headingTitle(block: Block): string {

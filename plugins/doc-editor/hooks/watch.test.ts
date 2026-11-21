@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "claude-code/testing";
 
-import { sizeOf, watchWorld } from "./tests/world.ts";
-import { createWatcher, type Reload } from "./watch.ts";
+import { sizeOf, watchWorld } from "./tests/world";
+import { createWatcher, type Reload } from "./watch";
 
 const PATH = "/work/doc-editor/notes.md";
 const TEXT = "# Notes\n";

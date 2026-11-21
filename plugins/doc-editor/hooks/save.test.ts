@@ -1,7 +1,7 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { CANCEL, conflictQuestion, createSaver, NON_ATOMIC_TEXT, OVERWRITE, RELOAD } from "./save.ts";
-import { exit, HELPER, nodeVersion, ok, saveWorld, sizeOf, type Script } from "./tests/world.ts";
+import { CANCEL, conflictQuestion, createSaver, NON_ATOMIC_TEXT, OVERWRITE, RELOAD } from "./save";
+import { exit, HELPER, nodeVersion, ok, saveWorld, sizeOf, type Script } from "./tests/world";
 
 const PATH = "/work/doc-editor/notes.md";
 const READ_TEXT = "# Notes\n\n- [ ] first\n";

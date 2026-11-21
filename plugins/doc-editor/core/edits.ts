@@ -1,5 +1,5 @@
-import { sourceLines } from "./changes.ts";
-import type { Block, EditRequest } from "./types.ts";
+import { sourceLines } from "./changes";
+import type { Block, EditRequest } from "./types";
 
 /** How many words of a block the request quotes. */
 export const FIRST_WORDS = 8;

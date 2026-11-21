@@ -10,6 +10,11 @@ Governs: `scripts/check-plugin-declared.mjs`, `scripts/safety-floor.mjs`,
   `claude plugin validate --strict --json` reports with the list the plugin README declares, both
   ways: a reported value the README does not declare fails, and so does a declared value validate
   does not report.
+- Since Claude Code 2.1.323 validate marks a hook whose matcher gets a key by default, as in
+  `ui.render{component=Pane} (default matcher key: plugin)`. The gate compares only the
+  registration before that mark with the README's list.
+- The safety floor and the source scan run even when validate fails, and the gate still exits 1,
+  so a type error never hides a breach of the floor.
 - It also scans the sources, because validate files every call under the module that reached it,
   even one made in a helper the module handed `on` or `$` to, so the report alone cannot show
   where a call sits. `validate --strict` refuses `$` bound to a name (`const engine = $`) but
