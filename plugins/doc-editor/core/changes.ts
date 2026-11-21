@@ -2,7 +2,7 @@
 // changed run of blocks in a turn, the turn's unified diff for a `Code` element with format `diff`,
 // and the check that keeps a discard from writing over text that changed again.
 
-import type { Block, Change } from "./types.ts";
+import type { Block, Change } from "./types";
 
 /** Pairs of old and new block indices whose source text is equal, in order (a longest common run). */
 export function alignBlocks(before: readonly Block[], after: readonly Block[]): [number, number][] {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { codeSpan, decodeEntities, escapeText, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset.ts";
+import { codeSpan, decodeEntities, escapeText, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset";
 
 describe("htmlToMarkdown", () => {
   test("should convert inline tags to Markdown emphasis, strikethrough, code and links", () => {

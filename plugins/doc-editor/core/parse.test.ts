@@ -1,6 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { frontMatterRange, parseMarkdown, plainText } from "./parse.ts";
+import { frontMatterRange, parseMarkdown, plainText } from "./parse";
 
 const kinds = (source: string) =>
   parseMarkdown(source).tree.children.map((node) => `${node.type}@${node.position?.start.line}`);

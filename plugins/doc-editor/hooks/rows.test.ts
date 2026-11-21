@@ -1,9 +1,9 @@
 import type { RenderPropsOf } from "claude-code";
 import { describe, expect, test } from "claude-code/testing";
 
-import { PANE_ID, PLUGIN_NAME } from "./register.ts";
-import { openLinkKey } from "./rows.ts";
-import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world.ts";
+import { PANE_ID, PLUGIN_NAME } from "./register";
+import { openLinkKey } from "./rows";
+import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world";
 
 // The open link under Claude's Read, Write and Edit rows (FR-1, D-13). The row beneath is the
 // test's own hook, standing for the engine or any other mod: the link is added under it, so it

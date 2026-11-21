@@ -3,9 +3,9 @@
 // against the file as it was when that turn started; and the markers they put on blocks. Plain
 // values in and out: the pane owns the document and draws this.
 
-import { mapBlockIds, recordChanges, sourceLines } from "../core/changes.ts";
-import { locate } from "../core/outline.ts";
-import type { Block, Change, EditRequest } from "../core/types.ts";
+import { mapBlockIds, recordChanges, sourceLines } from "../core/changes";
+import { locate } from "../core/outline";
+import type { Block, Change, EditRequest } from "../core/types";
 
 /** A file as the tracker reads it: its source and its blocks. */
 export interface Snapshot {

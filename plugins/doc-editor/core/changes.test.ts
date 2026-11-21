@@ -1,6 +1,6 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { parseBlocks } from "./blocks.ts";
+import { parseBlocks } from "./blocks";
 import {
   alignBlocks,
   changedBlockIds,
@@ -10,8 +10,8 @@ import {
   markedBlockIds,
   recordChanges,
   turnDiff,
-} from "./changes.ts";
-import { fixtureDoc } from "./fixture-docs.ts";
+} from "./changes";
+import { fixtureDoc } from "./fixture-docs";
 
 const doc = (source: string) => ({ source, blocks: parseBlocks(source).blocks });
 const BEFORE = "# T\n\nOne.\n\nTwo.\n\nThree.\n";

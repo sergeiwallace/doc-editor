@@ -14,12 +14,12 @@
 // whose href may not be drawn as a hyperlink becomes its label and its target as code, and a
 // reference link is resolved, since each block is drawn in its own element.
 
-import type { Block, BlockKind, Document, Link } from "./types.ts";
-import { parseMarkdown, splitLines } from "./parse.ts";
-import type { Node } from "./parse.ts";
-import { codeSpan, decodeEntities, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset.ts";
-import { classifyHref, isDrawableHref } from "./links.ts";
-import { outline } from "./outline.ts";
+import type { Block, BlockKind, Document, Link } from "./types";
+import { parseMarkdown, splitLines } from "./parse";
+import type { Node } from "./parse";
+import { codeSpan, decodeEntities, htmlToMarkdown, imageText, linkDestination, linkLabel } from "./html-subset";
+import { classifyHref, isDrawableHref } from "./links";
+import { outline } from "./outline";
 
 /** Where the document lives, so the drawn text can tell an in-repository link from any other. */
 export interface Origin {

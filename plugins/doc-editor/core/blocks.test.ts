@@ -1,9 +1,9 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { calloutLabel, drawnOf, fenceLanguage, parseBlocks, toDocument } from "./blocks.ts";
-import { fixtureDoc } from "./fixture-docs.ts";
-import { parseMarkdown } from "./parse.ts";
-import type { Node } from "./parse.ts";
+import { calloutLabel, drawnOf, fenceLanguage, parseBlocks, toDocument } from "./blocks";
+import { fixtureDoc } from "./fixture-docs";
+import { parseMarkdown } from "./parse";
+import type { Node } from "./parse";
 
 const ORIGIN = { path: "/repo/docs/a.md", repoRoot: "/repo" };
 const blocksOf = (source: string) => parseBlocks(source, ORIGIN).blocks;

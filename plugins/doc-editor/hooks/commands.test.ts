@@ -1,9 +1,9 @@
 import type { Engine } from "claude-code/testing";
 import { describe, expect, test } from "claude-code/testing";
 
-import { COMMAND_NAME, FALLBACK_COMMAND_NAME, takenText } from "./commands.ts";
-import { PANE_ID } from "./register.ts";
-import { CWD, ENGINE_TEST, mountPane, openDoc, paneWorld, SESSION } from "./tests/pane-world.ts";
+import { COMMAND_NAME, FALLBACK_COMMAND_NAME, takenText } from "./commands";
+import { PANE_ID } from "./register";
+import { CWD, ENGINE_TEST, mountPane, openDoc, paneWorld, SESSION } from "./tests/pane-world";
 
 // `/doc` and the path completion after it, through the mod's hooks (FR-1, D-13).
 

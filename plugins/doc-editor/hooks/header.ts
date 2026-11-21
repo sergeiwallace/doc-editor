@@ -1,10 +1,10 @@
 // The pane's header row (design, The pane): the path and heading path on the first line; the mode
 // word, the read time and the find state on the second. Plain values in, plain strings out.
 
-import { drawnOf } from "../core/blocks.ts";
-import { hitLabel } from "../core/find.ts";
-import { headingPath } from "../core/outline.ts";
-import type { Block, FindState, ViewMode } from "../core/types.ts";
+import { drawnOf } from "../core/blocks";
+import { hitLabel } from "../core/find";
+import { headingPath } from "../core/outline";
+import type { Block, FindState, ViewMode } from "../core/types";
 
 /** Words a minute the read time assumes. */
 export const WORDS_PER_MINUTE = 265;

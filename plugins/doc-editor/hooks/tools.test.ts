@@ -1,8 +1,8 @@
 import { describe, expect, test } from "claude-code/testing";
 
-import { PANE_ID } from "./register.ts";
-import { CWD, ENGINE_TEST, mountPane, paneWorld, SESSION } from "./tests/pane-world.ts";
-import { SHOW_TOOL_CALL } from "./tools.ts";
+import { PANE_ID } from "./register";
+import { CWD, ENGINE_TEST, mountPane, paneWorld, SESSION } from "./tests/pane-world";
+import { SHOW_TOOL_CALL } from "./tools";
 
 // The `show` tool Claude calls, answered by the mod's own tool.call hook (FR-1, D-13, NFR-9).
 
