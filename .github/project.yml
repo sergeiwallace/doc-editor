@@ -1,0 +1,148 @@
+project:
+  title: "doc-editor"
+  number: null
+  short_description: "The work of {repo}: its issues, by status and sprint"
+  link_repository: true
+  readme: |
+    # doc-editor work
+
+    Every item on this Project is an issue in [{repo}](https://github.com/{repo}).
+
+    ## Status
+
+    1. To Do: not started.
+    2. In Progress: someone is working on it. Linking a pull request moves an issue here.
+    3. Blocked: the issue cannot move until something else happens.
+    4. Acceptance: closing an issue as completed moves it here. It waits for an accepter's review.
+    5. Done: an accepter other than the assignee applied the `accepted` label, or the issue was closed as not planned
+       or as a duplicate.
+    6. Archive: set aside as not done.
+
+    ## Views
+
+    1. Current sprint: the board for the current iteration.
+    2. Backlog: open issues with no iteration.
+    3. Roadmap: open issues by iteration, grouped by parent issue.
+    4. By person: open issues grouped by assignee.
+    5. In progress this sprint: what is being worked on now.
+    6. Blocked: open issues labelled `blocked`.
+    7. Waiting on you: open issues labelled `decision-needed`.
+    8. My work: open issues assigned to you.
+
+    ## Adding work
+
+    Open an issue in the repository from one of its forms: Story, Task, Bug or Epic. It joins this Project with Status
+    To Do. An epic carries the `epic` label, and its stories and tasks are its sub-issues.
+
+files:
+  - ISSUE_TEMPLATE/story.yml
+  - ISSUE_TEMPLATE/task.yml
+  - ISSUE_TEMPLATE/bug.yml
+  - ISSUE_TEMPLATE/epic.yml
+  - pull_request_template.md
+
+labels:
+  - {name: epic, color: "3E4B9E", description: "A body of work delivered by its sub-issues"}
+  - {name: accepted, color: "0E8A16", description: "An accepter other than the assignee passed the Acceptance review"}
+  - {name: agent-ready, color: "1D76DB", description: "An AI agent may take this issue"}
+  - {name: blocked, color: "B60205", description: "Has an open blocking dependency. The Blocked view filters on it"}
+  - {name: decision-needed, color: "D93F0B", description: "Waiting on the team lead's decision. The Waiting on you view filters on it"}
+  - {name: do-not-merge, color: "B60205", description: "Must not be merged as it stands; the pull request description says why"}
+  - {name: task, color: "C5DEF5", description: "A technical change with no user-story sentence"}
+
+fields:
+  - name: Status
+    type: SINGLE_SELECT
+    builtin: true
+    options:
+      - {name: To Do, color: BLUE, description: "This item hasn't been started", aliases: [Todo]}
+      - {name: In Progress, color: YELLOW, description: "This is actively being worked on"}
+      - {name: Blocked, color: ORANGE, description: "This item is blocked"}
+      - {name: Acceptance, color: PURPLE, description: "Finished and waiting for an accepter's review"}
+      - {name: Done, color: GREEN, description: "This has been completed"}
+      - {name: Archive, color: GRAY, description: "This item is archived as not done."}
+  - name: Iteration
+    type: ITERATION
+    start_date: null
+    duration: 14
+    count: 6
+    title: "doc-editor Sprint {n}"
+  - name: Release
+    type: SINGLE_SELECT
+    options:
+      - {name: "doc-editor 0.1.0", color: BLUE, description: "Release doc-editor 0.1.0"}
+  - name: Priority
+    type: SINGLE_SELECT
+    options:
+      - {name: P0, color: RED, description: "Critical"}
+      - {name: P1, color: ORANGE, description: "High"}
+      - {name: P2, color: YELLOW, description: "Medium"}
+      - {name: P3, color: BLUE, description: "Low"}
+      - {name: P4, color: GRAY, description: "Backlog"}
+
+issue_fields: []
+
+views:
+  - name: Current sprint
+    layout: BOARD
+    filter: "iteration:@current"
+    fields: [Title, Assignees, Labels, Parent issue, Sub-issues progress, Priority]
+    clicks: ["Column by Status, columns in the order To Do, In Progress, Blocked, Acceptance, Done, Archive"]
+  - name: Backlog
+    layout: TABLE
+    filter: "is:open no:iteration"
+    fields: [Title, Assignees, Status, Labels, Parent issue, Priority]
+    clicks: ["Group by Priority", "Sort by Priority"]
+  - name: Roadmap
+    layout: ROADMAP
+    filter: "is:open"
+    fields: []
+    clicks: ["Date fields: Iteration for start and target", "Zoom: Month", "Group by Parent issue"]
+  - name: By person
+    layout: TABLE
+    filter: "is:open"
+    fields: [Title, Assignees, Status, Iteration, Priority]
+    clicks: ["Group by Assignees", "Sort by Status"]
+  - name: In progress this sprint
+    layout: TABLE
+    filter: 'iteration:@current status:"In Progress"'
+    fields: [Title, Assignees, Linked pull requests, Priority]
+    clicks: ["Sort by Priority"]
+  - name: Blocked
+    layout: TABLE
+    filter: "is:open label:blocked"
+    fields: [Title, Assignees, Status, Iteration]
+    clicks: ["Sort by Priority"]
+  - name: Waiting on you
+    layout: TABLE
+    filter: "is:open label:decision-needed"
+    fields: [Title, Assignees, Status, Iteration]
+    clicks: ["Sort by Priority"]
+  - name: My work
+    layout: TABLE
+    filter: "is:open assignee:@me"
+    fields: [Title, Status, Iteration, Priority]
+    clicks: ["Sort by Priority"]
+
+workflows:
+  - {name: Item added to project, set: "Status: To Do", enabled: true}
+  - {name: Item reopened, set: "Status: In Progress", enabled: true}
+  - {name: Item closed, set: "Status: Acceptance (GitHub starts it as Done)", enabled: true}
+  - {name: Pull request linked to issue, set: "Status: In Progress", enabled: true}
+  - {name: Pull request merged, set: "Status: Done", enabled: true}
+  - {name: Code changes requested, enabled: false}
+  - {name: Code review approved, enabled: false}
+  - {name: Auto-close issue, enabled: false, why: "with it on, setting Done closes the issue and Item closed moves it back to Acceptance"}
+  - {name: Auto-add to project, set: "repository {repo}, filter is:issue", enabled: true}
+  - {name: Auto-add sub-issues to project, enabled: true}
+  - {name: Auto-archive items, set: "filter is:closed updated:<@today-30d", enabled: true}
+
+template_vars:
+  project_name: "doc-editor"
+  github_org_features: false
+  use_jira: false
+
+click_steps:
+  - "Settings, then Manage access: give each teammate who moves work on the board the Write role"
+  - "Name who reviews work for Acceptance besides the owner, so the owner's own issues can reach Done"
+  - "Delete GitHub's default View 1 if it is not wanted; the setup never deletes a view"

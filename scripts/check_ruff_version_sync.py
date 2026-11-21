@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Managed by project-template: formatting is off so every consumer holds the same bytes.
 # fmt: off
 """Fail if pyproject.toml's ruff pin and .pre-commit-config.yaml's ruff rev
 disagree (SW ruff-unification sweep, 2026-07-27).
@@ -42,7 +41,7 @@ def check(root: Path) -> list[str]:
     pyproject_text = pyproject_path.read_text()
 
     if "astral-sh/ruff-pre-commit" not in precommit_text:
-        return []  # non-python tech stack, or ruff hook not present here
+        return []
 
     errors: list[str] = []
 
