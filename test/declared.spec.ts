@@ -1,4 +1,3 @@
-// Runner: Vitest. It spawns the declared-list gate, which runs `claude plugin validate --json`.
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -10,8 +9,6 @@ import { claudeStatus } from "../scripts/claude-floor.mjs";
 const repoRoot = resolve(import.meta.dirname, "..");
 const pluginDir = join(repoRoot, "plugins/doc-editor");
 const gate = join(repoRoot, "scripts/check-plugin-declared.mjs");
-// What a session load writes into the plugin (the mod types and a root tsconfig.json), and
-// node_modules; a copy leaves them behind, as git does. The plugin's own types/ contract is kept.
 const GENERATED = [".claude-plugin/types", "tsconfig.json"];
 const isSkipped = (rel: string) =>
   rel.split("/").includes("node_modules") || GENERATED.some((path) => rel === path || rel.startsWith(`${path}/`));
@@ -22,7 +19,6 @@ afterEach(() => {
   for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true });
 });
 
-// A copy of the real plugin, edited by `edit`, so each case is the shipped plugin plus one change.
 function pluginWith(edit: (dir: string) => void): string {
   const dir = mkdtempSync(join(tmpdir(), "doc-editor-declared-"));
   scratch.push(dir);
@@ -49,7 +45,6 @@ const SESSION_START = "    return next(e);\n  });";
 const DECLARED_CALLS =
   '"calls": ["$.clock.every", "$.command.register", "$.fs.list", "$.fs.read", "$.fs.stat", "$.fs.write", "$.process.run", "$.prompt.submit", "$.state.get", "$.state.set", "$.tool.register", "$.ui.ask", "$.ui.close", "$.ui.focus", "$.ui.invalidate", "$.ui.open", "$.ui.resolve", "$.ui.status"],';
 
-// Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
 
 describe.skipIf(!claude.usable)(`the declared-list gate (claude ${claude.version ?? claude.reason})`, { timeout: 60_000 }, () => {

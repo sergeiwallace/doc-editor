@@ -1,0 +1,2 @@
+plugins/doc-editor/core/vendor/
+plugins/doc-editor/vendor-candidates/

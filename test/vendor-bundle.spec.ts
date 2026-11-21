@@ -1,7 +1,3 @@
-// Runner: Vitest. Design D-3's mitigation: the committed bundles match what
-// scripts/bundle-vendor.mjs writes. The rebuild needs the pinned packages, which
-// `npm ci --prefix tools/vendor-bundle` installs; without them the test is skipped and says why,
-// and never passes.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

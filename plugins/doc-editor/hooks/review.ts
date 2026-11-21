@@ -1,8 +1,3 @@
-// What Claude was asked and what it changed (design, The edit pipeline; FR-4, FR-5): the requests
-// the pane submitted, matched to the turns that ran them; each turn's changes to a file, kept
-// against the file as it was when that turn started; and the markers they put on blocks. Plain
-// values in and out: the pane owns the document and draws this.
-
 import { mapBlockIds, recordChanges, sourceLines } from "../core/changes";
 import { locate } from "../core/outline";
 import type { Block, Change, EditRequest } from "../core/types";
@@ -72,8 +67,6 @@ export function relocate(change: Change, before: Snapshot, after: Snapshot): { s
     const tail = old.slice(at + body.length, at + body.length + k);
     const run = [...lead, ...body, ...tail];
     const hits: number[] = [];
-    // A context cut short by an end of the file is matched as it is, so a copy elsewhere with the
-    // same neighbours leaves the match ambiguous rather than picking either.
     for (let i = 0; i + run.length <= now.length; i++) if (sameRun(now, i, run)) hits.push(i + lead.length);
     if (hits.length === 1) return { start: (hits[0] ?? 0) + 1 };
     if (hits.length === 0) return places > 1 ? { places } : null;
@@ -82,9 +75,6 @@ export function relocate(change: Change, before: Snapshot, after: Snapshot): { s
   return { places };
 }
 
-// A change's block ids and lines carried across a reload that did not make it, by its block ids
-// alone: each id to its new id, or the block now at its old first line; the lines moved by as
-// much as its first block. Used only when relocate cannot place the change.
 function carryByIds(change: Change, before: readonly Block[], after: readonly Block[], map: Record<string, string>): Change {
   const ids: string[] = [];
   let shift: number | null = null;

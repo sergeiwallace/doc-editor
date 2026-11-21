@@ -1,6 +1,3 @@
-// The document model shared by the mod, the web app and the MCP App (design, Data Model).
-// Plain JSON shapes only: no classes, no functions, no runtime code.
-
 export type BlockKind =
   | "heading"
   | "paragraph"

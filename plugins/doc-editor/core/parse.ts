@@ -1,6 +1,3 @@
-// Markdown source to an mdast tree with source positions, through the vendored micromark bundle
-// with the GFM extensions (design D-3): tables, task lists, strikethrough and autolinks.
-
 import { fromMarkdown, gfm, gfmFromMarkdown } from "./vendor/mdast.js";
 import type { Node, Root } from "./vendor/mdast.js";
 

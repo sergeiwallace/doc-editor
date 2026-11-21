@@ -1,32 +1,4 @@
 #!/usr/bin/env node
-// Declared-list gate for the mod's hooks and calls (design D-11, task T-0.2).
-// Usage: node scripts/check-plugin-declared.mjs <plugin-dir>
-// Runs `claude plugin validate --strict --json <plugin-dir>` and compares every
-// "<module> <kind>: <values>" note it reports (hooks, calls, env reads, env writes, state reads,
-// state writes, surface modules, gating hooks) with the list <plugin-dir>/README.md declares, both ways:
-// a reported value the README does not declare fails, and so does a declared value validate
-// does not report. It prints one line per difference.
-// Adapted from the sibling beads-ui repository's allow-list gate, which reads a JSON file.
-// It also holds the safety floor (T-1.8, scripts/safety-floor.mjs), which a declaration cannot
-// lift, over both validate's report and the sources.
-// Then it scans the sources, because validate files every call under the module that reached
-// it, even one made in a helper the module handed `on` or `$` to, so the report alone cannot
-// show where a call sits. It fails naming the file and line of:
-//   - any `$.` outside the hooks modules that hooks/hooks.json names;
-//   - outside those modules, any reference to a claude-code type that carries the engine
-//     (ENGINE_TYPES: the engine interface, the registrar and the hook signatures), by a named
-//     import (aliased or not), a re-export, a namespace member or an inline `import("claude-code")`;
-//   - inside a hooks module, a bare `$` that is neither a parameter nor followed by a member
-//     access, such as `helper($)`. validate --strict already refuses `$` bound to a name
-//     (`const engine = $`) but accepts it passed straight to a call.
-// Test files (*.test.*, *.spec.*, test/ and tests/) and .claude-plugin/ are skipped.
-//
-// A static scan is not a proof. It does not see: a helper whose engine parameter is untyped or
-// typed `any` or `unknown`, when the hooks module hands it the engine under another name than
-// `$` (a hook may name its first parameter anything); a noun handed out, such as `helper($.ui)`;
-// an engine type rebuilt structurally or derived from a hooks module's export
-// (`Parameters<typeof register>`). `claude plugin test` and review cover those.
-// Exits 1 on any difference or validation error, 2 when validate cannot run.
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { extname, join, relative, resolve } from "node:path";
@@ -37,18 +9,11 @@ import { registeredTools, reportBreaches, sourceBreaches } from "./safety-floor.
 const NOTE =
   /^(\.\/\S+) (hooks|calls|env reads|env writes|state reads|state writes|surface modules|gating hook with \.catch|gating hook without \.catch): (.*)$/;
 const VIA = / \(via [\w$.]+\)$/;
-// Claude Code 2.1.323 and later name the matcher keys the loader fills in by default, as in
-// `ui.render{component=Pane} (default matcher key: plugin)`; the registration is the part before.
 const DEFAULT_KEY = / \(default matcher key: [\w, ]+\)$/;
 const ENGINE_CALL = /(?<![\w$])\$\.[A-Za-z_]/;
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
-// .claude-plugin holds the manifest and the mod types Claude Code writes there when it loads the
-// plugin (.claude-plugin/types/, ignored by the repository), whose declarations name every
-// engine type.
 const SKIPPED_DIRS = new Set(["node_modules", ".turbo", ".claude-plugin", "test", "tests"]);
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
-// The exported names of the "claude-code" module (mods/types/claude-code.d.ts) whose type is or
-// takes the engine `$`.
 const ENGINE_TYPES = new Set([
   "AnyEventHook",
   "CatchHandler",
@@ -141,8 +106,6 @@ function reportedOf(report, problems) {
   return modules;
 }
 
-// The source with every comment and string literal blanked, newlines kept so line numbers
-// hold; a template literal's `${...}` stays, as it is code.
 function codeOnly(source) {
   let out = "";
   let mode = "code";
@@ -211,7 +174,6 @@ function sourceFiles(dir) {
 
 const lineAt = (text, offset) => text.slice(0, offset).split("\n").length;
 
-// Each engine type the file names from "claude-code", as [offset, name].
 function engineTypeReferences(source, code) {
   const found = [];
   const inCode = (offset) => code[offset] !== " ";
@@ -246,8 +208,6 @@ function engineTypeReferences(source, code) {
   return found;
 }
 
-// True when the `$` at `offset` is declared in a parameter list: the innermost bracket around
-// it is a `(` that opens a function's parameters, not a call's arguments.
 function isParameter(code, offset) {
   let depth = 0;
   let open = -1;
@@ -273,7 +233,6 @@ function isParameter(code, offset) {
   return false;
 }
 
-// Each bare `$` in a hooks module that is not a parameter or a member access's object.
 function engineHandedOut(code) {
   const found = [];
   for (const match of code.matchAll(BARE_ENGINE)) {
@@ -284,7 +243,6 @@ function engineHandedOut(code) {
   return found;
 }
 
-// Every source file of the plugin, as the safety floor reads it.
 function pluginSources(pluginDir) {
   const hooksDir = join(pluginDir, "hooks");
   const declared = JSON.parse(readFileSync(join(hooksDir, "hooks.json"), "utf8")).modules ?? [];
@@ -330,8 +288,6 @@ function engineEscapes(pluginDir) {
   return problems.sort();
 }
 
-// The declared list: the one ```json block between the README's declared-list markers, an object
-// keyed by hooks module ("./register.ts") whose values map each note kind to its values.
 const BEGIN = "<!-- validate-declared:begin -->";
 const END = "<!-- validate-declared:end -->";
 
@@ -406,8 +362,6 @@ function main() {
   const report = validate(pluginDir);
   const problems = [];
 
-  // The floor and the source scan run even when validate fails, so a type error never hides a
-  // breach of the floor.
   if (report.success !== true) {
     for (const part of [report.manifest, ...(report.contents ?? [])]) {
       for (const error of part?.errors ?? []) problems.push(`validate error: ${error.message}`);

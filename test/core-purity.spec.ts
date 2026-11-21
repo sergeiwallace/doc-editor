@@ -1,4 +1,3 @@
-// Runner: Vitest. It spawns the purity lint, which reads the repository from Node.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

@@ -1,7 +1,3 @@
-// Tables fitted to the pane (FR-2): a table whose natural width fits `bodyColumns` draws as the
-// engine's own Markdown table; a wider one draws as one card per row, each card the row's cells
-// under their column names. The cells keep their inline Markdown.
-
 import { parseMarkdown } from "../core/parse";
 import type { Node } from "../core/parse";
 

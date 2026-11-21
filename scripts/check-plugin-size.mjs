@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-// File-size gate for the mod (design D-3 and Risks, the module-size cap; task T-0.2).
-// Usage: node scripts/check-plugin-size.mjs <plugin-dir>
-// Fails naming every file under <plugin-dir> larger than 1 MB, counted as 1,000,000
-// bytes, the stricter reading of "1 MB", so a file the engine reads as over 1 MiB is
-// always caught. The files are the ones git's index holds under <plugin-dir>: every
-// tracked file plus every staged one, which in the pre-commit hook is exactly what the
-// commit carries. Each size is the indexed blob's, so a file staged large and then shrunk
-// in the working tree still fails. No directory is exempt: a file force-added under
-// node_modules or .turbo is counted like any other. Untracked files are not part of the
-// plugin and are not read. Exits 1 naming each file, 2 when the directory is missing or
-// not inside a git repository.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -31,8 +20,6 @@ function git(dir, args, input) {
   return result.stdout;
 }
 
-// Each indexed file under `dir` as { path, oid }, path relative to `dir`. A conflicted
-// path has several stages; each is a blob the merge could commit, so each is kept.
 function indexedFiles(dir) {
   return git(dir, ["ls-files", "-z", "--stage", "--", "."])
     .split("\0")

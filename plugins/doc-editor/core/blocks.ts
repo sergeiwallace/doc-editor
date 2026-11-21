@@ -1,19 +1,3 @@
-// Markdown source to blocks: the top-level units the pane draws, each with its 1-based line range,
-// its source text and the text the `Markdown` element is given to draw.
-//
-// Block ids follow the heading tree: a heading is `h` plus its position among its siblings at each
-// level (`h2.1` is the first subheading of the second top-level heading), and any other block is
-// its section's id plus its ordinal in that section (`h2.1:3`, or `h:1` before the first heading).
-// An id therefore stays the same while the block's place in the heading tree is unchanged, however
-// its text or the lines above it change. List items and quote content are `children`, with the
-// parent's id and their ordinal (`h2.1:3.2`).
-//
-// The drawn text differs from the source where the Phase 0 spike measured that the engine's
-// `Markdown` element would show syntax as text: task markers become checkbox glyphs, HTML comments
-// are dropped and inline HTML is converted, images become their alt text and path (D-14), a link
-// whose href may not be drawn as a hyperlink becomes its label and its target as code, and a
-// reference link is resolved, since each block is drawn in its own element.
-
 import type { Block, BlockKind, Document, Link } from "./types";
 import { parseMarkdown, splitLines } from "./parse";
 import type { Node } from "./parse";
@@ -73,9 +57,6 @@ const drawable = (walk: Walk, href: string): boolean =>
     ? classifyHref(href) === "url" && /^https?:\/\//i.test(href.trim())
     : isDrawableHref(href, walk.origin.path, walk.origin.repoRoot);
 
-// Every link the drawn text holds is written here: the label escaped so it cannot close the link,
-// the href percent-encoded so it cannot end the destination, and the encoded href checked again.
-// A link that may not be drawn becomes its label and its target as code.
 function linkMarkdown(walk: Walk, label: string, url: string): string {
   const destination = linkDestination(url);
   const text = linkLabel(label);
@@ -93,7 +74,6 @@ const PHRASING_PARENTS = new Set([
   "linkReference",
 ]);
 
-// Collects the drawn-text rewrites in a block's subtree and the links it holds.
 function rewrites(walk: Walk, node: Node, parent: Node | null, inCell: boolean, out: Replacement[]): void {
   const href = (url: string) => walk.links.push({ href: url, offset: startOf(node) });
   switch (node.type) {
@@ -166,8 +146,6 @@ const ANCHOR_HREF = /<a\b[^>]*?\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi
 const ANCHOR_OPEN = /^<a\b[^>]*>$/i;
 const ANCHOR_CLOSE = /^<\/a\s*>$/i;
 
-// mdast hands inline HTML one tag at a time, so an anchor's open and close tags are separate html
-// siblings. The index of the sibling closing the anchor opened at `k`, or -1.
 function anchorClose(children: readonly Node[], k: number): number {
   const open = children[k];
   if (open?.type !== "html" || !ANCHOR_OPEN.test(open.value ?? "")) return -1;
@@ -178,8 +156,6 @@ function anchorClose(children: readonly Node[], k: number): number {
   return -1;
 }
 
-// Rewrites an inline anchor and its label as one link, its href checked like any other. Returns
-// the index of the closing tag.
 function anchorRewrite(
   walk: Walk,
   parent: Node,

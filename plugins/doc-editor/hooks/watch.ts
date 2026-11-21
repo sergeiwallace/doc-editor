@@ -86,8 +86,6 @@ export function createWatcher(host: WatchHost): Watcher {
     report(target, { kind: "changed", text, stamp });
   };
 
-  // A check asked for while one runs runs again after it, so a write that lands during the
-  // first one's stat is not missed.
   let isAgain = false;
   const check = () => {
     if (checking !== undefined) {

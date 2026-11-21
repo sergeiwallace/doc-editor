@@ -1,4 +1,3 @@
-// Runner: Vitest. It spawns the marketplace gate, which runs `claude plugin validate`.
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,7 +16,6 @@ afterEach(() => {
   for (const dir of scratch.splice(0)) rmSync(dir, { recursive: true });
 });
 
-// A repository root holding the real marketplace and plugin manifest, the marketplace edited.
 function rootWith(edit: (marketplace: { plugins: { source: string }[] }) => void): string {
   const dir = mkdtempSync(join(tmpdir(), "doc-editor-marketplace-"));
   scratch.push(dir);
@@ -38,7 +36,6 @@ function rootWith(edit: (marketplace: { plugins: { source: string }[] }) => void
 const runGate = (root: string) =>
   spawnSync("node", [gate, root, SOURCE], { cwd: repoRoot, encoding: "utf8" });
 
-// Without a usable claude these cases are reported as skipped, with the reason, never as passed.
 const claude = claudeStatus();
 
 describe.skipIf(!claude.usable)(`the marketplace gate (claude ${claude.version ?? claude.reason})`, { timeout: 60_000 }, () => {

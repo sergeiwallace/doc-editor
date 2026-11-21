@@ -1,8 +1,3 @@
-// The Claude Code floor for the mod's gates (design D-11).
-// 2.1.299 is the first release that lets a hooks module's helpers live in other files, which the
-// reader's hooks/*.ts layout needs; the gate itself was measured on 2.1.306.
-// A gate that cannot run says so and exits 0 without claiming a pass: `npm test` and the hooks stay
-// one command for a contributor who has no `claude`, and the line names what did not run and why.
 import { spawnSync } from "node:child_process";
 
 export const CLAUDE_FLOOR = "2.1.299";

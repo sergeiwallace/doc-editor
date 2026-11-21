@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# Managed by project-template: formatting is off so every consumer holds the same bytes.
 # ruff: noqa: RUF100
 # fmt: off
 """Session broker — generates cross-project context for cc session startup.
@@ -40,13 +39,11 @@ def generate_session_context(
     except Exception as e:  # noqa: BLE001 any ai_core import or setup failure becomes a context note, never a crash at startup
         return f"# Session Context\n\n> Failed to generate: {e}\n"
 
-    # timezone.utc, not datetime.UTC (3.11+): consumers may run this under python3 3.10.
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")  # noqa: UP017
     sections = [
         f"# Session Context\n\n> Generated: {now}\n> Project: {project or 'all'}\n"
     ]
 
-    # P0/P1 priorities across all projects
     try:
         priorities = get_cross_project_priorities("P1", include_done=False)
         if priorities.get("total", 0) > 0:
@@ -67,7 +64,6 @@ def generate_session_context(
     except Exception:  # noqa: BLE001, S110 optional section; any ai_core failure omits it and the rest still renders
         pass
 
-    # Daily digest (top signals)
     try:
         digest = get_daily_digest(top_n=5, current_project=project)
         if digest:
@@ -82,7 +78,6 @@ def generate_session_context(
     except Exception:  # noqa: BLE001, S110 optional section; any ai_core failure omits it and the rest still renders
         pass
 
-    # Curated queue
     try:
         run_curation()
         queue = get_curated_queue(project=project)
@@ -119,7 +114,6 @@ def generate_session_context(
     except Exception:  # noqa: BLE001, S110 optional section; any ai_core failure omits it and the rest still renders
         pass
 
-    # Priority Guidance
     try:
         from ai_core.services.guidance import (
             compute_priority_guidance,

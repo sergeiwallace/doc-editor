@@ -1,5 +1,3 @@
-// Find in page: case-insensitive search over the text each block draws, with next and previous.
-
 import type { Block, FindState } from "./types";
 import { drawnOf } from "./blocks";
 

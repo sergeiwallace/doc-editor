@@ -1,10 +1,4 @@
 #!/usr/bin/env node
-// The one `npm test` command (design D-11): the repository checks under Vitest, then
-// `claude plugin test <plugin-dir>`, then one summary line.
-// Usage: node scripts/run-gate.mjs <plugin-dir> [vitest arguments]
-// The summary line names every gate that did not run and why, or says every gate ran, so a
-// contributor without a usable `claude` sees what was left out even where a hook hides output.
-// Exits non-zero when Vitest or the plugin tests fail.
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

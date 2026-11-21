@@ -1,7 +1,3 @@
-// The edits the pane makes or asks for (design, The edit pipeline): the text of a Claude-mediated
-// request, the lines of a block a single-line field may edit, a task checkbox toggle, and one
-// source line replaced with its line ending kept.
-
 import { sourceLines } from "./changes";
 import type { Block, EditRequest } from "./types";
 
@@ -18,7 +14,6 @@ export function firstWords(text: string, count: number = FIRST_WORDS): string {
 /** The most characters of document text one quoted field of a request carries. */
 export const QUOTE_LIMIT = 120;
 
-// Line breaks, other control characters and the Unicode line and paragraph separators.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g;
 
 /** Text on one line: control characters and line breaks become spaces, runs of space one. */
@@ -115,8 +110,6 @@ const counts = (lines: readonly DiffLine[]) => ({
   now: lines.filter((line) => line.text.startsWith(" ") || line.text.startsWith("+")).length,
 });
 
-// One hunk slice with its own header: a removal-only or addition-only side starts one line
-// earlier, as a unified diff writes an empty range.
 function slice(lines: readonly DiffLine[]): string {
   const first = lines[0];
   if (first === undefined) return "";

@@ -1,6 +1,3 @@
-// The pane's header row (design, The pane): the path and heading path on the first line; the mode
-// word, the read time and the find state on the second. Plain values in, plain strings out.
-
 import { drawnOf } from "../core/blocks";
 import { hitLabel } from "../core/find";
 import { headingPath } from "../core/outline";

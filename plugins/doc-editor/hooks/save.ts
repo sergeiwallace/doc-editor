@@ -87,7 +87,6 @@ export function createSaver(host: SaveHost): Save {
       (result) => result.exitCode === 0,
       () => false,
     ));
-  // The file is saved by then, so a stat that fails leaves the stamp unknown, never a failure.
   const restat = (path: string) => host.stat(path).catch(() => undefined);
   const failed = (reason: string): SaveResult => {
     host.status(reason);

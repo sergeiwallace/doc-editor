@@ -1,32 +1,4 @@
 #!/usr/bin/env node
-// Purity lint for the shared core (design D-9, task T-0.2).
-// Usage: node scripts/check-core-purity.mjs <core-dir>
-//
-// Parses every .ts, .tsx, .js and .mjs file under <core-dir>, tests and vendored code included,
-// and prints one line per finding:
-//   <file>:<line>: import <specifier>   an import, export-from or import() whose specifier is
-//                                       not a relative path ("./" or "../")
-//   <file>:<line>: import() of a computed specifier
-//   <file>:<line>: <token>              a free reference to document, window, process or
-//                                       setTimeout
-//   <file>:<line>: <global>.<token>     the same name read as a property, plain or as a string
-//                                       literal key, of a free globalThis, self or window
-//   <file>:<line>: <global> aliased or indexed by a computed key
-//                                       a free globalThis or self used other than as `x.name`
-//   <file>:<line>: require              any free `require`, called or aliased
-//   <file>:<line>: $                    any identifier `$`, bound or free: the core takes no `$`
-//                                       parameter anywhere
-// A name inside a comment, a string, template text or a regular expression is not an identifier,
-// and neither is a property name after `.` or an object-literal key, so none of those is flagged.
-// A test file (*.test.ts, *.test.tsx) may import the test kit, `claude-code/testing`.
-//
-// "Free" is resolved by scope (scripts/js-scope.mjs, which the safety floor's network check
-// shares): a reference is free when no scope enclosing the use declares the name (function and
-// block scopes, parameters, catch bindings, hoisted `var`, imports, class and function names). A
-// vendored bundle's own `var document` is a local; the same name used outside that function
-// reaches the DOM global.
-// Exits 1 on any finding or a file it cannot parse, 2 when the directory is missing or holds no
-// source file.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,12 +17,9 @@ import {
 
 const FREE_NAMES = new Set(["document", "window", "process", "setTimeout"]);
 const ENGINE = "$";
-// Free names that are the global object; a forbidden name read as their property is flagged.
 const GLOBAL_OBJECTS = new Set(["globalThis", "self", "window"]);
-// Free global-object names that may be read only as `x.name` or `x["name"]`, never aliased.
 const ALIASABLE_GLOBALS = new Set(["globalThis", "self"]);
 const TEST_KIT = "claude-code/testing";
-// The extensions the lint reads, of those js-scope.mjs parses.
 const READ = new Set([".ts", ".tsx", ".js", ".mjs"]);
 const TEST_FILE = /\.test\.tsx?$/;
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -93,7 +62,6 @@ function scanFile(file) {
     }
   };
 
-  // The forbidden globals, free or read through a free global object, and an aliased global object.
   for (const { node, finding } of globalReferences(program, scopes, {
     freeNames: FREE_NAMES,
     memberNames: new Set([...FREE_NAMES, ENGINE]),

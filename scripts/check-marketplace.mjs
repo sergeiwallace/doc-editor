@@ -1,11 +1,4 @@
 #!/usr/bin/env node
-// Marketplace gate (design D-10 and D-11, task T-0.2).
-// Usage: node scripts/check-marketplace.mjs <repo-root> <plugin-source>
-// Runs `claude plugin validate --strict <repo-root>`, then checks that the root
-// .claude-plugin/marketplace.json lists <plugin-source> (for example ./plugins/doc-editor)
-// under the name its own plugin.json gives. Validate passes a source that names no
-// plugin folder, so this gate checks the listing itself.
-// Exits 1 naming each problem, 2 when validate cannot run.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";

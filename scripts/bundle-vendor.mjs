@@ -1,15 +1,4 @@
 #!/usr/bin/env node
-// Bundles the libraries the doc-editor plugin vendors into committed ESM files.
-//
-//   npm ci --prefix tools/vendor-bundle
-//   node scripts/bundle-vendor.mjs
-//   node scripts/bundle-vendor.mjs --out-dir <dir>   writes each bundle under <dir> at its
-//                                                    repository path instead, for a comparison
-//
-// The output is committed and must be reproduced byte for byte by this script (design D-3).
-// Each bundle is built unminified with the default export condition (never `browser`) and
-// `process.env.NODE_ENV` defined to "production", and carries the licence notice of every
-// package it contains. A bundle over the size cap fails the run.
 
 import { readFileSync, readdirSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -60,9 +49,7 @@ const packageRootOf = (file) => {
     try {
       const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
       if (manifest.name && manifest.version) return { dir, manifest };
-    } catch {
-      // not a package root; keep climbing
-    }
+    } catch {}
     dir = dirname(dir);
   }
   throw new Error(`no package.json above ${file}`);
@@ -110,8 +97,6 @@ for (const bundle of BUNDLES) {
     logLevel: "silent",
   });
   const inputs = Object.keys(result.metafile.inputs).filter((path) => path.includes("node_modules/"));
-  // The repository's whitespace hooks would rewrite trailing blanks, so the script strips them
-  // itself and the committed file stays what the script writes.
   const code = `${licenceBanner(bundle.title, inputs)}\n${result.outputFiles[0].text}`
     .replace(/[ \t]+$/gm, "")
     .replace(/\n*$/, "\n");

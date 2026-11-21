@@ -1,22 +1,11 @@
 #!/usr/bin/env bash
-# setup.sh — Automate new project initialization after Copier scaffold.
-#
-# This script handles:
-#   - Git init + initial commit
-#   - Git hooks installation
-#   - GitHub repo creation (private)
-#   - Python/Node/Go/Rust dependency installation
-#   - direnv setup
-#   - Claude Code verification
-#   - Interactive "what's next" launcher
 set -euo pipefail
 
-# ── Colors ─────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 info()  { echo -e "${BLUE}[setup]${NC} $1"; }
 ok()    { echo -e "${GREEN}[setup]${NC} $1"; }
@@ -35,7 +24,6 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${BLUE}  Project Setup: ${GREEN}${PROJECT_NAME}${NC}"
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
 
-# ── 1. Git init ────────────────────────────────────────────────────────────
 next_step "Git initialization"
 if [ -d .git ]; then
     ok "Git repo already initialized."
@@ -44,12 +32,8 @@ else
     ok "Git repo initialized (branch: main)."
 fi
 
-# ── 2. Git hooks ───────────────────────────────────────────────────────────
 next_step "Git hooks"
 if [ -f .githooks/install.sh ]; then
-    # install.sh now fails non-zero when pre-commit isn't installed yet
-    # (AIH-393 loud-failure contract) — don't let that abort the rest of a
-    # fresh scaffold's setup; install.sh already printed the remediation.
     if bash .githooks/install.sh; then
         ok "Git hooks installed."
     else
@@ -59,27 +43,17 @@ else
     warn "No .githooks/install.sh found — skipping."
 fi
 
-# ── 3. Dependencies ───────────────────────────────────────────────────────
 next_step "Dependencies"
 
-# Python
 if [ -f pyproject.toml ] || [ -f setup.py ] || [ -f setup.cfg ]; then
     if command -v uv &>/dev/null; then
         info "Python project detected. Setting up with uv..."
-        uv venv 2>/dev/null || true
-        source .venv/bin/activate 2>/dev/null || true
-        uv pip install -e . 2>/dev/null && ok "Python deps installed (uv)." || warn "Python install failed — run manually."
-    elif command -v pip &>/dev/null; then
-        info "Python project detected. Setting up with pip..."
-        python -m venv .venv 2>/dev/null || true
-        source .venv/bin/activate 2>/dev/null || true
-        pip install -e . 2>/dev/null && ok "Python deps installed (pip)." || warn "Python install failed — run manually."
+        uv sync --inexact 2>/dev/null && ok "Python deps installed (uv)." || warn "Python install failed; run manually."
     else
-        warn "Python project detected but no uv or pip found."
+        warn "Python project detected but uv is required. Install: https://docs.astral.sh/uv/"
     fi
 fi
 
-# Node.js
 if [ -f package.json ]; then
     if command -v npm &>/dev/null; then
         info "Node.js project detected. Installing..."
@@ -89,7 +63,6 @@ if [ -f package.json ]; then
     fi
 fi
 
-# Rust
 if [ -f Cargo.toml ]; then
     if command -v cargo &>/dev/null; then
         info "Rust project detected. Building..."
@@ -99,7 +72,6 @@ if [ -f Cargo.toml ]; then
     fi
 fi
 
-# Go
 if [ -f go.mod ]; then
     if command -v go &>/dev/null; then
         info "Go project detected. Downloading modules..."
@@ -109,7 +81,6 @@ if [ -f go.mod ]; then
     fi
 fi
 
-# ── 4. Environment ────────────────────────────────────────────────────────
 next_step "Environment"
 if [ -f .env.example ] && [ ! -f .env ]; then
     cp .env.example .env
@@ -120,7 +91,6 @@ fi
 
 
 
-# Verify Doppler is available (canonical secrets store — replaces envchain/Keychain)
 if command -v doppler &>/dev/null; then
     ok "Doppler found — secrets load from Doppler (project: sergei, config: dev)."
     info "To add secrets: doppler secrets set KEY_NAME --project sergei --config dev"
@@ -140,7 +110,6 @@ else
     warn "direnv not installed — recommended for env management."
 fi
 
-# ── 5. GitHub repo ────────────────────────────────────────────────────────
 next_step "GitHub repository (private)"
 if ! command -v gh &>/dev/null; then
     err "gh CLI not found. Install: https://cli.github.com/"
@@ -152,7 +121,6 @@ else
     fi
 fi
 
-# ── 6. Initial commit ────────────────────────────────────────────────────
 next_step "Initial commit"
 if git log --oneline -1 &>/dev/null; then
     ok "Commits already exist — skipping initial commit."
@@ -165,15 +133,11 @@ COMMITEOF
     ok "Initial commit created."
 fi
 
-# ── 7. Expand project vision ─────────────────────────────────────────────
 next_step "Project vision"
 if grep -q "Original Vision" README.md 2>/dev/null && command -v claude &>/dev/null; then
     info "Expanding project vision with Claude Code..."
     VISION_LINE=$(grep -A1 "## Original Vision" README.md | tail -1 | sed 's/^> //')
     if [ -n "$VISION_LINE" ]; then
-        # The prompt is read into a variable, not expanded inside "$(cat <<...)":
-        # macOS's bash 3.2 reads an apostrophe in a heredoc inside "$(...)" as an
-        # open quote and fails to parse the rest of the script.
         VISION_PROMPT=""
         IFS= read -r -d '' VISION_PROMPT <<VISIONEOF || true
 You are writing the About section of a README.md for a new software project called $PROJECT_NAME.
@@ -193,7 +157,6 @@ VISIONEOF
             > /tmp/vision_expanded.md 2>/dev/null
 
         if [ -s /tmp/vision_expanded.md ]; then
-            # Insert expanded text after the "Original brief" blockquote
             python3 -c "
 import re, sys
 readme = open('README.md').read()
@@ -204,10 +167,6 @@ open('README.md', 'w').write(readme)
 " 2>/dev/null
             if [ $? -eq 0 ]; then
                 git add README.md
-                # Never use --no-verify here (AIH-469): pre-commit's autofix hooks
-                # (markdownlint, trailing-whitespace, ...) can modify README.md and
-                # fail the first attempt on purpose — re-stage their fix and retry
-                # once before giving up, instead of bypassing the gate.
                 if git commit -m "docs: Expand project vision in README" 2>/dev/null; then
                     ok "Project vision expanded in README.md."
                 elif git add README.md && git commit -m "docs: Expand project vision in README" 2>/dev/null; then
@@ -231,7 +190,6 @@ else
     fi
 fi
 
-# ── 8. Claude Code check ─────────────────────────────────────────────────
 next_step "Claude Code verification"
 if command -v claude &>/dev/null; then
     ok "Claude Code CLI found."
@@ -254,7 +212,6 @@ fi
 
 
 
-# ── 9. What's next? ─────────────────────────────────────────────────────
 next_step "Setup complete"
 echo ""
 echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
@@ -264,7 +221,6 @@ echo ""
 echo "  What would you like to do next? (comma-separated, e.g. 1,4)"
 echo ""
 
-# Build menu dynamically
 declare -a MENU_LABELS=()
 declare -a MENU_ACTIONS=()
 
@@ -284,7 +240,6 @@ MENU_ACTIONS+=("explore")
 MENU_LABELS+=("Nothing — I'll take it from here")
 MENU_ACTIONS+=("nothing")
 
-# Display menu
 for i in "${!MENU_LABELS[@]}"; do
     echo "    $((i + 1))) ${MENU_LABELS[$i]}"
 done
@@ -297,7 +252,6 @@ echo ""
 read -p "  Pick: " -r choices
 echo ""
 
-# Parse comma-separated choices
 IFS=',' read -ra SELECTED <<< "$choices"
 
 for choice in "${SELECTED[@]}"; do

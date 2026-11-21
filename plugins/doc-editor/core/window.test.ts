@@ -27,7 +27,6 @@ const SIZES = [
   { bodyRows: 50, bodyColumns: 120 },
   { bodyRows: 200, bodyColumns: 40 },
 ];
-// Header and hint rows a pane draws around the body: generous next to the two rows they are.
 const CHROME = 2_000;
 
 const view = (patch: Partial<ViewState> = {}): ViewState => ({

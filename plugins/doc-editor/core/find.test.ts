@@ -4,7 +4,6 @@ import { parseBlocks } from "./blocks";
 import { currentHit, findHits, hitLabel, startFind, stepFind } from "./find";
 import { fixtureDoc } from "./fixture-docs";
 
-// Parsed once at load: a test's own time limit is 5 seconds.
 const big = parseBlocks(fixtureDoc(20_000)).blocks;
 const blocks = parseBlocks("# Alpha\n\nbeta GAMMA\n\nnothing\n\ngamma ray <!-- secret -->\n\n- [x] Gamma item\n").blocks;
 

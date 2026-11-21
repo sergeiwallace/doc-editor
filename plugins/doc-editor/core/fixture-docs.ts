@@ -1,13 +1,3 @@
-// Deterministic fixture documents for the core tests and the Phase 1 live check. A 20,000-line
-// document committed as a file would pass the repository's 500 KB file limit, so both sizes are
-// generated here from a fixed pattern; `docs/test/fixtures/thousand-line-doc.md` is the committed
-// copy of `fixtureDoc(1000)`, checked byte for byte by test/fixture-doc.spec.ts.
-//
-// Every chapter holds each block kind: headings at all six levels, paragraphs with inline syntax,
-// nested lists, task lists, a fence, a wide table, a callout, a quote, links to a second file, to
-// its heading and to this file's headings, an image, HTML and an HTML comment. Chapter 1 also holds
-// a quote over 9,000 characters with paragraph breaks and a fence over 9,000 characters.
-
 /** The second fixture file the documents link to, and the heading they link to in it. */
 export const LINKED_FILE = "linked-doc.md";
 export const LINKED_HEADING = "second-section";

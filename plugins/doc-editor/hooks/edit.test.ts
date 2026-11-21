@@ -7,10 +7,6 @@ import { keyButton } from "./hints";
 import { ASK_INPUT, CHANGE_ACTIONS, EDIT_INPUT, ENTER_HINT, GOTO_INPUT, lineButton, MAX_KEPT_CHANGES, taskButton } from "./pane";
 import { CWD, elementsOf, endTurn, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, pieceKeys, START_MS, startTurn } from "./tests/pane-world";
 
-// The editing half of the pane through the mod's own hooks (T-1.4 to T-1.6, and FR-3's next and
-// previous heading): the c, e, n, p, v, k, x, r, j and h keys, the fields, the turn hooks and the
-// safe-write path, under the test kit.
-
 const DOC = `${CWD}/notes.md`;
 const TEXT = [
   "# Notes",
@@ -332,8 +328,6 @@ describe("review changes (T-1.5)", () => {
     expect(w.stateOf(DOC)).toEqual([]);
   });
 
-  // A copy between the changed block and the block before it is the one a text-only alignment
-  // takes for the changed block.
   for (const [where, copied] of [
     ["at the top of the file", (paragraph: string) => `${paragraph}\n\n${EDITED}`],
     ["between it and the block before it", (paragraph: string) => EDITED.replace("# Notes\n\n", `# Notes\n\n${paragraph}\n\nInserted.\n\n`)],
@@ -381,7 +375,6 @@ describe("review changes (T-1.5)", () => {
   });
 
   test("should name the reason and keep the marker when the save of a discard fails", ENGINE_TEST, async ($, on) => {
-    // The file moves on disk after it was read, and the person dismisses the reload question.
     on("tool.call", { tool: "AskUserQuestion" }, () => ({ deny: "dismissed" }));
     const { w, ui } = await landed($, on);
     await w.clock.advance(1);
@@ -590,8 +583,6 @@ describe("next and previous heading (FR-3)", () => {
   });
 });
 
-// The request keeps its own file: the pane closed, or showing another file, when the turn ends
-// still records the turn's changes in the requested file, there when it is shown again.
 describe("a request whose file is not on screen when its turn ends", () => {
   const RUN = { origin: { kind: "composer" }, presentation: { isFullscreen: true, columns: 160 } } as const;
   const marked = async (ui: Awaited<ReturnType<typeof open>>["ui"], key: string) =>

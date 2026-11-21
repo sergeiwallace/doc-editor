@@ -3,9 +3,6 @@ import { describe, expect, mock, test } from "claude-code/testing";
 import { sizeOf, watchWorld } from "./tests/world";
 import { createWatcher, type Reload } from "./watch";
 
-// The reload watcher on the test kit's mock clock (T-1.7, the re-read half; the pane's redraw is
-// the reader's). register.test.ts covers the Write and Edit hook that calls `check`.
-
 const PATH = "/work/doc-editor/notes.md";
 const TEXT = "# Notes\n";
 const EDITED = "# Notes\n\nA line Claude added.\n";
@@ -18,7 +15,6 @@ describe("watch", () => {
     const reloads: Reload[] = [];
     createWatcher(w.host).watch(PATH, { mtimeMs: START, size: sizeOf(TEXT) }, (r) => reloads.push(r));
 
-    // The edit lands just after a tick, the worst case for a poll.
     await clock.advance(4_000);
     expect(reloads).toEqual([]);
     w.fs.map.set(PATH, { text: EDITED, mtimeMs: clock.now() });

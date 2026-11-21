@@ -1,5 +1,3 @@
-// Runner: Vitest. It runs the mod's save helper, plugins/doc-editor/bin/save.mjs, under node on
-// real files in a fresh temporary directory, as the mod's $.process.run does (design D-12, T-1.7).
 import { spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
@@ -81,7 +79,6 @@ describe("the save helper", () => {
   it("should exit 0 with the target replaced when it cannot report the stamp after the rename", async () => {
     const f = fileWith(ORIGINAL);
     const child = spawn("node", [helper, f.path, String(f.mtimeMs), String(f.size)]);
-    // Nobody reads the helper's stdout, so its stamp line fails with EPIPE after the rename.
     child.stdout.destroy();
     const exited = new Promise<number | null>((done) => child.on("close", done));
     child.stdin.end(EDITED);
@@ -125,7 +122,6 @@ describe("the save helper", () => {
     child.stderr.on("data", (chunk) => (stderr += String(chunk)));
     const exited = new Promise<number | null>((done) => child.on("close", done));
 
-    // The helper has checked the path and now waits for its content: an outside edit lands here.
     await new Promise((done) => setTimeout(done, 200));
     writeFileSync(f.path, ORIGINAL);
     utimesSync(f.path, new Date(), new Date(f.mtimeMs + 60_000));

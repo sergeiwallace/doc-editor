@@ -3,9 +3,6 @@ import { describe, expect, test } from "claude-code/testing";
 import { CANCEL, conflictQuestion, createSaver, NON_ATOMIC_TEXT, OVERWRITE, RELOAD } from "./save";
 import { exit, HELPER, nodeVersion, ok, saveWorld, sizeOf, type Script } from "./tests/world";
 
-// The safe-write path over a stub host (design D-12, T-1.7). The helper's own behaviour on real
-// files is test/save-helper.spec.ts.
-
 const PATH = "/work/doc-editor/notes.md";
 const READ_TEXT = "# Notes\n\n- [ ] first\n";
 const NEW_TEXT = "# Notes\n\n- [x] first\n";
