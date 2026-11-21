@@ -5,8 +5,6 @@ import { COMMAND_NAME, FALLBACK_COMMAND_NAME, takenText } from "./commands.ts";
 import { PANE_ID } from "./register.ts";
 import { CWD, ENGINE_TEST, mountPane, openDoc, paneWorld, SESSION } from "./tests/pane-world.ts";
 
-// `/doc` and the path completion after it, through the mod's hooks (FR-1, D-13).
-
 const DOC = `${CWD}/doc.md`;
 const DIRS = {
   [CWD]: [
@@ -26,8 +24,6 @@ const draft = (text: string) => {
   return { text, cursor: text.length, token: text.slice(start), start };
 };
 
-// The engine raises prompt.autocomplete as the prompt box's typeahead does; the kit's `$` carries
-// the event, which its noun type does not list.
 type Suggested = { suggestions: readonly { text: string }[] };
 const complete = ($: Engine, text: string): Promise<Suggested> =>
   ($.prompt as unknown as { autocomplete: (e: ReturnType<typeof draft>) => Promise<Suggested> }).autocomplete(draft(text));
@@ -105,8 +101,6 @@ describe("path completion after /doc", () => {
   });
 });
 
-// The person's own `doc` skill or command already holds `/doc` (the engine refuses it, as 2.1.306
-// does for a user skill): `/doc-editor` stands in, and `show` is registered whatever happens.
 const TAKEN = "refused: it is the user's /doc";
 const RUN = { origin: { kind: "composer" }, presentation: { isFullscreen: true, columns: 160 } } as const;
 

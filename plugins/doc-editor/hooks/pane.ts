@@ -1,9 +1,3 @@
-// The reader pane (design, The pane; The windowed renderer; FR-1 to FR-3, FR-7's redraw): it opens
-// a Markdown file, draws only the pieces in view through the core's window, answers its own
-// `ui.scroll`, and navigates with the outline, folding, drill-in, find and links with Back. It
-// holds no `$`: register.ts binds it to a PaneHost of plain closures at session start. Every
-// document rule is the core's; this file keeps the view state and draws it.
-
 import type { Elements, RenderElement } from "claude-code";
 
 import { toDocument } from "../core/blocks.ts";
@@ -167,7 +161,6 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1) || path;
 
-// Whether bytes are well-formed UTF-8 with no NUL: the pane's test for text.
 function isUtf8Text(bytes: Uint8Array): boolean {
   let k = 0;
   while (k < bytes.length) {
@@ -369,8 +362,6 @@ export class DocPane {
     this.host = host;
   }
 
-  // ---- opening ----------------------------------------------------------------------------
-
   /** Reads a file the pane may show: a UTF-8 text file of at most MAX_BYTES. */
   async load(path: string): Promise<Loaded> {
     const host = this.host;
@@ -441,13 +432,11 @@ export class DocPane {
       : { ok: true, path: doc.path, isPlaced: false, reason: opened.reason ?? "the pane waits for room" };
   }
 
-  // Makes a loaded file the document, its view reset, and watches it for changes.
   private show(loaded: Extract<Loaded, { ok: true }>): void {
     const host = this.host;
     if (host === undefined) return;
     const history = this.history;
     this.doc = toDocument(loaded.path, loaded.stamp.mtimeMs, loaded.text, host.repoRoot);
-    // The file may have changed while another was shown or the pane was closed: carry its changes.
     const prior = this.known.get(loaded.path);
     this.known.set(loaded.path, this.doc);
     if (prior !== undefined && prior.source !== this.doc.source) {
@@ -469,9 +458,6 @@ export class DocPane {
     void this.restoreChanges(loaded.path);
   }
 
-  // The changes the session's state kept for this file, after a reload of the mod: those whose
-  // lines still hold the text their turn left, marked on the blocks at those lines. The state is
-  // written back without the rest, so it never holds a change that can no longer be reviewed.
   private async restoreChanges(path: string): Promise<void> {
     const host = this.host;
     if (host === undefined || this.review.of(path).length > 0) return;
@@ -493,7 +479,6 @@ export class DocPane {
    * newest kept; none is an empty list.
    */
   private persist(path: string): void {
-    // Checked against the file's text as last measured, which a closed pane's document may lag.
     const source = this.known.get(path)?.source;
     const changes = this.review.of(path);
     const live = source === undefined ? changes : changes.filter((change) => discardChange(change, source).ok);
@@ -517,8 +502,6 @@ export class DocPane {
     this.view.history = entries;
   }
 
-  // ---- status -----------------------------------------------------------------------------
-
   say(text: string): void {
     this.statusText = text;
     this.host?.status(text);
@@ -529,8 +512,6 @@ export class DocPane {
     this.statusText = undefined;
     this.host?.status(undefined);
   }
-
-  // ---- the window -------------------------------------------------------------------------
 
   private contentColumns(): number {
     return Math.max(10, this.size.bodyColumns - MARGIN_COLUMNS);
@@ -567,8 +548,6 @@ export class DocPane {
    * runs past the body and the hint row and the focused block stay in view.
    */
   private sized(piece: Piece, block: Block | undefined, columns: number): Piece {
-    // What drawPiece draws around the text: the margin under every piece; a callout's border and
-    // label; a code slice's continuation marker.
     const frame =
       PIECE_MARGIN_ROWS +
       (piece.type === "callout" ? CALLOUT_FRAME_ROWS : piece.type === "code" && piece.marker !== null ? 1 : 0);
@@ -690,7 +669,6 @@ export class DocPane {
     this.host?.invalidate();
   }
 
-  // When the focused block is hidden (a fold, a drill), the innermost visible heading above it.
   private keepFocusVisible(): void {
     const order = this.order();
     const focus = this.view.focus;
@@ -708,9 +686,6 @@ export class DocPane {
   scroll(by: number, bodyRows: number): void {
     if (bodyRows > 0) this.size = { ...this.size, bodyRows };
     if (this.doc === undefined || by === 0) return;
-    // The event marks no key: an arrow is one row, a page key the window's rows, Home and End all
-    // of them, and the engine sums the moves that arrive together (a burst of Downs, a held key,
-    // crowded wheel ticks). So a move shorter than the window is that many single steps.
     const windowRows = bodyRows > 0 ? bodyRows : this.size.bodyRows;
     if (this.screen !== "diff" && Math.abs(by) > 1 && Math.abs(by) < windowRows) {
       for (let k = 0; k < Math.abs(by); k++) this.scroll(Math.sign(by), bodyRows);
@@ -722,8 +697,6 @@ export class DocPane {
       return;
     }
     if (this.screen === "outline") {
-      // Up and Down move between entries, a page key by a page; the list follows the entry and
-      // the focus ring is put on it, so Enter jumps to what is highlighted.
       const entries = this.doc.outline;
       const rows = this.bodySize().bodyRows;
       const step = Math.abs(by) === 1 ? by : Math.sign(by) * rows;
@@ -790,8 +763,6 @@ export class DocPane {
     }
     return "end";
   }
-
-  // ---- keys -------------------------------------------------------------------------------
 
   /** Runs a binding's action, as its Button's press or hotkey does. */
   async press(binding: KeyBinding<DocPane>): Promise<void> {
@@ -1019,8 +990,6 @@ export class DocPane {
     if (key !== undefined) void this.host?.focus(`outline:${key}`).catch(() => undefined);
   }
 
-  // ---- reload -----------------------------------------------------------------------------
-
   /**
    * The watcher saw the file change: re-read, keep the focused block, the folds and the drill-in
    * by mapping old block ids to new ones, and keep the focused block in view (T-1.7).
@@ -1068,8 +1037,6 @@ export class DocPane {
     this.skip = 0;
     host.invalidate();
   }
-
-  // ---- editing: ask Claude (T-1.4) ----------------------------------------------------------
 
   /** `c`: opens the ask field for the focused block. */
   askClaude(): void {
@@ -1190,8 +1157,6 @@ export class DocPane {
     host.invalidate();
   }
 
-  // Reads a file the pane is not watching and records what changed in it since the review last
-  // measured it (or since `baseline`, the text a request's turn started from).
   private async measure(path: string, baseline: Snapshot | null): Promise<void> {
     const host = this.host;
     if (host === undefined) return;
@@ -1205,8 +1170,6 @@ export class DocPane {
     this.review.fileChanged(path, before, after);
     this.known.set(path, after);
   }
-
-  // ---- editing: review (T-1.5) --------------------------------------------------------------
 
   /** The ids of the blocks Claude's changes mark in the open file. */
   marked(): Set<string> {
@@ -1329,8 +1292,6 @@ export class DocPane {
     this.screen = "document";
   }
 
-  // ---- editing: in the pane (T-1.6) ---------------------------------------------------------
-
   private closeEditing(): void {
     if (this.input === ASK_INPUT || this.input === EDIT_INPUT || this.input === LINE_INPUT) this.input = null;
     this.askAt = null;
@@ -1426,7 +1387,6 @@ export class DocPane {
       let stamp = result.stamp;
       if (stamp === undefined) {
         const again = await this.load(doc.path);
-        // Unknown, so the next save asks before it writes.
         stamp = again.ok ? again.stamp : { mtimeMs: -1, size: source.length };
       }
       if (this.doc !== doc) return true;
@@ -1448,8 +1408,6 @@ export class DocPane {
     }
     return false;
   }
-
-  // ---- drawing ----------------------------------------------------------------------------
 
   /** The pane's tree for a body of `bodyColumns` by `bodyRows`. */
   draw(ui: PaneUi, bodyColumns: number, bodyRows: number): RenderElement {
@@ -1484,11 +1442,6 @@ export class DocPane {
     const size = this.bodySize();
     const page = pageAt(pieces, this.view.offset, size);
     this.view.offset = page.offset;
-    // The core's page may end on a piece that runs past the body; that piece is cut to the rows
-    // left, so the hint row under the body stays on screen. The core budgets a page by its pieces'
-    // text, but each piece draws inside a frame, a table may draw as cards, a Markdown lists its
-    // links and the focused block adds a link row; the page stops before what it draws, measured
-    // as serialized (pieceCost), would pass PAGE_BUDGET.
     const body: RenderElement[] = [];
     let used = 0;
     let bytes = 0;
@@ -1497,11 +1450,8 @@ export class DocPane {
       const left = size.bodyRows - used;
       let keep: number | null = null;
       if (piece.rows - skip > left) {
-        // Cut to the rows left, its frame and a spare row held back, so the hint row stays in view.
         keep = left - (this.frames.get(piece.key) ?? 1) - CUT_SPARE_ROWS;
         if (k > 0 && keep < 2) break;
-        // A cut card table draws whole cards: below the first piece it waits for the next page
-        // when not even its first card fits.
         if (k > 0 && (this.cardRows.get(piece.key)?.[0] ?? 0) > keep) break;
       }
       const isLastOfBlock = page.pieces[k + 1]?.blockId !== piece.blockId;
@@ -1521,9 +1471,6 @@ export class DocPane {
     return this.frame(ui, header, [...(field === null ? [] : [field]), ui.Box({ key: "body", flexDirection: "column", children: body })], hints);
   }
 
-  // The engine raises ui.scroll for an arrow key only while the tree is taller than the body, so a
-  // blank spacer under the hint row keeps it taller. The pane never lets the engine's window move,
-  // so the spacer stays below the rows in view.
   private frame(ui: PaneUi, header: Header, middle: RenderElement[], hints: RenderElement): RenderElement {
     return ui.Box({
       flexDirection: "column",
@@ -1669,11 +1616,9 @@ export class DocPane {
     this.outlineAt = Math.min(last, Math.max(0, this.outlineAt));
     const cursor = entries[this.outlineCursor]?.id;
     const folded = new Set(this.view.folded);
-    // A tall body holds thousands of entries; the outline stops at PAGE_BUDGET as a page does.
     const children: RenderElement[] = [];
     let bytes = 0;
     for (const entry of entries.slice(this.outlineAt, this.outlineAt + rows)) {
-      // `›` marks the entry Up and Down reached (it opens on the current section).
       const mark = entry.id === cursor ? "› " : folded.has(entry.id) ? "▸ " : "  ";
       const note = folded.has(entry.id) ? `  (folded, ${hiddenCount(this.blocks, entry.id)})` : "";
       const label = `${mark}${"  ".repeat(Math.max(0, entry.level - 1))}${entry.title}${note}`;
@@ -1734,7 +1679,6 @@ export class DocPane {
       content = this.markdown(ui, piece, text);
     }
     const isFocused = piece.blockId === this.view.focus;
-    // The margin: the focus mark, then the change marker (Word's Simple Markup) on a block Claude changed.
     const margin = `${isFocused ? "›" : " "}${isMarked ? "▌" : " "}`;
     return ui.Box({
       key: piece.key,
@@ -1756,7 +1700,6 @@ export class DocPane {
     const doc = this.doc;
     if (doc === undefined) return [];
     const out: RenderElement[] = [];
-    // The latest request about the block: one status row, so its key stays unique.
     const ask = this.review.asks.findLast((entry) => entry.path === doc.path && entry.blockId === blockId);
     if (ask !== undefined) {
       const where = lineRange(ask.request.start, ask.request.end);
@@ -1792,7 +1735,6 @@ export class DocPane {
     return out;
   }
 
-  // A wrapping row of Buttons, one per source line, each labelled with the line's text.
   private lineRow(
     ui: PaneUi,
     key: string,
@@ -1826,8 +1768,6 @@ export class DocPane {
     });
   }
 
-  // The diff view (design, Change review): the turn's unified diff as Code with format diff, one
-  // page at a time, cut so every page parses as hunks.
   private drawDiff(ui: PaneUi, hints: RenderElement): RenderElement {
     const doc = this.doc;
     const host = this.host;
@@ -1852,9 +1792,6 @@ export class DocPane {
     return this.frame(ui, header, [ui.Box({ key: "body", flexDirection: "column", children })], hints);
   }
 
-  // The core writes each href into the drawn text through linkDestination, and a press names the
-  // href as drawn, so the pressable list holds the drawn form, only for the links `text` draws, and
-  // a press maps back to the source's href.
   private pressable(blockId: string, text: string): Map<string, string> {
     const drawn = new Map<string, string>();
     for (const href of this.linkHrefs(blockId)) {
@@ -1877,9 +1814,6 @@ export class DocPane {
     });
   }
 
-  // A table fitted to the body as the engine's Markdown table; one wider than the body whose cards
-  // pass the element limit falls back to its source as Code, which keeps the tree in budget. A
-  // wider one within the limit draws as cards (drawCards).
   private drawTable(ui: PaneUi, piece: Piece): RenderElement {
     const table = parseTable(piece.text);
     if (table === null || naturalWidth(table) <= this.contentColumns()) return this.markdown(ui, piece, piece.text);
@@ -1915,7 +1849,6 @@ export class DocPane {
         used += left + CARD_BORDER_ROWS;
         continue;
       }
-      // Cut: the border, the marker row and at least one row of text, on the page's first card at least.
       const fits = room - CARD_BORDER_ROWS - 1;
       if (fits < 1 && children.length > 0) break;
       children.push(this.card(ui, piece, k, rowWindow(cards[k] ?? "", past, Math.max(1, fits), width), true));

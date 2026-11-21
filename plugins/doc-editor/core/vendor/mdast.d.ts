@@ -1,6 +1,3 @@
-// Types for the vendored bundle mdast.js, which scripts/bundle-vendor.mjs builds and which has
-// no declarations of its own. Only the parts the core calls are declared.
-
 export interface Point {
   line: number;
   column: number;

@@ -5,9 +5,6 @@ import { keyButton } from "./hints.ts";
 import { CARD_CONTINUES, OUTLINE_HINT } from "./pane.ts";
 import { CWD, ENGINE_TEST, focusedKey, frameRows, header, type MountedPane, openDoc, PANE_PROPS, pieceKeys, scrollPane } from "./tests/pane-world.ts";
 
-// What the pane draws fits its rows (T-1.4's and T-1.7's "keep the focused block in view"), counted
-// from the drawn tree by the kit-side layout model, not by the pane's own estimate.
-
 const DOC = `${CWD}/doc.md`;
 const files = (text: string) => ({ files: { [DOC]: text, [`${CWD}/${LINKED_FILE}`]: linkedDoc() } });
 
@@ -70,8 +67,6 @@ describe("the outline with keys alone", () => {
   });
 });
 
-// The engine sums arrows that arrive together into one ui.scroll: a `by` of 5 is five Downs, not
-// a page key, which moves the window's rows.
 describe("summed arrow keys", () => {
   test("should move five outline entries on a summed scroll of 5, as five Downs do", ENGINE_TEST, async ($, on) => {
     const { ui } = await openDoc($, on, files(fixtureDoc(1000)), "doc.md");
@@ -102,8 +97,6 @@ describe("summed arrow keys", () => {
   });
 });
 
-// The live re-check's two pages that lost hint rows: the opening page, whose last piece is the long
-// quote cut to the rows left, and a page that ends on a table too wide for the pane.
 describe("the hint row on a page that ends on a cut piece", () => {
   for (const [columns, rows] of [
     [160, 50],
@@ -143,8 +136,6 @@ describe("the hint row on a page that ends on a cut piece", () => {
   }
 });
 
-// One table row drawn as a card taller than the pane: the card is cut to the rows left with a
-// continuation marker and goes on as the pane scrolls.
 describe("a table card taller than the pane", () => {
   const COLUMNS = 30;
   const header = Array.from({ length: COLUMNS }, (_, k) => `Column ${k + 1}`);
@@ -191,8 +182,6 @@ describe("a table card taller than the pane", () => {
   });
 });
 
-// The live check of the tall-card fix: a card cut and scrolled, whose last rows were then drawn
-// whole, ran one row past the pane. Walk the 1,000-line fixture's last tables frame by frame.
 describe("a cut table card scrolled to its end", () => {
   for (const [columns, rows] of [
     [100, 40],
@@ -218,8 +207,6 @@ describe("a cut table card scrolled to its end", () => {
   }
 });
 
-// The live walk at 100 by 40 through Table 14 drew the same frame for three Downs in a row: every
-// Down must change what is on screen while content remains below.
 describe("every Down moves the screen", () => {
   for (const [columns, rows] of [
     [100, 40],

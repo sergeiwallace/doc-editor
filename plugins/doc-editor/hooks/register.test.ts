@@ -6,7 +6,6 @@ import { CWD, ENGINE_TEST, header, openDoc, START_MS } from "./tests/pane-world.
 
 const SESSION = { surface: "terminal", isInteractive: true, cwd: "/work/doc-editor" } as const;
 
-// The engine beneath the mod: it ends the session start and keeps each command the mod registers.
 function world(on: On) {
   const registered: string[] = [];
   on("session.start", (_engine, e) => ({ cwd: e.cwd }));
@@ -27,7 +26,6 @@ describe("register", () => {
     expect(w.registered).toEqual([COMMAND_NAME]);
   });
 
-  // T-1.7: a Write or Edit re-reads the open file at once, without waiting for the clock.
   for (const tool of ["Write", "Edit"] as const) {
     test(`should re-read the open file and redraw the pane when Claude's ${tool} call on it returns`, ENGINE_TEST, async ($, on) => {
       const doc = `${CWD}/notes.md`;
@@ -44,7 +42,6 @@ describe("register", () => {
     });
   }
 
-  // NFR-9: the mod observes Write and Edit to trigger a reload and never answers them.
   for (const call of [
     { tool: "Write", file_path: "/work/doc-editor/notes.md", content: "# Notes\n" },
     { tool: "Edit", file_path: "/work/doc-editor/notes.md", old_string: "a", new_string: "b" },

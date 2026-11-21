@@ -1,7 +1,3 @@
-// A small HTML-to-Markdown converter for the HTML that appears inside Markdown: inline tags,
-// <br>, <details>, images, simple lists and tables, entities and comments. No DOM: a tag scanner
-// over the text. Anything it does not know keeps its text and loses its tags.
-
 export type HtmlContext = "flow" | "inline" | "cell";
 
 const ENTITIES: Record<string, string> = {
@@ -122,7 +118,6 @@ export function htmlToMarkdown(
     target.push(text);
     return { target, at: target.length - 1 };
   };
-  // The slot an open anchor's `[` goes in once its close shows the link may be drawn.
   let opened: { target: string[]; at: number } | null = null;
   const closeAnchor = () => {
     if (href === null) return;

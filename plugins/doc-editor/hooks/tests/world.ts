@@ -4,11 +4,6 @@ import type { MockClock } from "claude-code/testing";
 import type { FileStamp, SaveHost } from "../save.ts";
 import type { WatchHost } from "../watch.ts";
 
-// Stub hosts for the hooks tests: a file system held as a map of paths to text and mtimeMs,
-// processes that answer from a script, and a record of what the code asked of the engine.
-// `claude plugin test` cannot spawn processes, so the save helper itself runs on real files
-// under Vitest (test/save-helper.spec.ts).
-
 export const HELPER = "/plugins/doc-editor/bin/save.mjs";
 
 export interface FileState {
@@ -97,8 +92,6 @@ export function watchWorld(clock: MockClock, entries: Record<string, FileState>)
       if (file === undefined) throw new Error(`ENOENT: ${path}`);
       return file.text;
     },
-    // $.clock.every on the kit's mock clock: each period is one held wait the test's advance
-    // resolves, as the engine's clock.every dispatch is.
     every: (ms, fn): Timer => {
       timers++;
       let isLive = true;

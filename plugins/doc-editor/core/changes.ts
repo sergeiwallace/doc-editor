@@ -1,7 +1,3 @@
-// What Claude changed: the old and new blocks of a file aligned by source text, one `Change` per
-// changed run of blocks in a turn, the turn's unified diff for a `Code` element with format `diff`,
-// and the check that keeps a discard from writing over text that changed again.
-
 import type { Block, Change } from "./types.ts";
 
 /** Pairs of old and new block indices whose source text is equal, in order (a longest common run). */
@@ -29,9 +25,6 @@ export function alignBlocks(before: readonly Block[], after: readonly Block[]): 
 
 const LCS_CELLS = 4_000_000;
 
-// The longest common subsequence of two string lists. Past the table limit it anchors on the
-// texts that occur once on each side (patience alignment) and aligns each gap between anchors the
-// same way, so a copy of a block inserted elsewhere is never taken for the block itself.
 function lcs(a: readonly string[], b: readonly string[]): [number, number][] {
   if (a.length === 0 || b.length === 0) return [];
   if (a.length * b.length > LCS_CELLS) return anchored(a, b);
@@ -51,8 +44,6 @@ function anchored(a: readonly string[], b: readonly string[]): [number, number][
   return pairs;
 }
 
-// The pairs of texts that occur exactly once in each list, cut to the longest run in order on both
-// sides (a longest increasing subsequence of the new indices).
 function uniqueAnchors(a: readonly string[], b: readonly string[]): [number, number][] {
   const seen = new Map<string, { inA: number; atA: number; inB: number; atB: number }>();
   a.forEach((text, i) => {
@@ -91,8 +82,6 @@ function uniqueAnchors(a: readonly string[], b: readonly string[]): [number, num
   return out;
 }
 
-// The last resort for a long run with no unique text: each new text matched to the next unused
-// equal old text, in order.
 function inOrder(a: readonly string[], b: readonly string[]): [number, number][] {
   const pairs: [number, number][] = [];
   let from = 0;
@@ -184,7 +173,6 @@ export function recordChanges(
 ): Change[] {
   const oldLines = sourceLines(before.source);
   const newLines = sourceLines(after.source);
-  // A block whose text is equal but whose last line ending changed is a changed block.
   const pairs = alignBlocks(before.blocks, after.blocks).filter(([i, j]) => {
     const a = before.blocks[i];
     const b = after.blocks[j];
@@ -215,15 +203,11 @@ export function recordChanges(
   return changes;
 }
 
-// The block a run that changed no new block is marked on: the one after it, or the one before it
-// at the end of the file.
 function neighbour(blocks: readonly Block[], before: number, after: number): string[] {
   const block = blocks[after] ?? blocks[before];
   return block === undefined ? [] : [block.id];
 }
 
-// Narrows an old and a new line range by the equal lines they open and close with, such as the
-// blank lines between blocks, so a change holds only the lines that differ.
 function trimCommon(
   a: readonly string[],
   a0: number,

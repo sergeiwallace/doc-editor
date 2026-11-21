@@ -20,8 +20,6 @@ export { COMMAND_NAME, FALLBACK_COMMAND_NAME, PANE_ID };
 export const PLUGIN_NAME = "doc-editor";
 export const OPEN_FAILED_TEXT = "doc-editor could not open the pane";
 
-// A refusal's reason without the engine's `<plugin>: <call>: ` lead, for the status row. The
-// pattern is a string, so the source scan never reads its dollar sign as the engine handed on.
 const ENGINE_LEAD = new RegExp("^[\\w-]+: \\$\\.\\w+\\.\\w+: ");
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(ENGINE_LEAD, "");
 
@@ -34,9 +32,6 @@ const message = (error: unknown) => (error instanceof Error ? error.message : St
  * @param on the engine's registrar
  */
 export function register(on: On) {
-  // Matchers and the tool name are literals so that `claude plugin validate` and the safety floor
-  // can read them; they are COMMAND_NAME, PANE_ID, SHOW_TOOL and SHOW_TOOL_CALL.
-  // What the session's start binds for the pane: the safe-write path and the reload watcher.
   const session: { save?: Save; watcher?: Watcher } = {};
   const pane = new DocPane();
 
@@ -74,7 +69,6 @@ export function register(on: On) {
       focus: (key) => $.ui.focus({ requestId: PANE_ID, key }),
       watcher,
       save,
-      // The request is the person's own words (D-4); the pane never awaits this in a hook.
       submit: async (text) => {
         const result = await $.prompt.submit({ text, asUser: true });
         return result.drop === undefined ? { ok: true } : { ok: false, reason: result.drop };
@@ -85,8 +79,6 @@ export function register(on: On) {
       loadChanges: async (path) => (await $.state.get({ plugin: "doc-editor", key: "changes", id: path })).value ?? [],
     };
     pane.bind(host);
-    // Each registration stands alone, so a refusal of one never stops the next. `/doc` may already
-    // be the person's own skill or command; `/doc-editor` then stands in for it.
     try {
       await $.command.register(COMMAND_SPEC);
       pane.command = COMMAND_NAME;
@@ -109,7 +101,6 @@ export function register(on: On) {
     return next(e);
   });
 
-  // Only the name the session granted is the mod's: a `/doc` that is the person's own passes on.
   on("command.run", { command: ["doc", "doc-editor"] }, async (_$, e, next) =>
     e.command === pane.command ? runDoc(pane, e.args) : next(e),
   ).catch(() => ({
@@ -124,12 +115,10 @@ export function register(on: On) {
     return extra.length === 0 ? base : { suggestions: [...base.suggestions, ...extra] };
   }).catch((_$, e, next) => next(e));
 
-  // The plugin's own tool: answered here, never passed on (NFR-9).
   on("tool.call", { tool: "mcp__doc-editor__show" }, async (_$, e) => runShow(pane, { path: e["path"] })).catch(() => ({
     deny: OPEN_FAILED_TEXT,
   }));
 
-  // Observed, never answered (NFR-9): the call goes on with next and its own result comes back.
   on("tool.call", { tool: ["Write", "Edit"] }, async (_$, e, next) => {
     const result = await next(e);
     void session.watcher?.check();
@@ -137,8 +126,6 @@ export function register(on: On) {
     return result;
   }).catch((_$, e, next) => next(e));
 
-  // The main loop's turns, observed: a request the pane submitted learns its turn id at the start,
-  // and its edit lands at the end. Both pass on unchanged and never wait on the pane.
   on("turn.start", (_$, e, next) => {
     if (e.agentId === undefined) pane.turnStarted(e.turnId, e.text);
 
@@ -158,7 +145,6 @@ export function register(on: On) {
     return result;
   }).catch((_$, e, next) => next(e));
 
-  // The pane answers its own scroll (D-2): its offset moves, the engine's window never does.
   on("ui.scroll", { requestId: "doc" }, (_$, e) => {
     pane.scroll(e.by, e.bodyRows);
 
@@ -177,7 +163,6 @@ export function register(on: On) {
     );
   });
 
-  // The open link under Claude's Read, Write and Edit rows; the row is the chain's (D-13).
   on("ui.render", { component: "ToolUse" }, async ($, e, next) => {
     const row = await next(e);
     const path = rowPath(e.props);

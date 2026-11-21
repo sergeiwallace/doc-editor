@@ -4,8 +4,6 @@ import { PANE_ID } from "./register.ts";
 import { CWD, ENGINE_TEST, mountPane, paneWorld, SESSION } from "./tests/pane-world.ts";
 import { SHOW_TOOL_CALL } from "./tools.ts";
 
-// The `show` tool Claude calls, answered by the mod's own tool.call hook (FR-1, D-13, NFR-9).
-
 const DOC = `${CWD}/doc.md`;
 const TEXT = "# Notes\n\nFirst paragraph.\n\n## Later\n\nSecond paragraph.\n";
 

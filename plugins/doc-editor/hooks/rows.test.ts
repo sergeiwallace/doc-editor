@@ -5,10 +5,6 @@ import { PANE_ID, PLUGIN_NAME } from "./register.ts";
 import { openLinkKey } from "./rows.ts";
 import { CWD, ENGINE_TEST, paneWorld, SESSION } from "./tests/pane-world.ts";
 
-// The open link under Claude's Read, Write and Edit rows (FR-1, D-13). The row beneath is the
-// test's own hook, standing for the engine or any other mod: the link is added under it, so it
-// still draws.
-
 const DOC = `${CWD}/docs/design.md`;
 const TEXT = "# Design\n\nBody.\n";
 

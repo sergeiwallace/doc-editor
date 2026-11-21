@@ -7,10 +7,6 @@ import { FIND_INPUT, MAX_BYTES } from "./pane.ts";
 import { PANE_ID } from "./register.ts";
 import { CWD, elementsOf, ENGINE_TEST, focusedKey, header, openDoc, PANE_PROPS, type PaneWorldOptions, pieceKeys, scrollPane } from "./tests/pane-world.ts";
 
-// The reader pane through the mod's own hooks: /doc, the pane's ui.render and ui.scroll, its
-// Buttons' hotkeys and its fields, under the test kit (T-1.1 to T-1.3, and the redraw half of
-// T-1.7's first criterion).
-
 const SMALL = fixtureDoc(200);
 const MEDIUM = fixtureDoc(1000);
 const DOC = `${CWD}/doc.md`;
@@ -233,8 +229,6 @@ describe("window and budget (T-1.2)", () => {
   });
 
   test("should cut a piece that runs past the body to the rows left, so the hint row stays in view", ENGINE_TEST, async ($, on) => {
-    // 19 rows: the hint row, with the editor's keys, wraps to three rows at 100 columns, and a cut
-    // piece holds a spare row; at 18 to 21 rows the list piece is the one cut.
     const short = { ...PANE_PROPS, scroll: { offset: 0, bodyRows: 19 } };
     const { ui } = await openDoc($, on, files(), "doc.md#chapter-2-topic-2", short);
     const keys = await pieceKeys(ui);
@@ -423,7 +417,6 @@ describe("navigate (T-1.3)", () => {
     expect(await focusedKey(ui)).toBe("h1:1");
   });
 
-  // The outside link draws as text, not a link, so it is reached through the focused block's link row.
   for (const [name, button, reason] of [
     ["outside the repository", "link:0", "outside the repository: ../../../../outside.md"],
     ["to a missing file", "link:1", `missing file: ${CWD}/missing-file.md`],

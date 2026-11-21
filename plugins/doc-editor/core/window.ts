@@ -1,14 +1,3 @@
-// The windowed renderer's core (design, The windowed renderer; D-2). Blocks become pieces, the
-// keyed elements the pane draws, and a page is the run of pieces from the view's offset that fills
-// `bodyRows`. A piece's text is never over 9,000 characters: a longer block is split at paragraph
-// boundaries, and one that cannot be split (a fence, a table, a single long paragraph) is drawn as
-// consecutive Code slices, each carrying a continuation marker. A page stays within 60,000
-// serialized characters, so with the header and hint rows the tree stays under the engine's
-// 100,000-character draw limit, past which the engine cuts text without refusing the tree.
-//
-// `ViewState.offset` is an index into the visible pieces, never a row: the mod answers `ui.scroll`
-// itself and moves by pieces, so the engine's own window never moves.
-
 import type { Block, ViewState } from "./types.ts";
 import { calloutLabel, drawnOf, fenceLanguage } from "./blocks.ts";
 import { visibleBlocks } from "./outline.ts";

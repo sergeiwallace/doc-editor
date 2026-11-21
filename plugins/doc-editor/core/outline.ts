@@ -1,12 +1,8 @@
-// The heading outline, sections, heading paths, folding, drill-in and `:N` or `#heading` lookup.
-// Every function takes the document's top-level blocks and returns plain values.
-
 import type { Block, OutlineEntry } from "./types.ts";
 import { parseMarkdown, plainText } from "./parse.ts";
 
 /** A heading block's title as plain text, with its Markdown markers and inline syntax removed. */
 export function headingTitle(block: Block): string {
-  // An ATX heading with no inline syntax needs no parse: its title is the text between the markers.
   const plain = /^ {0,3}#{1,6}[ \t]+([^\n\\`*_[\]<>!&~]*?)(?:[ \t]+#+)?[ \t]*\r?$/.exec(block.text);
   if (plain?.[1] !== undefined) return plain[1].trim();
   const { tree } = parseMarkdown(block.text);

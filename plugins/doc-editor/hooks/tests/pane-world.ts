@@ -4,10 +4,6 @@ import { mock } from "claude-code/testing";
 
 import { PANE_ID, PLUGIN_NAME } from "../register.ts";
 
-// The world beneath the mod in the pane tests: a session in a repository whose files are held in
-// memory, an engine that keeps what the mod asked of it (the panes opened, the status rows, the
-// focus moves, the commands and tools registered), and a clock that moves only when a test moves it.
-
 /**
  * The time limit of a test that starts the engine: starting it dominates such a test and, on a
  * loaded host, took over the kit's default 5,000 ms (5,013 ms measured for registering /doc).
@@ -132,8 +128,6 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
     return {};
   });
 
-  // The save helper as bin/save.mjs behaves: it writes only while the file's mtimeMs and size are
-  // the ones the mod read, and prints the new stamp. node is on PATH.
   const saves: { path: string; text: string; expected: [number, number] }[] = [];
   let writes = 0;
   on("process.run", (_engine, e) => {
@@ -154,8 +148,6 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
     mtimes.set(target, START_MS + 10_000 + ++writes);
     return result(0, `${JSON.stringify({ mtimeMs: mtimes.get(target), size: sizeOf(target) })}\n`);
   });
-  // The session state the mod keeps: each write it makes, and a value seeded for a read, as a
-  // reload of the mod finds what the session held. The kit answers beneath.
   const stateWrites = new Map<string, unknown>();
   const seeded = new Map<string, unknown>(Object.entries(options.state ?? {}));
   const stateReads: string[] = [];
@@ -172,8 +164,6 @@ export function paneWorld(on: On, options: PaneWorldOptions) {
   on("turn.start", (_engine, e) => ({ turnId: e.turnId }));
   on("turn.complete", (_engine, e) => ({ text: e.answer }));
 
-  // Prompts the mod submits. While `busy` is set the engine holds each one, as it does while a
-  // turn runs; `release` lets them through.
   const submits: { text: string; asUser: boolean }[] = [];
   let held: (() => void)[] = [];
   let busy = false;
@@ -308,12 +298,6 @@ export async function header(ui: MountedPane): Promise<{ title: string; status: 
   return { title: texts[0]?.text ?? "", status: texts[1]?.text ?? "" };
 }
 
-// ---- rows a drawn tree takes ---------------------------------------------------------------
-// A small model of the terminal's layout, independent of the pane's own estimate, so a test can
-// check that what the pane drew fits its rows: text wrapped at the width, a border adds a row
-// above and below and a column each side, padding and margins as given, a row Box as tall as its
-// tallest child, a wrapping row of buttons by their labels.
-
 interface Drawn {
   type?: string;
   props?: Record<string, unknown>;
@@ -384,7 +368,6 @@ export function drawnRows(node: Drawn, width: number): number {
     case "Markdown": {
       const text = String(props.text ?? "");
       const lines = text.split("\n");
-      // A table draws inside a border: a row above and below.
       if (lines.every((line) => line.startsWith("|"))) return lines.length + 2;
       return lines.reduce((rows, line) => rows + markdownLineRows(line, width), 0);
     }

@@ -16,8 +16,6 @@ import { fixtureDoc } from "./fixture-docs.ts";
 const doc = (source: string) => ({ source, blocks: parseBlocks(source).blocks });
 const BEFORE = "# T\n\nOne.\n\nTwo.\n\nThree.\n";
 
-// The 20,000-line fixture before and after one edit, parsed once at load: a test's own time limit
-// is 5 seconds.
 const bigBefore = doc(fixtureDoc(20_000));
 const edited = bigBefore.blocks[3000];
 const bigLines = bigBefore.source.split("\n");
@@ -125,7 +123,6 @@ describe("mapping ids across a reload", () => {
     expect(mapBlockIds(before, paras(["S2", "P", "X", "Q", "X", "T2"]))["h:3"]).toBe("h:3");
   });
 
-  // It parses two 2,500-block documents: about 0.5 s alone, past the default 5 s on a loaded host.
   test("should map a block to itself when a copy is inserted earlier in a document too long for the full alignment table", { timeoutMs: 30_000 }, () => {
     const texts = Array.from({ length: 2500 }, (_, k) => `Paragraph ${k}.`);
     const before = parseBlocks(`${["S", ...texts, "T"].join("\n\n")}\n`).blocks;

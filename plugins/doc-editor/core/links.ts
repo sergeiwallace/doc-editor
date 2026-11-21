@@ -1,8 +1,3 @@
-// The link index and link resolution. Every href is classified before it reaches a terminal
-// `Link`, because the terminal writes any non-blank href into a hyperlink, `javascript:` included
-// (Phase 0 spike, "Link: non-https hrefs"). The core never touches the file system: whether a
-// resolved target exists is a fact the caller supplies.
-
 import type { LinkKind, OutlineEntry } from "./types.ts";
 import { headingSlugs, slug } from "./outline.ts";
 

@@ -1,6 +1,3 @@
-// The open link under Claude's Read, Write and Edit rows (FR-1, D-13). The row itself is drawn by
-// whatever the chain beneath returns (`next`), so other mods still draw it; this adds one line.
-
 import type { Elements, RenderElement } from "claude-code";
 
 const FILE_TOOLS = new Set(["Read", "Write", "Edit"]);

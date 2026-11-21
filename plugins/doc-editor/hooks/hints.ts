@@ -1,7 +1,3 @@
-// The key hint row (design, Key map; D-5): one dim line of keys, each also a Button whose hotkey
-// is the key. A binding names its key, its label, the screens it acts on and what it runs, so a
-// later mode adds its keys by adding bindings, not by editing a switch.
-
 import type { Elements, RenderElement } from "claude-code";
 
 export type Screen = "document" | "outline" | "diff";
