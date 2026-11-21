@@ -29,7 +29,10 @@ file is classified by its shebang. Docstrings are not comment tokens, and a JSDo
 ``shellcheck``, ``eslint-disable`` and the rest in ``DIRECTIVES``) are not counted,
 nor is any comment starting with a marker listed one per line in the optional
 ``comment-directives.txt`` at the repository root. Files under ``.beads/`` are
-written by bd and are not checked.
+written by bd and are not checked, nor is any path listed one per line in the
+copier-rendered ``comment-skip.txt`` or the repository's own optional
+``comment-skip.local.txt`` (a line ending in ``/`` skips a directory). A skipped
+path's baseline entry is ignored, and ``--update`` drops it.
 
 A file that cannot be lexed fails the check: an uncounted file is not a passing one.
 """
@@ -48,6 +51,7 @@ from pathlib import Path
 
 BASELINE = "comment-baseline.json"
 EXTRA_DIRECTIVES = "comment-directives.txt"
+SKIP_FILES = ("comment-skip.txt", "comment-skip.local.txt")
 COMMAND = "python3 scripts/comment_ratchet.py"
 SKIPPED = (".beads/",)
 
@@ -609,17 +613,27 @@ def tracked_files(root: Path) -> list[str]:
     return sorted(p for p in result.stdout.decode().split("\0") if p)
 
 
+def listed_lines(path: Path) -> tuple[str, ...]:
+    if not path.is_file():
+        return ()
+    return tuple(line.strip() for line in path.read_text().splitlines() if line.strip())
+
+
+def skipped(root: Path):
+    entries = [line for name in SKIP_FILES for line in listed_lines(root / name)]
+    directories = SKIPPED + tuple(e for e in entries if e.endswith("/"))
+    files = {e for e in entries if not e.endswith("/")}
+    return lambda path: path in files or path.startswith(directories)
+
+
 def scan(root: Path, paths: list[str] | None = None):
-    markers_file = root / EXTRA_DIRECTIVES
-    markers: tuple[str, ...] = ()
-    if markers_file.is_file():
-        lines = markers_file.read_text().splitlines()
-        markers = tuple(line.strip() for line in lines if line.strip())
+    markers = listed_lines(root / EXTRA_DIRECTIVES)
+    is_skipped = skipped(root)
     prefixes = [p.rstrip("/") for p in paths or []]
     results: dict[str, list[Comment]] = {}
     errors: dict[str, str] = {}
     for path in tracked_files(root):
-        if path.startswith(SKIPPED):
+        if is_skipped(path):
             continue
         under = any(path == p or path.startswith(p + "/") for p in prefixes)
         if prefixes and not under:
@@ -699,7 +713,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     counts = {path: len(comments) for path, comments in results.items()}
     baseline_path = root / BASELINE
-    baseline = load_baseline(baseline_path)
+    is_skipped = skipped(root)
+    baseline = {
+        p: n for p, n in load_baseline(baseline_path).items() if not is_skipped(p)
+    }
 
     if args.init:
         if baseline:

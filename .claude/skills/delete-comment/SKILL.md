@@ -46,6 +46,11 @@ diff "$render/out/<file>" "<file>"
 `$src` may be replaced with a local clone of project-template (`~/projects/project-template`)
 to avoid a network fetch; the `_commit` must exist in it.
 
+Paths listed in `comment-skip.txt` are copied in by the fleet installer and are not
+counted. Leave them alone: their comments are deleted at their source in ai-harness.
+Paths listed in `comment-skip.local.txt` are files this repository does not author, such
+as vendored bundles, and are not counted either. Leave them alone too.
+
 A comment line that appears only on the repository side of the diff (`>`) is the
 repository's. A comment line that also appears in the render is the template's: leave it,
 and name it in the report as a template line. Remove the render directory with

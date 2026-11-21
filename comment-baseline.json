@@ -1,10 +1,6 @@
 {
   "docs/research/evidence/ded-doc-editor/phase-0-gallery/hooks/cases.ts": 1,
   "docs/research/evidence/ded-doc-editor/phase-0-gallery/symlink-probe/hooks/register.ts": 1,
-  "plugins/doc-editor/core/vendor/mdast.js": 148,
-  "plugins/doc-editor/vendor-candidates/codemirror-state.js": 52,
-  "plugins/doc-editor/vendor-candidates/prosemirror-model.js": 76,
-  "plugins/doc-editor/vendor-candidates/yjs.js": 127,
   "test/fixtures/core-purity/clean-scopes/shadowed.js": 1,
   "test/fixtures/core-purity/clean/bundle.mjs": 1,
   "test/fixtures/core-purity/clean/mentions.ts": 2,
