@@ -1,0 +1,4 @@
+title = "doc-editor secret scanning policy"
+
+[extend]
+useDefault = true
